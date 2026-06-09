@@ -456,6 +456,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const { x, y } = clientToDrawing(e.clientX, e.clientY);
     setDragOffset({ x: x - item.x, y: y - item.y });
     setDraggingPlacedId(item.id);
+    try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
   };
 
   // ---------- Annotation interactions ----------
@@ -467,6 +468,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const { x, y } = clientToDrawing(e.clientX, e.clientY);
     setDragOffset({ x: x - anno.x, y: y - anno.y });
     setDraggingAnno({ id: anno.id, mode: "body" });
+    try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
   };
   const onAnnotationAnchorMouseDown = (e, anno) => {
     if (tool === "pan" || spacePressed) return;
@@ -474,6 +476,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     setSelectedAnnoId(anno.id);
     setSelectedId(null);
     setDraggingAnno({ id: anno.id, mode: "anchor" });
+    try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
   };
 
   // ---------- Viewport mouse handling ----------
@@ -500,6 +503,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       e.preventDefault();
       setIsPanning(true);
       panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+      try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
       if (e.button === 0 && onPannableBg) {
         setSelectedId(null);
         setSelectedAnnoId(null);
@@ -584,11 +588,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     }
   };
 
-  const onViewportMouseUp = () => {
+  const onViewportMouseUp = (e) => {
     setDraggingPlacedId(null);
     setDraggingAnno(null);
     setRotatingId(null);
     setIsPanning(false);
+    try { if (e?.pointerId != null) viewportRef.current?.releasePointerCapture?.(e.pointerId); } catch {}
   };
 
   // ---------- Symbol actions ----------

@@ -308,11 +308,12 @@ export function Workspace({
       className="absolute inset-0 overflow-hidden"
       style={{
         background: "radial-gradient(circle at 50% 50%, #e2e8f0, #cbd5e1 90%)",
+        touchAction: "none",
       }}
-      onMouseDown={onViewportMouseDown}
-      onMouseMove={onViewportMouseMove}
-      onMouseUp={onViewportMouseUp}
-      onMouseLeave={onViewportMouseUp}
+      onPointerDown={onViewportMouseDown}
+      onPointerMove={onViewportMouseMove}
+      onPointerUp={onViewportMouseUp}
+      onPointerCancel={onViewportMouseUp}
     >
       {/* Sheet, transformed by pan + zoom */}
       <div style={{
@@ -698,7 +699,7 @@ function DrawingArea({
                 <circle cx={a.anchorX} cy={a.anchorY} r={5}
                         fill="rgba(251,191,36,0.4)" stroke="#d97706" strokeWidth={1}
                         style={{ pointerEvents: "all", cursor: "grab" }}
-                        onMouseDown={(e) => onAnnotationAnchorMouseDown(e, a)}/>
+                        onPointerDown={(e) => onAnnotationAnchorMouseDown(e, a)}/>
               )}
             </g>
           );
@@ -734,7 +735,7 @@ function DrawingArea({
                       pointerEvents: "all",
                       cursor: tool === "wire" ? "crosshair" : (tool === "pan" || spacePressed) ? "grab" : "move",
                     }}
-                    onMouseDown={(e) => onItemMouseDown(e, item)}/>
+                    onPointerDown={(e) => onItemMouseDown(e, item)}/>
               <svg x={0} y={0} width={itemSize} height={itemSize} viewBox={VIEWBOX}
                    style={{
                      color: cols.body, "--feeder": cols.feeder,
@@ -752,7 +753,7 @@ function DrawingArea({
               )}
               {isSel && tool === "select" && !spacePressed && (
                 <g style={{ pointerEvents: "all", cursor: "grab" }}
-                   onMouseDown={(e) => { e.stopPropagation(); startRotating(item.id); }}>
+                   onPointerDown={(e) => { e.stopPropagation(); try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {} startRotating(item.id); }}>
                   <line x1={half} y1={-3} x2={half} y2={-handleOffset+5}
                         stroke="#d97706" strokeWidth={1} strokeDasharray="3 2"/>
                   <circle cx={half} cy={-handleOffset} r={4}
@@ -776,7 +777,7 @@ function DrawingArea({
           return (
             <g key={a.id + "-text"}
                style={{ pointerEvents: "all", cursor: "move" }}
-               onMouseDown={(e) => onAnnotationBodyMouseDown(e, a)}>
+               onPointerDown={(e) => onAnnotationBodyMouseDown(e, a)}>
               <rect
                 x={a.x - textW/2 - padding}
                 y={a.y - textH/2}
