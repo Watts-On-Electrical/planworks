@@ -210,6 +210,13 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const drawingAreaRef = useRef(null); // the SVG drawing area inside the sheet
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
+  // Multi-touch pinch-to-zoom tracking
+  const pointersRef = useRef(new Map());   // pointerId -> {x,y}
+  const pinchRef = useRef(null);           // active pinch baseline
+  const pinchActiveRef = useRef(false);
+  const zoomRef = useRef(zoom); zoomRef.current = zoom;
+  const panRef = useRef(pan); panRef.current = pan;
+
   // ---------- Drawing area geometry ----------
   // The drawing area occupies the centre of the sheet, bounded by margins,
   // legend column, notes column, and title block.
@@ -383,6 +390,67 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     return () => el.removeEventListener("wheel", onWheel);
   }, [zoomAt]);
 
+  // Two-finger pinch-to-zoom (touch). Capture-phase listeners so pointers are
+  // tracked even when a finger lands on a symbol (whose handler stops bubbling).
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const pts = pointersRef.current;
+
+    const onDown = (e) => {
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        const rect = el.getBoundingClientRect();
+        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const midX = (a.x + b.x) / 2 - rect.left;
+        const midY = (a.y + b.y) / 2 - rect.top;
+        const z = zoomRef.current, p = panRef.current;
+        pinchRef.current = {
+          startDist: dist, startZoom: z,
+          worldX: (midX - p.x) / z, worldY: (midY - p.y) / z,
+          rectLeft: rect.left, rectTop: rect.top,
+        };
+        pinchActiveRef.current = true;
+        // Cancel any pan/drag the first finger may have begun.
+        setIsPanning(false); setDraggingPlacedId(null); setDraggingAnno(null); setRotatingId(null);
+        try { el.setPointerCapture(e.pointerId); } catch {}
+      }
+    };
+
+    const onMove = (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchRef.current && pts.size >= 2) {
+        const [a, b] = [...pts.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const { startDist, startZoom, worldX, worldY, rectLeft, rectTop } = pinchRef.current;
+        const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, startZoom * (dist / startDist)));
+        const midX = (a.x + b.x) / 2 - rectLeft;
+        const midY = (a.y + b.y) / 2 - rectTop;
+        setZoom(newZoom);
+        setPan({ x: midX - worldX * newZoom, y: midY - worldY * newZoom });
+        e.preventDefault();
+      }
+    };
+
+    const onUp = (e) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) { pinchRef.current = null; pinchActiveRef.current = false; }
+    };
+
+    el.addEventListener("pointerdown", onDown, { capture: true });
+    el.addEventListener("pointermove", onMove, { capture: true });
+    el.addEventListener("pointerup", onUp, { capture: true });
+    el.addEventListener("pointercancel", onUp, { capture: true });
+    return () => {
+      el.removeEventListener("pointerdown", onDown, { capture: true });
+      el.removeEventListener("pointermove", onMove, { capture: true });
+      el.removeEventListener("pointerup", onUp, { capture: true });
+      el.removeEventListener("pointercancel", onUp, { capture: true });
+    };
+  }, []);
+
   // ---------- Coordinate transforms ----------
   // Convert client (screen) coordinates to drawing-area coordinates.
   // The drawing area lives inside the sheet, which is itself transformed
@@ -481,6 +549,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   // ---------- Viewport mouse handling ----------
   const onViewportMouseDown = (e) => {
+    if (pinchActiveRef.current) return;   // a pinch is underway
     const explicitPan = e.button === 1 || spacePressed || tool === "pan";
     // Don't intercept clicks on real interactive elements inside the sheet
     const isInteractive =
@@ -531,6 +600,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   };
 
   const onViewportMouseMove = (e) => {
+    if (pinchActiveRef.current) return;   // pinch-zoom owns the gesture
     if (isPanning) {
       setPan({
         x: panStart.current.panX + (e.clientX - panStart.current.x),
