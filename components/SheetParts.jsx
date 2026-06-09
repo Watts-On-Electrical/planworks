@@ -1252,6 +1252,25 @@ export function BillOfQuantities({ project, onClose }) {
     a.click();
   };
 
+  const [busyWord, setBusyWord] = React.useState(false);
+  const downloadWord = async () => {
+    setBusyWord(true);
+    try {
+      const docx = await import("docx");
+      const { buildBoqDocument } = await import("@/lib/boqDocx");
+      const doc = buildBoqDocument(docx, { meta, rows, total });
+      const blob = await docx.Packer.toBlob(doc);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = ((meta.projectName || "plan").replace(/[^a-z0-9-_]+/gi, "_")) + "_BOQ.docx";
+      a.click();
+    } catch (err) {
+      alert("Word export failed: " + err.message);
+    } finally {
+      setBusyWord(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6"
          onClick={onClose}>
@@ -1314,8 +1333,12 @@ export function BillOfQuantities({ project, onClose }) {
               Close
             </button>
             <button onClick={downloadCSV} disabled={rows.length === 0}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+              <Download size={12}/> CSV
+            </button>
+            <button onClick={downloadWord} disabled={rows.length === 0 || busyWord}
               className="px-4 py-2 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
-              <Download size={12}/> Download CSV
+              <Download size={12}/> {busyWord ? "Building…" : "Word (.docx)"}
             </button>
           </div>
         </div>
