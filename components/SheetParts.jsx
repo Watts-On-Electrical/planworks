@@ -6,7 +6,7 @@ import {
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings,
   ChevronRight, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Grid3x3, ClipboardList,
+  Grid3x3, ClipboardList, Plus, Clock,
 } from "lucide-react";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
@@ -38,7 +38,7 @@ const TOOLS = {
  * TOP BAR
  * ========================================================================= */
 export function TopBar({
-  meta, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onLoad,
+  meta, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
   onExportJSON, onPrint, colourMode, onToggleColour, onNormalise,
   snapEnabled, onToggleSnap, onShowBoq,
   sidebarHidden, onToggleSidebar,
@@ -79,7 +79,7 @@ export function TopBar({
         <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
         <Divider />
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
-        <ToolbarButton onClick={onLoad} icon={FolderOpen} label="Load"/>
+        <ToolbarButton onClick={onShowProjects} icon={FolderOpen} label="Projects"/>
         <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onExportJSON} icon={Download} label="JSON"/>
         <ToolbarButton onClick={onPrint} icon={Printer} label="Print" hint="⌘P" primary/>
@@ -507,17 +507,6 @@ function DrawingArea({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
     >
-      {/* Grid overlay — faint guide lines that symbols snap to */}
-      {showGrid && (
-        <div style={{
-          position: "absolute", inset: 0,
-          pointerEvents: "none",
-          backgroundImage:
-            `linear-gradient(to right, rgba(15,23,42,0.06) 1px, transparent 1px),` +
-            `linear-gradient(to bottom, rgba(15,23,42,0.06) 1px, transparent 1px)`,
-          backgroundSize: `${gridSize}px ${gridSize}px`,
-        }}/>
-      )}
       {!bgImage && (
         <div style={{
           position: "absolute", inset: 0,
@@ -547,6 +536,19 @@ function DrawingArea({
                display: "block",
              }}
              draggable={false}/>
+      )}
+
+      {/* Grid overlay — drawn above the imported plan, below symbols, so the
+          Grid toggle shows alignment lines even when a document is loaded */}
+      {showGrid && (
+        <div style={{
+          position: "absolute", inset: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            `linear-gradient(to right, rgba(37,99,235,0.18) 1px, transparent 1px),` +
+            `linear-gradient(to bottom, rgba(37,99,235,0.18) 1px, transparent 1px)`,
+          backgroundSize: `${gridSize}px ${gridSize}px`,
+        }}/>
       )}
 
       <svg width={DRAW.w} height={DRAW.h}
@@ -1071,6 +1073,133 @@ export function ZoomControls({ zoom, onIn, onOut, onFit }) {
               className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors border-l border-slate-200">
         <Maximize2 size={14}/>
       </button>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * PROJECT MANAGER (modal) — save, open, and delete named projects
+ * ========================================================================= */
+export function ProjectManager({
+  projectList, currentProjectId, currentName,
+  onSaveAs, onOpen, onDelete, onNew, onClose,
+}) {
+  const [name, setName] = React.useState(currentName || "");
+  const [confirmDelete, setConfirmDelete] = React.useState(null);
+
+  const sorted = [...(projectList || [])].sort((a, b) =>
+    (b.updatedAt || "").localeCompare(a.updatedAt || "")
+  );
+
+  const fmtDate = (iso) => {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    } catch { return ""; }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6"
+         onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+           className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Projects</div>
+            <div className="text-base font-semibold mt-0.5 text-slate-900">Save &amp; open jobs</div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md">
+            <X size={16}/>
+          </button>
+        </div>
+
+        {/* Save current as a new project */}
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+          <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-2">Save current drawing as</div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Project name (e.g. Dalton — Plot 7)"
+              className="flex-1 px-3 py-2 text-sm bg-white rounded-lg ring-1 ring-slate-200 focus:ring-amber-400 focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
+            />
+            <button
+              onClick={() => { if (name.trim()) onSaveAs(name.trim()); }}
+              disabled={!name.trim()}
+              className="px-4 py-2 bg-amber-500 text-white rounded-lg text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+              Save As
+            </button>
+          </div>
+        </div>
+
+        {/* Saved projects list */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500">
+              Saved projects ({sorted.length})
+            </div>
+            <button onClick={onNew}
+              className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-800 transition">
+              <Plus size={12}/> New blank
+            </button>
+          </div>
+
+          {sorted.length === 0 ? (
+            <div className="text-sm text-slate-500 italic py-8 text-center">
+              No saved projects yet. Name your current drawing above and click Save As to keep it.
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {sorted.map(p => {
+                const isCurrent = p.id === currentProjectId;
+                return (
+                  <div key={p.id}
+                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ring-1 transition-all ${
+                         isCurrent ? "bg-amber-50 ring-amber-300" : "bg-white ring-slate-200 hover:ring-slate-300"
+                       }`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-slate-900 truncate flex items-center gap-2">
+                        {p.name}
+                        {isCurrent && <span className="text-[8px] uppercase tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">Open</span>}
+                      </div>
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                        <Clock size={9}/> {fmtDate(p.updatedAt)}
+                      </div>
+                    </div>
+                    {confirmDelete === p.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-500">Delete?</span>
+                        <button onClick={() => { onDelete(p.id); setConfirmDelete(null); }}
+                          className="px-2 py-1 bg-red-500 text-white rounded text-[9px] uppercase tracking-wider hover:bg-red-600">Yes</button>
+                        <button onClick={() => setConfirmDelete(null)}
+                          className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[9px] uppercase tracking-wider hover:bg-slate-200">No</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => onOpen(p.id)}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider font-medium">
+                          Open
+                        </button>
+                        <button onClick={() => setConfirmDelete(p.id)}
+                          title="Delete"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md">
+                          <Trash2 size={13}/>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-3 border-t border-slate-200 text-[10px] text-slate-400">
+          Projects are saved in this browser. Use <span className="text-slate-600">JSON</span> export for a portable backup.
+        </div>
+      </div>
     </div>
   );
 }

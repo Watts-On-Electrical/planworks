@@ -15,6 +15,7 @@ import {
 import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
   FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
+  ProjectManager,
 } from "@/components/SheetParts";
 
 /* ============================================================================
@@ -127,6 +128,9 @@ export default function ElectricalPlanTool() {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(true); // snap symbols to grid
   const [showBoq, setShowBoq] = useState(false);        // bill of quantities modal
+  const [showProjects, setShowProjects] = useState(false); // project manager modal
+  const [projectList, setProjectList] = useState([]);   // saved projects index
+  const [currentProjectId, setCurrentProjectId] = useState(null);
 
   // Grid size in drawing units; symbols snap to multiples of this
   const GRID = 24;
@@ -559,7 +563,7 @@ export default function ElectricalPlanTool() {
       if (isInput) return;
       if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
       else if (e.key === "r" || e.key === "R") rotateSelected();
-      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); }
+      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
       else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); redo(); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveProject(); }
@@ -589,22 +593,66 @@ export default function ElectricalPlanTool() {
     };
   });
 
-  // ---------- Save / Load / Export ----------
+  // ---------- Projects (multi-project save/load) ----------
+  // Index: storage key "index" → [{ id, name, updatedAt }]
+  // Each project: storage key "proj:<id>" → full project JSON
+  const refreshProjectList = useCallback(async () => {
+    const r = await storage.get("index");
+    setProjectList(r ? JSON.parse(r.value) : []);
+  }, []);
+
+  // Load the project list once on mount
+  useEffect(() => { refreshProjectList(); }, [refreshProjectList]);
+
+  // Quick-save: writes to the currently open project, or falls back to the
+  // autosave slot if none is open yet.
   const saveProject = async () => {
     try {
-      await storage.set("project:current", JSON.stringify(project));
+      if (currentProjectId) {
+        await storage.set("proj:" + currentProjectId, JSON.stringify(project));
+        // bump the index timestamp
+        const r = await storage.get("index");
+        let list = r ? JSON.parse(r.value) : [];
+        list = list.map(p => p.id === currentProjectId
+          ? { ...p, name: meta.projectName || p.name, updatedAt: new Date().toISOString() }
+          : p);
+        await storage.set("index", JSON.stringify(list));
+        setProjectList(list);
+      } else {
+        await storage.set("project:current", JSON.stringify(project));
+      }
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
     } catch (err) {
       alert("Save failed: " + err.message);
     }
   };
-  const loadProject = async () => {
+
+  // Save As: store the current canvas under a new named project
+  const saveProjectAs = async (name) => {
     try {
-      const r = await storage.get("project:current");
-      if (!r) { alert("No saved project."); return; }
+      const id = "proj_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      const projectToSave = { ...project, meta: { ...project.meta, projectName: name || project.meta.projectName } };
+      await storage.set("proj:" + id, JSON.stringify(projectToSave));
+      const r = await storage.get("index");
+      let list = r ? JSON.parse(r.value) : [];
+      list = [...list, { id, name: name || "Untitled", updatedAt: new Date().toISOString() }];
+      await storage.set("index", JSON.stringify(list));
+      setProjectList(list);
+      setCurrentProjectId(id);
+      setProject(projectToSave);
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1500);
+    } catch (err) {
+      alert("Save failed: " + err.message);
+    }
+  };
+
+  const openProjectById = async (id) => {
+    try {
+      const r = await storage.get("proj:" + id);
+      if (!r) { alert("Could not find that project."); return; }
       const p = JSON.parse(r.value);
-      // Backfill defaults for older save shapes
       setProject({
         ...DEFAULT_PROJECT,
         ...p,
@@ -614,11 +662,38 @@ export default function ElectricalPlanTool() {
         placed: (p.placed || []).map(it => ({ scale: 1, ...it })),
         wires: p.wires || [],
       });
+      setCurrentProjectId(id);
+      setShowProjects(false);
+      setHistory([]); setFuture([]);
       setTimeout(fitToScreen, 50);
     } catch (err) {
-      alert("Load failed.");
+      alert("Open failed.");
     }
   };
+
+  const deleteProjectById = async (id) => {
+    try {
+      await storage.delete("proj:" + id);
+      const r = await storage.get("index");
+      let list = r ? JSON.parse(r.value) : [];
+      list = list.filter(p => p.id !== id);
+      await storage.set("index", JSON.stringify(list));
+      setProjectList(list);
+      if (currentProjectId === id) setCurrentProjectId(null);
+    } catch (err) {
+      alert("Delete failed.");
+    }
+  };
+
+  const newProject = () => {
+    if (placed.length && !confirm("Start a new blank project? Unsaved changes to the current drawing will be lost.")) return;
+    setProject(DEFAULT_PROJECT);
+    setCurrentProjectId(null);
+    setHistory([]); setFuture([]);
+    setShowProjects(false);
+    setTimeout(fitToScreen, 50);
+  };
+
   const exportJSON = () => {
     const data = JSON.stringify(project, null, 2);
     const blob = new Blob([data], { type: "application/json" });
@@ -663,7 +738,7 @@ export default function ElectricalPlanTool() {
         onImport={() => fileInputRef.current.click()}
         onUndo={undo} onRedo={redo}
         onSave={saveProject} savedFlash={savedFlash}
-        onLoad={loadProject}
+        onShowProjects={() => { refreshProjectList(); setShowProjects(true); }}
         onExportJSON={exportJSON}
         onPrint={() => setPrintPreview(true)}
         colourMode={colourMode}
@@ -814,6 +889,20 @@ export default function ElectricalPlanTool() {
       {/* ==================== BILL OF QUANTITIES ==================== */}
       {showBoq && (
         <BillOfQuantities project={project} onClose={() => setShowBoq(false)} />
+      )}
+
+      {/* ==================== PROJECT MANAGER ==================== */}
+      {showProjects && (
+        <ProjectManager
+          projectList={projectList}
+          currentProjectId={currentProjectId}
+          currentName={meta.projectName}
+          onSaveAs={saveProjectAs}
+          onOpen={openProjectById}
+          onDelete={deleteProjectById}
+          onNew={newProject}
+          onClose={() => setShowProjects(false)}
+        />
       )}
     </div>
   );

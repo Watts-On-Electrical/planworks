@@ -12,8 +12,8 @@
 
 import React from "react";
 
-const STROKE = 2.0;
-const FEEDER = 1.4;
+const STROKE = 1.5;
+const FEEDER = 1.0;
 
 export const CATEGORY_COLOURS = {
   sockets:   { primary: "#1d4ed8", soft: "#93c5fd", label: "Blue"   },
@@ -107,7 +107,7 @@ export const SYMBOLS = {
       )},
       { id: "sock_shaver", name: "Shaver Socket", svg: (
         <g>
-          <rect x="10" y="10" width="28" height="12" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="10" y="10" width="28" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <circle cx="18" cy="16" r="1.6" fill="currentColor"/>
           <circle cx="30" cy="16" r="1.6" fill="currentColor"/>
           <line x1="14" y1="22" x2="14" y2="28" stroke="currentColor" strokeWidth={FEEDER}/>
@@ -116,7 +116,7 @@ export const SYMBOLS = {
       )},
       { id: "sock_tv", name: "TV Point", svg: (
         <g>
-          <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="14" y="10" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <text x="24" y="20" fontSize="9" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">TV</text>
           <line x1="34" y1="17" x2="44" y2="17" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
@@ -124,7 +124,7 @@ export const SYMBOLS = {
       )},
       { id: "sock_fcu", name: "Fused Spur (switched)", svg: (
         <g>
-          <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="14" y="10" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <text x="24" y="20" fontSize="8" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">FCU</text>
         </g>
@@ -177,7 +177,7 @@ export const SYMBOLS = {
       )},
       { id: "sw_keycard", name: "Keycard Switch", svg: (
         <g>
-          <rect x="12" y="10" width="24" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="12" y="10" width="24" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <line x1="18" y1="17" x2="30" y2="17" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
@@ -411,7 +411,7 @@ export const SYMBOLS = {
       )},
       { id: "fx_meter", name: "Electrical Meter Box", svg: (
         <g>
-          <rect x="6" y="10" width="36" height="28" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="6" y="10" width="36" height="28" rx="3" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <rect x="10" y="14" width="28" height="14" fill="none" stroke="currentColor" strokeWidth={FEEDER}/>
           <line x1="16" y1="32" x2="32" y2="32" stroke="currentColor" strokeWidth={FEEDER}/>
           <line x1="20" y1="35" x2="28" y2="35" stroke="currentColor" strokeWidth={FEEDER}/>
@@ -421,7 +421,7 @@ export const SYMBOLS = {
       )},
       { id: "fx_isolator", name: "Isolator", svg: (
         <g>
-          <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="14" y="10" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <line x1="18" y1="20" x2="28" y2="14" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
           <circle cx="18" cy="20" r="1.4" fill="currentColor"/>
         </g>
@@ -439,7 +439,7 @@ export const SYMBOLS = {
       )},
       { id: "data_internet", name: "Internet Connection Point", svg: (
         <g>
-          <rect x="10" y="12" width="28" height="16" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="10" y="12" width="28" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <text x="24" y="23" fontSize="8" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">ICP</text>
         </g>
