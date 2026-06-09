@@ -785,8 +785,6 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         {/* ==================== LEFT PALETTE ==================== */}
         {!sidebarHidden && (
           <PalettePanel
-            activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
             onPaletteDragStart={onPaletteDragStart}
             symbolScale={symbolScale}
             setSymbolScale={setSymbolScale}

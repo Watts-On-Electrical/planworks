@@ -141,6 +141,37 @@ export const SYMBOLS = {
           <line x1="14" y1="28" x2="32" y2="14" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
         </g>
       )},
+      { id: "sw_2g", name: "2 Gang Switch", svg: (
+        <g>
+          <circle cx="13" cy="30" r="2.6" fill="currentColor"/>
+          <line x1="13" y1="30" x2="29" y2="16" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+          <text x="37" y="20" fontSize="11" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">2</text>
+        </g>
+      )},
+      { id: "sw_3g", name: "3 Gang Switch", svg: (
+        <g>
+          <circle cx="13" cy="30" r="2.6" fill="currentColor"/>
+          <line x1="13" y1="30" x2="29" y2="16" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+          <text x="37" y="20" fontSize="11" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">3</text>
+        </g>
+      )},
+      { id: "sw_4g", name: "4 Gang Switch", svg: (
+        <g>
+          <circle cx="13" cy="30" r="2.6" fill="currentColor"/>
+          <line x1="13" y1="30" x2="29" y2="16" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+          <text x="37" y="20" fontSize="11" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">4</text>
+        </g>
+      )},
+      { id: "sw_grid", name: "Grid Switch", svg: (
+        <g>
+          <rect x="12" y="12" width="24" height="24" rx="3" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <line x1="24" y1="12" x2="24" y2="36" stroke="currentColor" strokeWidth={FEEDER}/>
+          <line x1="12" y1="24" x2="36" y2="24" stroke="currentColor" strokeWidth={FEEDER}/>
+        </g>
+      )},
       { id: "sw_2way", name: "2-Way Switch", svg: (
         <g>
           <circle cx="14" cy="28" r="2.6" fill="currentColor"/>
@@ -424,6 +455,27 @@ export const SYMBOLS = {
           <circle cx="18" cy="20" r="1.4" fill="currentColor"/>
         </g>
       )},
+      { id: "fx_domed", name: "Domed Compact Fitting", svg: (
+        <g>
+          <circle cx="24" cy="24" r="7" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <circle cx="24" cy="24" r="2.4" fill="currentColor"/>
+          {[0,45,90,135,180,225,270,315].map((a,i) => {
+            const r1 = 9.5, r2 = 13, rad = (a * Math.PI) / 180;
+            return <line key={i}
+              x1={24 + r1*Math.cos(rad)} y1={24 + r1*Math.sin(rad)}
+              x2={24 + r2*Math.cos(rad)} y2={24 + r2*Math.sin(rad)}
+              stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>;
+          })}
+        </g>
+      )},
+      { id: "mk_csp", name: "CSP Location", svg: (
+        <g>
+          <path d="M 24 12 L 32 30 L 16 30 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <circle cx="24" cy="25" r="2" fill="currentColor"/>
+          <text x="24" y="41" fontSize="7.5" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700" letterSpacing="0.5">CSP</text>
+        </g>
+      )},
     ],
   },
 
@@ -504,6 +556,10 @@ export const SYMBOL_META = {
 
   // Switches
   sw_light:        { description: "Light Switch",                            height: "1200mm AFL" },
+  sw_2g:           { description: "2 Gang Light Switch",                      height: "1200mm AFL" },
+  sw_3g:           { description: "3 Gang Light Switch",                      height: "1200mm AFL" },
+  sw_4g:           { description: "4 Gang Light Switch",                      height: "1200mm AFL" },
+  sw_grid:         { description: "Grid Switch",                             height: "1200mm AFL" },
   sw_2way:         { description: "2-Way Light Switch",                      height: "1200mm AFL" },
   sw_intermediate: { description: "Intermediate Light Switch",               height: "1200mm AFL" },
   sw_dimmer:       { description: "Dimmer Switch",                           height: "1200mm AFL" },
@@ -545,6 +601,8 @@ export const SYMBOL_META = {
   fx_consumer:       { description: "Consumer Unit — switches to between",                               height: "1350–1450mm AFL" },
   fx_meter:          { description: "Electrical Meter Box (refer to site plans for plot locations)",     height: "Per site plan" },
   fx_isolator:       { description: "Isolator Switch",                                                   height: "1500mm AFL" },
+  fx_domed:          { description: "Domed compact fitting (chrome collar)",                             height: "Ceiling" },
+  mk_csp:            { description: "CSP location — set out on Preston Baker site drawings",             height: "Per site plan" },
 
   // Data
   data_point:    { description: "Data Point (Cat5e / Cat6)",                 height: "450mm AFL" },
@@ -607,4 +665,65 @@ export function resolveColours(symbolId, mode) {
   const cat = findCategory(symbolId);
   const palette = CATEGORY_COLOURS[cat] || CATEGORY_COLOURS.fixtures;
   return { body: palette.primary, feeder: palette.soft };
+}
+
+/* ============================================================================
+ * PALETTE_ORDER — a single flat list in the order of the Preston Baker MEP
+ * legend (left column, then right column), with the gang/grid switches grouped
+ * alongside the light switch. The palette renders exactly this set, no tabs.
+ * ========================================================================= */
+export const PALETTE_ORDER = [
+  // Sockets & spurs
+  "sock_fcu",
+  "sock_sso_ll",
+  "sock_sso_hl",
+  "sock_dso_ll",
+  "sock_dso_usb_ll",
+  "sock_dso_hl",
+  "sock_dso_usb_hl",
+  "sock_shaver",
+  "sock_tv",
+  // Lighting
+  "lt_downlight",
+  "lt_downlight_ip",
+  "fx_domed",
+  "lt_pendant",
+  "lt_batten",
+  "lt_external_updown",
+  // Switches (incl. gang + grid)
+  "sw_light",
+  "sw_2g",
+  "sw_3g",
+  "sw_4g",
+  "sw_grid",
+  // Ventilation
+  "fx_extractor",
+  "fx_extractor_wall",
+  // Detection & security
+  "det_smoke",
+  "det_heat",
+  "det_thermostat",
+  "sec_pir",
+  "sec_keypad",
+  "sec_hub",
+  "sec_door",
+  // Data & comms
+  "data_point",
+  "data_internet",
+  "data_ont",
+  // Power infrastructure
+  "fx_meter",
+  "fx_consumer",
+  "mk_csp",
+];
+
+// Returns the flat, ordered list of palette entries: { sym, meta, category }.
+export function getPaletteSymbols() {
+  return PALETTE_ORDER
+    .map(id => {
+      const sym = findSymbol(id);
+      if (!sym) return null;
+      return { sym, meta: SYMBOL_META[id] || {}, category: findCategory(id) };
+    })
+    .filter(Boolean);
 }
