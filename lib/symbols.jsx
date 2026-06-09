@@ -43,22 +43,22 @@ export const SYMBOLS = {
       // ---- Low level (450mm AFL) ----
       { id: "sock_sso_ll", name: "Single Socket (LL)", svg: (
         <g>
-          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor"/>
           <line x1="24" y1="20" x2="24" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
       { id: "sock_dso_ll", name: "Double Socket (LL)", svg: (
         <g>
-          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
           <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
           <line x1="34" y1="20" x2="34" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
       { id: "sock_dso_usb_ll", name: "Double Socket USB (LL)", svg: (
         <g>
-          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
           <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
           <text x="38" y="14" fontSize="6.5" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB</text>
@@ -68,15 +68,15 @@ export const SYMBOLS = {
       // ---- High level (1100mm AFL) — same drawing + 'H' badge ----
       { id: "sock_sso_hl", name: "Single Socket (HL)", svg: (
         <g>
-          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor"/>
           <line x1="24" y1="20" x2="24" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
           <HighLevelMark/>
         </g>
       )},
       { id: "sock_dso_hl", name: "Double Socket (HL)", svg: (
         <g>
-          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
           <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
           <line x1="34" y1="20" x2="34" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
           <HighLevelMark x={44} y={6}/>
@@ -84,8 +84,8 @@ export const SYMBOLS = {
       )},
       { id: "sock_dso_usb_hl", name: "Double Socket USB (HL)", svg: (
         <g>
-          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
           <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
           <text x="38" y="14" fontSize="6.5" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB</text>
@@ -96,12 +96,12 @@ export const SYMBOLS = {
       // ---- Specialist outlets ----
       { id: "sock_2a", name: "2A Socket", svg: (
         <g>
-          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round" transform="scale(0.85) translate(4 5)"/>
+          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor" transform="scale(0.85) translate(4 5)"/>
         </g>
       )},
       { id: "sock_cooker", name: "Cooker Outlet", svg: (
         <g>
-          <path d="M 6 30 A 14 14 0 0 1 42 30 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <path d="M 6 30 A 14 14 0 0 1 42 30 Z" fill="currentColor"/>
           <line x1="24" y1="20" x2="24" y2="10" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
