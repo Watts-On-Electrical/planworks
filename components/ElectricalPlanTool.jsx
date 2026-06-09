@@ -133,7 +133,7 @@ const TOOLS = {
 };
 
 // ============================================================================
-export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null }) {
+export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null, onProjectId = null }) {
   // Project state
   const [project, setProject] = useState(() => freshProject());
   const { meta, notes, sheets, activeSheetId } = project;
@@ -784,6 +784,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   // Load the project list once on mount
   useEffect(() => { refreshProjectList(); }, [refreshProjectList]);
+
+  // Let the route layer know the current project id (for linkable URLs).
+  useEffect(() => {
+    if (currentProjectId && onProjectId) onProjectId(currentProjectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProjectId]);
 
   // Quick-save: writes to the currently open project, or creates one if new.
   const saveProject = async () => {

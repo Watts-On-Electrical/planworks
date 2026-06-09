@@ -1,4 +1,5 @@
 import "./globals.css";
+import AppShell from "@/components/AppShell";
 
 export const metadata = {
   title: "Plan.Works — Electrical Layout Tool",
@@ -16,7 +17,9 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
