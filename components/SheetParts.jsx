@@ -58,8 +58,9 @@ export function TopBar({
           </>
         )}
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
-          <div className="text-[11px] tracking-[0.35em] font-semibold">PLAN.WORKS</div>
+          <span className="font-semibold text-[15px] tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Plan<span className="text-[#2C97A8]">.</span>Works
+          </span>
         </div>
         <div className="w-px h-5 bg-slate-200"/>
         <button
@@ -107,14 +108,14 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
   return (
     <button onClick={onClick}
       title={hint ? `${label} (${hint})` : label}
-      className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wider flex items-center gap-1.5 rounded-md transition-all duration-150 ${
+      className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wider flex items-center gap-1.5 rounded-lg transition-all duration-150 ${
         primary
-          ? "bg-amber-500 text-white hover:bg-amber-600 font-semibold shadow-amber-500/30 shadow-lg"
+          ? "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5] font-semibold shadow-[#3FB7C9]/30 shadow-md"
           : flash
-          ? "bg-emerald-400/[0.15] text-emerald-400 ring-1 ring-emerald-400/30"
+          ? "bg-emerald-400/[0.15] text-emerald-600 ring-1 ring-emerald-400/30"
           : active
-          ? "bg-slate-100 text-amber-700 ring-1 ring-amber-400/20"
-          : "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
+          ? "bg-[#3FB7C9]/12 text-[#22808F] ring-1 ring-[#3FB7C9]/30"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
       }`}>
       <Icon size={12.5} /> <span>{label}</span>
     </button>
@@ -143,7 +144,7 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
               onClick={() => setActiveCategory(key)}
               className={`px-2.5 py-1 text-[10px] tracking-wider rounded-full transition-all duration-200 flex items-center gap-1.5 ${
                 active
-                  ? "bg-slate-200 text-amber-700 ring-1 ring-amber-400/30"
+                  ? "bg-[#ECF8FA] text-[#22808F] ring-1 ring-[#3FB7C9]/40"
                   : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-800"
               }`}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.primary, boxShadow: `0 0 6px ${c.primary}66` }}/>
@@ -166,7 +167,7 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
               draggable
               onDragStart={(e) => onPaletteDragStart(e, sym.id)}
               title={meta?.description + (meta?.height ? ` · ${meta.height}` : "")}
-              className="group relative bg-slate-50 hover:bg-slate-100 rounded-xl ring-1 ring-slate-200 hover:ring-amber-400/30
+              className="group relative bg-slate-50 hover:bg-slate-100 rounded-xl ring-1 ring-slate-200 hover:ring-[#3FB7C9]/30
                          cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
                          transition-all duration-200 hover:-translate-y-0.5">
               <svg viewBox={VIEWBOX} width="46" height="46"
@@ -190,7 +191,7 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
         </div>
         <input type="range" min="0.6" max="2.5" step="0.1" value={symbolScale}
                onChange={(e) => setSymbolScale(parseFloat(e.target.value))}
-               className="w-full accent-amber-500"/>
+               className="w-full accent-[#3FB7C9]"/>
       </div>
     </aside>
   );
@@ -839,7 +840,7 @@ function EditableField({ value, onChange, fontSize = 10, weight = 500, placehold
         padding: 0, outline: "none", textAlign: align,
         fontFamily: "inherit",
       }}
-      className="hover:bg-amber-50/40 focus:bg-amber-50 transition-colors duration-150"
+      className="hover:bg-[#ECF8FA]/40 focus:bg-[#ECF8FA] transition-colors duration-150"
     />
   );
 }
@@ -914,7 +915,7 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
           value={item.label}
           onChange={(e) => updateLabel(e.target.value)}
           placeholder="e.g. S1 / K-01"
-          className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-amber-400/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
+          className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
         />
       </div>
 
@@ -931,13 +932,13 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
         </div>
         <input type="range" min="0" max="359" step="1" value={item.rotation}
                onChange={(e) => setRotation(parseInt(e.target.value))}
-               className="w-full accent-amber-500 mb-2"/>
+               className="w-full accent-[#3FB7C9] mb-2"/>
         <div className="grid grid-cols-4 gap-1">
           {[0, 90, 180, 270].map(deg => (
             <button key={deg} onClick={() => setRotation(deg)}
               className={`px-1 py-1 text-[9px] tracking-wider rounded-md transition-all ${
                 Math.round(item.rotation) === deg
-                  ? "bg-amber-100 text-amber-700 ring-1 ring-amber-400/30"
+                  ? "bg-[#D8F0F4] text-[#22808F] ring-1 ring-[#3FB7C9]/30"
                   : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
               }`}>{deg}°</button>
           ))}
@@ -951,7 +952,7 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
         </div>
         <input type="range" min="0.4" max="3" step="0.05" value={item.scale ?? 1}
                onChange={(e) => setItemScale(parseFloat(e.target.value))}
-               className="w-full accent-amber-500 mb-2"/>
+               className="w-full accent-[#3FB7C9] mb-2"/>
         <button onClick={() => setItemScale(1)}
           className="w-full px-2 py-1.5 text-[9px] uppercase tracking-wider bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 rounded-md transition-all">
           Reset to 100%
@@ -987,7 +988,7 @@ function AnnoInspector({ anno, updateAnnoText, deleteSelected }) {
           value={anno.text}
           onChange={(e) => updateAnnoText(e.target.value)}
           rows={5}
-          className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-amber-400/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900 resize-none"
+          className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900 resize-none"
         />
       </div>
       <button onClick={deleteSelected}
@@ -1021,7 +1022,7 @@ function EmptyInspector({ placed }) {
             {entries.map(([name, n]) => (
               <tr key={name} className="border-b border-slate-100">
                 <td className="py-1.5 text-slate-700">{name}</td>
-                <td className="py-1.5 text-right text-amber-700 font-semibold">{n}</td>
+                <td className="py-1.5 text-right text-[#22808F] font-semibold">{n}</td>
               </tr>
             ))}
           </tbody>
@@ -1045,7 +1046,7 @@ function Stat({ label, value }) {
  * ========================================================================= */
 export function FloatingToolbar({ tool, setTool }) {
   return (
-    <div className="absolute top-4 left-4 z-20 flex flex-col bg-white/95 backdrop-blur-xl rounded-xl ring-1 ring-slate-200 shadow-2xl shadow-slate-300/50 overflow-hidden">
+    <div className="absolute top-4 left-4 z-20 flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl ring-1 ring-slate-200/70 shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
       {Object.entries(TOOLS).map(([key, info]) => {
         const Icon = info.icon;
         const active = tool === key;
@@ -1054,10 +1055,10 @@ export function FloatingToolbar({ tool, setTool }) {
             onClick={() => setTool(key)}
             title={`${info.label} (${info.hint})`}
             className={`relative p-2.5 transition-colors duration-150 ${
-              active ? "text-amber-700" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              active ? "text-[#22808F]" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}>
-            {active && <div className="absolute inset-0 bg-amber-50"/>}
-            {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-amber-400 rounded-r-full"/>}
+            {active && <div className="absolute inset-0 bg-[#ECF8FA]"/>}
+            {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#3FB7C9] rounded-r-full"/>}
             <Icon size={15} className="relative"/>
           </button>
         );
@@ -1068,11 +1069,11 @@ export function FloatingToolbar({ tool, setTool }) {
 
 export function ZoomControls({ zoom, onIn, onOut, onFit }) {
   return (
-    <div className="absolute top-4 right-4 z-20 flex bg-white/95 backdrop-blur-xl rounded-xl ring-1 ring-slate-200 shadow-2xl shadow-slate-300/50 overflow-hidden">
+    <div className="absolute top-4 right-4 z-20 flex bg-white/95 backdrop-blur-xl rounded-2xl ring-1 ring-slate-200/70 shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
       <button onClick={onOut} className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
         <ZoomOut size={14}/>
       </button>
-      <div className="px-3 self-center text-[10px] text-slate-700 tabular-nums border-x border-slate-200 min-w-[56px] text-center">
+      <div className="px-3 self-center text-[11px] text-slate-700 tabular-nums border-x border-slate-200 min-w-[56px] text-center" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
         {Math.round(zoom*100)}%
       </div>
       <button onClick={onIn} className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
@@ -1132,12 +1133,12 @@ export function ProjectManager({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Project name (e.g. Dalton — Plot 7)"
-              className="flex-1 px-3 py-2 text-sm bg-white rounded-lg ring-1 ring-slate-200 focus:ring-amber-400 focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
+              className="flex-1 px-3 py-2 text-sm bg-white rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9] focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
             />
             <button
               onClick={() => { if (name.trim()) onSaveAs(name.trim()); }}
               disabled={!name.trim()}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+              className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-lg text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
               Save As
             </button>
           </div>
@@ -1166,12 +1167,12 @@ export function ProjectManager({
                 return (
                   <div key={p.id}
                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ring-1 transition-all ${
-                         isCurrent ? "bg-amber-50 ring-amber-300" : "bg-white ring-slate-200 hover:ring-slate-300"
+                         isCurrent ? "bg-[#ECF8FA] ring-[#9FE1EC]" : "bg-white ring-slate-200 hover:ring-slate-300"
                        }`}>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-slate-900 truncate flex items-center gap-2">
                         {p.name}
-                        {isCurrent && <span className="text-[8px] uppercase tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">Open</span>}
+                        {isCurrent && <span className="text-[8px] uppercase tracking-wider text-[#22808F] bg-[#D8F0F4] px-1.5 py-0.5 rounded-full">Open</span>}
                       </div>
                       <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                         <Clock size={9}/> {fmtDate(p.updatedAt)}
@@ -1325,7 +1326,7 @@ export function BillOfQuantities({ project, onClose }) {
                 <tr className="border-t-2 border-slate-300">
                   <td/><td className="py-2 font-semibold text-slate-900 uppercase tracking-wider text-[10px]">Total</td>
                   <td/>
-                  <td className="py-2 pl-2 text-right tabular-nums font-bold text-amber-600">{total}</td>
+                  <td className="py-2 pl-2 text-right tabular-nums font-bold text-[#2C97A8]">{total}</td>
                 </tr>
               </tbody>
             </table>
@@ -1346,7 +1347,7 @@ export function BillOfQuantities({ project, onClose }) {
               <Download size={12}/> CSV
             </button>
             <button onClick={downloadWord} disabled={rows.length === 0 || busyWord}
-              className="px-4 py-2 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+              className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
               <Download size={12}/> {busyWord ? "Building…" : "Word (.docx)"}
             </button>
           </div>
@@ -1389,7 +1390,7 @@ export function MetaEditor({ meta, updateMeta, onClose }) {
 
         <div className="mt-5 flex justify-end">
           <button onClick={onClose}
-            className="px-4 py-2 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition">
+            className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition">
             Done
           </button>
         </div>
@@ -1405,7 +1406,7 @@ function MetaField({ label, value, onChange, type = "text", span = 1 }) {
       <input
         type={type} value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-amber-400/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900"
+        className="w-full px-3 py-2 text-sm bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900"
       />
     </div>
   );
@@ -1436,7 +1437,7 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
               Close
             </button>
             <button onClick={onPrint}
-              className="px-4 py-1.5 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition flex items-center gap-1.5">
+              className="px-4 py-1.5 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition flex items-center gap-1.5">
               <Printer size={12}/> Print / Save PDF
             </button>
           </div>
