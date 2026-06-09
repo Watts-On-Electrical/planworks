@@ -5,7 +5,7 @@ import {
   Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings,
-  ChevronRight, X, FileText, PanelLeftClose, PanelLeftOpen,
+  ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
   Grid3x3, ClipboardList, Plus, Clock,
 } from "lucide-react";
 import {
@@ -38,7 +38,7 @@ const TOOLS = {
  * TOP BAR
  * ========================================================================= */
 export function TopBar({
-  meta, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
+  meta, onHome, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
   onExportJSON, onPrint, colourMode, onToggleColour, onNormalise,
   snapEnabled, onToggleSnap, onShowBoq,
   sidebarHidden, onToggleSidebar,
@@ -48,6 +48,15 @@ export function TopBar({
   return (
     <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-white/95 backdrop-blur-xl border-b border-slate-200">
       <div className="flex items-center gap-3 min-w-0">
+        {onHome && (
+          <>
+            <button onClick={onHome} title="Back to dashboard"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors text-[11px] font-medium">
+              <ChevronLeft size={14}/> Dashboard
+            </button>
+            <div className="w-px h-5 bg-slate-200"/>
+          </>
+        )}
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
           <div className="text-[11px] tracking-[0.35em] font-semibold">PLAN.WORKS</div>

@@ -2,16 +2,16 @@
 
 import dynamic from "next/dynamic";
 
-// The tool uses window APIs (FileReader, drag/drop, pdf.js) so we disable SSR.
-const ElectricalPlanTool = dynamic(() => import("@/components/ElectricalPlanTool"), {
+// The app uses window APIs (FileReader, drag/drop, pdf.js, localStorage) so we disable SSR.
+const PlanWorksApp = dynamic(() => import("@/components/PlanWorksApp"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-screen flex items-center justify-center bg-[#f4f1ec]">
-      <div className="text-[10px] tracking-[0.3em] text-stone-500 uppercase">Loading...</div>
+    <div className="w-full h-screen flex items-center justify-center bg-[#F4F6F9]">
+      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">Loading Plan.Works…</div>
     </div>
   ),
 });
 
 export default function Home() {
-  return <ElectricalPlanTool />;
+  return <PlanWorksApp />;
 }

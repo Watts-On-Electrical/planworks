@@ -89,7 +89,7 @@ const TOOLS = {
 };
 
 // ============================================================================
-export default function ElectricalPlanTool() {
+export default function ElectricalPlanTool({ initialTarget = null, onHome = null }) {
   // Project state
   const [project, setProject] = useState(DEFAULT_PROJECT);
   const { meta, notes, bgImage, placed, wires, annotations } = project;
@@ -619,7 +619,10 @@ export default function ElectricalPlanTool() {
         await storage.set("index", JSON.stringify(list));
         setProjectList(list);
       } else {
-        await storage.set("project:current", JSON.stringify(project));
+        // No named project yet (e.g. started fresh from the dashboard) —
+        // create one so it appears on the dashboard immediately.
+        await saveProjectAs(meta.projectName || "Untitled drawing");
+        return;
       }
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
@@ -694,6 +697,24 @@ export default function ElectricalPlanTool() {
     setTimeout(fitToScreen, 50);
   };
 
+  // On entry from the dashboard: open a project, start fresh, or import.
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current || !initialTarget) return;
+    didInit.current = true;
+    const t = initialTarget;
+    if (t.mode === "open" && t.projectId) {
+      openProjectById(t.projectId);
+    } else {
+      setProject(DEFAULT_PROJECT);
+      setCurrentProjectId(null);
+      if (t.category) setActiveCategory(t.category);
+      if (t.mode === "import") setTimeout(() => fileInputRef.current?.click(), 250);
+      setTimeout(fitToScreen, 60);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const exportJSON = () => {
     const data = JSON.stringify(project, null, 2);
     const blob = new Blob([data], { type: "application/json" });
@@ -734,6 +755,7 @@ export default function ElectricalPlanTool() {
       {/* ==================== TOP BAR ==================== */}
       <TopBar
         meta={meta}
+        onHome={onHome}
         onShowMeta={() => setShowMeta(true)}
         onImport={() => fileInputRef.current.click()}
         onUndo={undo} onRedo={redo}

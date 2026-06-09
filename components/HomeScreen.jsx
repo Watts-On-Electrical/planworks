@@ -1,0 +1,316 @@
+"use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { storage } from "@/lib/storage";
+
+/* Sheet geometry — must match ElectricalPlanTool */
+const SHEET = { width: 1587, height: 1123, margin: 18, legendWidth: 230, notesWidth: 280, titleHeight: 110 };
+const DRAW = {
+  x: SHEET.margin + SHEET.legendWidth + 8,
+  y: SHEET.margin,
+  w: SHEET.width - SHEET.margin * 2 - SHEET.legendWidth - SHEET.notesWidth - 16,
+  h: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
+};
+
+const USER_NAME = "Joe"; // greeting name — change here or wire to settings later
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function relTime(iso) {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return mins + (mins === 1 ? " min ago" : " mins ago");
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + (hrs === 1 ? " hour ago" : " hours ago");
+  const days = Math.round(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return days + " days ago";
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+/* Mini plan preview built from the project's real placed symbols + imported plan */
+function PlanThumb({ project }) {
+  if (!project) {
+    return (
+      <svg viewBox="0 0 1587 1123" preserveAspectRatio="xMidYMid meet">
+        <rect x="40" y="40" width="1507" height="1043" fill="none" stroke="#cbd2da" strokeWidth="3"/>
+      </svg>
+    );
+  }
+  const { bgImage, placed = [] } = project;
+  let img = null;
+  if (bgImage && bgImage.w && bgImage.h) {
+    const s = Math.min(DRAW.w / bgImage.w, DRAW.h / bgImage.h);
+    const w = bgImage.w * s, h = bgImage.h * s;
+    img = { x: DRAW.x + (DRAW.w - w) / 2, y: DRAW.y + (DRAW.h - h) / 2, w, h, src: bgImage.src };
+  }
+  return (
+    <svg viewBox="0 0 1587 1123" preserveAspectRatio="xMidYMid meet">
+      <rect x={SHEET.margin} y={SHEET.margin} width={SHEET.width - SHEET.margin * 2}
+            height={SHEET.height - SHEET.margin * 2} fill="none" stroke="#d3dbe3" strokeWidth="2"/>
+      {img && <image href={img.src} x={img.x} y={img.y} width={img.w} height={img.h} opacity="0.55" preserveAspectRatio="none"/>}
+      {!img && (
+        <rect x={DRAW.x} y={DRAW.y} width={DRAW.w} height={DRAW.h} fill="none" stroke="#e0e6ec" strokeWidth="2"/>
+      )}
+      <g fill="#cc1418">
+        {placed.map((p, i) => (
+          <circle key={i} cx={DRAW.x + p.x} cy={DRAW.y + p.y} r="14" />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+export default function HomeScreen({ onOpenProject, onNewProject, onImport }) {
+  const [cards, setCards] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const idxRes = await storage.get("index");
+        const index = idxRes ? JSON.parse(idxRes.value) : [];
+        const full = await Promise.all(index.map(async (e) => {
+          let project = null;
+          try {
+            const r = await storage.get("proj:" + e.id);
+            project = r ? JSON.parse(r.value) : null;
+          } catch { /* ignore */ }
+          return {
+            id: e.id,
+            name: e.name || project?.meta?.projectName || "Untitled drawing",
+            addr: project?.meta?.plot || "",
+            reg: project?.meta?.drawingNumber || "",
+            updatedAt: e.updatedAt,
+            count: project?.placed?.length || 0,
+            project,
+          };
+        }));
+        full.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+        setCards(full);
+      } catch {
+        setCards([]);
+      }
+    })();
+  }, []);
+
+  const stats = useMemo(() => {
+    const list = cards || [];
+    const symbols = list.reduce((s, c) => s + c.count, 0);
+    const now = new Date();
+    const month = list.filter(c => {
+      if (!c.updatedAt) return false;
+      const d = new Date(c.updatedAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+    return { drawings: list.length, symbols, month };
+  }, [cards]);
+
+  return (
+    <div className="pw-home">
+      <style>{CSS}</style>
+      <div className="pw-app">
+        <aside className="rail">
+          <div className="brandmark" title="Plan.Works">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 13h6l-1 9 9-11h-6l1-9z" fill="#08313a"/></svg>
+          </div>
+          <div className="navitem active" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div>
+          <div className="navitem" title="All drawings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div className="navitem" title="Symbol library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="3.2"/><rect x="14" y="4" width="6" height="6" rx="1.4"/><path d="M4 15h6v6H4zM14 18h6"/><circle cx="17" cy="18" r="3.2"/></svg></div>
+          <div className="rail-spacer"></div>
+          <div className="navitem" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 0 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9 2 2 0 0 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2 2 2 0 0 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9 2 2 0 0 1 0 4 1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+          <div className="rail-avatar">{USER_NAME.slice(0, 2).toUpperCase()}</div>
+        </aside>
+
+        <div className="main">
+          <header className="topbar">
+            <span className="wordmark">Plan<b>.</b>Works</span>
+            <div className="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>Search drawings, plots, drawing numbers…</div>
+            <div className="topbar-right">
+              <div className="account">
+                <div style={{ textAlign: "right" }}><div className="nm">{USER_NAME} Watts</div><div className="sub">Watts On Electrical</div></div>
+                <div className="pic">{USER_NAME.slice(0, 2).toUpperCase()}</div>
+              </div>
+            </div>
+          </header>
+
+          <div className="scroll">
+            <section className="hero">
+              <div className="hero-glow"></div>
+              <div className="hero-inner">
+                <div>
+                  <div className="eyebrow">Watts On Electrical · Leeds</div>
+                  <h1>{greeting()}, {USER_NAME}</h1>
+                  <p>Pick up where you left off, or start a new layout. Everything you draw is counted into your bill of quantities automatically.</p>
+                </div>
+                <div className="hero-actions">
+                  <button className="btn btn-ghost" onClick={onImport}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg>Import plan</button>
+                  <button className="btn btn-primary" onClick={() => onNewProject()}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 5v14M5 12h14"/></svg>New drawing</button>
+                </div>
+              </div>
+              <div className="stats">
+                <div className="stat"><div className="n">{stats.drawings}</div><div className="l">Active drawings</div></div>
+                <div className="stat"><div className="n">{stats.month}</div><div className="l">Edited this month</div></div>
+                <div className="stat"><div className="n">{stats.symbols}</div><div className="l">Symbols placed</div></div>
+              </div>
+            </section>
+
+            <div className="sec-head"><h2>Start something new</h2></div>
+            <div className="templates">
+              <div className="tpl" onClick={() => onNewProject()}>
+                <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 3 5 13h6l-1 8 9-11h-6l1-7z"/></svg></div>
+                <div><div className="t">Blank A3 sheet</div><div className="s">Landscape · titled</div></div>
+              </div>
+              <div className="tpl" onClick={() => onNewProject("lighting")}>
+                <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="10" r="5"/><path d="M9 19h6M10 22h4"/></svg></div>
+                <div><div className="t">Lighting layout</div><div className="s">Lighting symbols ready</div></div>
+              </div>
+              <div className="tpl" onClick={() => onNewProject("sockets")}>
+                <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg></div>
+                <div><div className="t">Power &amp; sockets</div><div className="s">Socket symbols ready</div></div>
+              </div>
+              <div className="tpl" onClick={onImport}>
+                <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg></div>
+                <div><div className="t">Import a PDF plan</div><div className="s">Trace over it</div></div>
+              </div>
+            </div>
+
+            <div className="sec-head">
+              <h2>Recent drawings</h2>
+              {cards && cards.length > 0 && <span className="muted-count">{cards.length} saved</span>}
+            </div>
+
+            {cards === null ? (
+              <div className="grid">
+                {[0, 1, 2].map(i => <div key={i} className="card skel"><div className="thumb"></div><div className="card-body"><div className="sk-line w70"></div><div className="sk-line w40"></div></div></div>)}
+              </div>
+            ) : (
+              <div className="grid">
+                {cards.map(c => (
+                  <div key={c.id} className="card" onClick={() => onOpenProject(c.id)}>
+                    <div className="thumb">
+                      <span className="badge">{c.reg || "A3"}</span>
+                      <PlanThumb project={c.project} />
+                    </div>
+                    <div className="card-body">
+                      <div className="card-title">{c.name}</div>
+                      {c.addr
+                        ? <div className="card-addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>{c.addr}</div>
+                        : <div className="card-addr" style={{ opacity: .55 }}>No site address yet</div>}
+                      <div className="card-foot">
+                        <span className="dt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>{relTime(c.updatedAt)}</span>
+                        <span className="ct">{c.count} {c.count === 1 ? "item" : "items"}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="card new-card" onClick={() => onNewProject()}>
+                  <div className="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></div>
+                  <span>New drawing</span>
+                </div>
+              </div>
+            )}
+
+            {cards && cards.length === 0 && (
+              <div className="empty">No saved drawings yet — start a blank sheet or import a plan to get going.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const CSS = `
+.pw-home{position:fixed; inset:0; z-index:1;
+  --ink:#0E141B; --navy:#1A2530; --navy-2:#22303D; --navy-line:#314250;
+  --brand:#2C3E50; --teal:#3FB7C9; --teal-600:#2C97A8; --teal-700:#22808F;
+  --paper:#F4F6F9; --surface:#FFFFFF; --line:#E6EBF1; --line-2:#EEF2F6;
+  --ink-2:#3A4654; --muted:#697785; --muted-2:#9AA6B2; --blueprint:rgba(63,183,201,.14);
+  font-family:'Inter',system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased;}
+.pw-home *{box-sizing:border-box; margin:0; padding:0}
+.pw-home .pw-app{display:flex; height:100%; width:100%; background:var(--paper)}
+.pw-home .rail{width:74px; flex-shrink:0; background:var(--navy); display:flex; flex-direction:column; align-items:center; padding:18px 0; gap:6px; position:relative}
+.pw-home .rail::after{content:""; position:absolute; inset:0 0 0 auto; width:1px; background:rgba(255,255,255,.05)}
+.pw-home .brandmark{width:42px; height:42px; border-radius:12px; background:linear-gradient(150deg,var(--teal),var(--teal-700)); display:grid; place-items:center; margin-bottom:18px; box-shadow:0 6px 16px -4px rgba(63,183,201,.5)}
+.pw-home .brandmark svg{width:22px; height:22px}
+.pw-home .navitem{width:46px; height:46px; border-radius:12px; display:grid; place-items:center; color:#8190a0; cursor:pointer; transition:all .18s ease; position:relative}
+.pw-home .navitem svg{width:21px; height:21px}
+.pw-home .navitem:hover{color:#cfd8e2; background:rgba(255,255,255,.05)}
+.pw-home .navitem.active{color:#fff; background:rgba(63,183,201,.16)}
+.pw-home .navitem.active::before{content:""; position:absolute; left:-18px; top:11px; bottom:11px; width:3px; border-radius:0 3px 3px 0; background:var(--teal)}
+.pw-home .rail-spacer{flex:1}
+.pw-home .rail-avatar{width:40px; height:40px; border-radius:50%; background:var(--navy-2); border:1.5px solid var(--navy-line); color:#cdd6e0; display:grid; place-items:center; font-weight:600; font-size:13px; cursor:pointer; font-family:'Space Grotesk',sans-serif; margin-top:6px}
+.pw-home .main{flex:1; display:flex; flex-direction:column; min-width:0}
+.pw-home .topbar{height:62px; flex-shrink:0; background:rgba(255,255,255,.85); backdrop-filter:saturate(1.4) blur(10px); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:18px; padding:0 30px}
+.pw-home .wordmark{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; letter-spacing:-.01em}
+.pw-home .wordmark b{color:var(--teal-600)}
+.pw-home .search{margin-left:8px; flex:1; max-width:380px; height:38px; border-radius:10px; background:var(--paper); border:1px solid var(--line); display:flex; align-items:center; gap:9px; padding:0 13px; color:var(--muted); font-size:13.5px}
+.pw-home .search svg{width:16px; height:16px; flex-shrink:0}
+.pw-home .topbar-right{margin-left:auto; display:flex; align-items:center; gap:14px}
+.pw-home .account{display:flex; align-items:center; gap:10px; padding:5px 6px 5px 12px; border-radius:11px; cursor:pointer; transition:background .16s}
+.pw-home .account:hover{background:var(--paper)}
+.pw-home .account .nm{font-size:13px; font-weight:500; line-height:1.15}
+.pw-home .account .sub{font-size:11px; color:var(--muted)}
+.pw-home .account .pic{width:32px; height:32px; border-radius:50%; background:var(--brand); color:#fff; display:grid; place-items:center; font-weight:600; font-size:12px; font-family:'Space Grotesk',sans-serif}
+.pw-home .scroll{flex:1; overflow-y:auto; padding:36px 40px 60px}
+.pw-home .hero{position:relative; overflow:hidden; border-radius:22px; background:linear-gradient(120deg,#1A2530 0%,#233241 60%,#2C4150 100%); padding:32px 34px; margin-bottom:34px; color:#fff; box-shadow:0 18px 40px -12px rgba(16,28,40,.22)}
+.pw-home .hero::before{content:""; position:absolute; inset:0; background-image:linear-gradient(var(--blueprint) 1px,transparent 1px),linear-gradient(90deg,var(--blueprint) 1px,transparent 1px); background-size:26px 26px; -webkit-mask-image:linear-gradient(105deg,transparent 40%,#000 100%); mask-image:linear-gradient(105deg,transparent 40%,#000 100%)}
+.pw-home .hero-glow{position:absolute; right:-80px; top:-90px; width:340px; height:340px; border-radius:50%; background:radial-gradient(circle,rgba(63,183,201,.32),transparent 68%)}
+.pw-home .hero-inner{position:relative; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap}
+.pw-home .eyebrow{font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); margin-bottom:12px}
+.pw-home .hero h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:30px; letter-spacing:-.02em; line-height:1.08; margin-bottom:9px}
+.pw-home .hero p{color:#aab8c6; font-size:14.5px; max-width:430px; line-height:1.55}
+.pw-home .hero-actions{display:flex; gap:11px}
+.pw-home .btn{height:46px; border-radius:12px; padding:0 20px; font-size:14px; font-weight:500; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:none; transition:all .17s ease; white-space:nowrap}
+.pw-home .btn svg{width:18px; height:18px}
+.pw-home .btn-primary{background:var(--teal); color:#08313a; font-weight:600}
+.pw-home .btn-primary:hover{background:#52c4d5; transform:translateY(-1px); box-shadow:0 8px 22px -6px rgba(63,183,201,.6)}
+.pw-home .btn-ghost{background:rgba(255,255,255,.08); color:#e7eef4; border:1px solid rgba(255,255,255,.14)}
+.pw-home .btn-ghost:hover{background:rgba(255,255,255,.14)}
+.pw-home .stats{position:relative; display:flex; gap:34px; margin-top:26px; padding-top:22px; border-top:1px solid rgba(255,255,255,.1)}
+.pw-home .stat .n{font-family:'Space Grotesk',sans-serif; font-size:23px; font-weight:600}
+.pw-home .stat .l{font-size:11.5px; color:#93a2b1; margin-top:2px}
+.pw-home .sec-head{display:flex; align-items:center; justify-content:space-between; margin:0 2px 16px}
+.pw-home .sec-head h2{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; letter-spacing:-.01em}
+.pw-home .muted-count{font-size:13px; color:var(--muted)}
+.pw-home .templates{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-bottom:38px}
+.pw-home .tpl{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; cursor:pointer; transition:all .18s ease; display:flex; align-items:center; gap:13px}
+.pw-home .tpl:hover{border-color:#cfe7ec; box-shadow:0 4px 14px rgba(16,28,40,.07); transform:translateY(-2px)}
+.pw-home .tpl-ic{width:40px; height:40px; border-radius:10px; display:grid; place-items:center; flex-shrink:0; background:rgba(63,183,201,.12); color:var(--teal-700)}
+.pw-home .tpl-ic svg{width:20px; height:20px}
+.pw-home .tpl .t{font-size:13.5px; font-weight:500}
+.pw-home .tpl .s{font-size:11.5px; color:var(--muted); margin-top:1px}
+.pw-home .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(252px,1fr)); gap:18px}
+.pw-home .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; transition:all .2s cubic-bezier(.2,.7,.3,1); box-shadow:0 1px 2px rgba(16,28,40,.04),0 1px 3px rgba(16,28,40,.06); display:flex; flex-direction:column}
+.pw-home .card:hover{transform:translateY(-4px); box-shadow:0 18px 40px -12px rgba(16,28,40,.22); border-color:#d3dde6}
+.pw-home .thumb{height:152px; position:relative; background:#F8FAFB; border-bottom:1px solid var(--line-2); overflow:hidden}
+.pw-home .thumb::before{content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(44,62,80,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(44,62,80,.05) 1px,transparent 1px); background-size:16px 16px}
+.pw-home .thumb svg{position:absolute; inset:0; width:100%; height:100%}
+.pw-home .badge{position:absolute; top:11px; left:11px; z-index:2; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; padding:3px 8px; border-radius:6px; background:rgba(26,37,48,.85); color:#cfeef3; letter-spacing:.02em}
+.pw-home .card-body{padding:14px 16px 15px}
+.pw-home .card-title{font-size:14.5px; font-weight:600; letter-spacing:-.01em; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pw-home .card-addr{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pw-home .card-addr svg{width:13px; height:13px; flex-shrink:0; opacity:.7}
+.pw-home .card-foot{margin-top:13px; padding-top:12px; border-top:1px solid var(--line-2); display:flex; align-items:center; justify-content:space-between}
+.pw-home .card-foot .dt{font-size:11.5px; color:var(--muted-2); display:flex; align-items:center; gap:5px}
+.pw-home .card-foot .dt svg{width:13px; height:13px}
+.pw-home .card-foot .ct{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-2); background:var(--paper); padding:3px 7px; border-radius:6px}
+.pw-home .new-card{border:1.5px dashed #cdd7e0; background:transparent; box-shadow:none; align-items:center; justify-content:center; min-height:230px; color:var(--muted); gap:12px}
+.pw-home .new-card:hover{border-color:var(--teal); color:var(--teal-700); background:rgba(63,183,201,.04); transform:translateY(-4px)}
+.pw-home .new-card .plus{width:50px; height:50px; border-radius:14px; background:rgba(63,183,201,.1); display:grid; place-items:center; color:var(--teal-700)}
+.pw-home .new-card .plus svg{width:24px; height:24px}
+.pw-home .new-card span{font-size:13.5px; font-weight:500}
+.pw-home .skel{pointer-events:none}
+.pw-home .skel .thumb{background:#eef1f5}
+.pw-home .sk-line{height:11px; border-radius:5px; background:#eaeef3; margin-top:8px}
+.pw-home .sk-line.w70{width:70%} .pw-home .sk-line.w40{width:40%}
+.pw-home .empty{margin-top:18px; padding:30px; text-align:center; color:var(--muted); font-size:13.5px; background:var(--surface); border:1px dashed var(--line); border-radius:14px}
+@media (max-width:720px){.pw-home .rail{width:60px} .pw-home .scroll{padding:24px 18px 50px} .pw-home .hero{padding:24px} .pw-home .hero h1{font-size:24px} .pw-home .stats{gap:22px; flex-wrap:wrap}}
+`;
