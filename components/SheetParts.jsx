@@ -39,7 +39,7 @@ const TOOLS = {
  * ========================================================================= */
 export function TopBar({
   meta, onHome, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
-  onExportJSON, onPrint, colourMode, onToggleColour, onNormalise,
+  onExportJSON, onPrint, colourMode, onToggleColour, onNormalise, normaliseFlash,
   snapEnabled, onToggleSnap, onShowBoq,
   sidebarHidden, onToggleSidebar,
 }) {
@@ -85,7 +85,9 @@ export function TopBar({
           onClick={onToggleColour} icon={PaletteIcon}
           label={colourMode === "red" ? "PB Red" : colourMode === "colour" ? "Colour" : "Mono"}
           active={colourMode === "red"}/>
-        <ToolbarButton onClick={onNormalise} icon={Ruler} label="Normalise"/>
+        <ToolbarButton onClick={onNormalise} icon={Ruler}
+          label={normaliseFlash ? "Reset ✓" : "Reset sizes"} flash={normaliseFlash}
+          hint="Make all symbols the same size"/>
         <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
         <Divider />
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
@@ -108,21 +110,21 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
   return (
     <button onClick={onClick}
       title={hint ? `${label} (${hint})` : label}
-      className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wider flex items-center gap-1.5 rounded-lg transition-all duration-150 ${
+      className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wide font-semibold flex items-center gap-1.5 rounded-lg transition-all duration-150 ${
         primary
-          ? "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5] font-semibold shadow-[#3FB7C9]/30 shadow-md"
+          ? "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5] shadow-[#3FB7C9]/30 shadow-md"
           : flash
-          ? "bg-emerald-400/[0.15] text-emerald-600 ring-1 ring-emerald-400/30"
+          ? "bg-emerald-500 text-white"
           : active
-          ? "bg-[#3FB7C9]/12 text-[#22808F] ring-1 ring-[#3FB7C9]/30"
-          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45"
+          : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
       }`}>
-      <Icon size={12.5} /> <span>{label}</span>
+      <Icon size={13} /> <span>{label}</span>
     </button>
   );
 }
 
-function Divider() { return <div className="w-px h-5 bg-slate-100 mx-1" />; }
+function Divider() { return <div className="w-px h-5 bg-slate-200 mx-1" />; }
 
 /* ============================================================================
  * PALETTE (left sidebar)
@@ -130,9 +132,9 @@ function Divider() { return <div className="w-px h-5 bg-slate-100 mx-1" />; }
 export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart, symbolScale, setSymbolScale, colourMode }) {
   return (
     <aside className="w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col">
-      <div className="px-4 h-10 flex items-center justify-between border-b border-slate-200">
-        <div className="text-[10px] tracking-[0.3em] text-slate-600 uppercase font-medium">Symbols</div>
-        <div className="text-[9px] tracking-wider text-slate-400">UK ARCH</div>
+      <div className="px-4 h-11 flex items-center justify-between border-b border-slate-200">
+        <div className="text-[15px] font-semibold text-slate-900" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Symbols</div>
+        <div className="text-[9px] tracking-wider text-slate-400 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>UK ARCH</div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 px-3 py-3 border-b border-slate-100">
@@ -142,10 +144,10 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
           return (
             <button key={key}
               onClick={() => setActiveCategory(key)}
-              className={`px-2.5 py-1 text-[10px] tracking-wider rounded-full transition-all duration-200 flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 text-[10.5px] font-medium tracking-wide rounded-full transition-all duration-200 flex items-center gap-1.5 ${
                 active
-                  ? "bg-[#ECF8FA] text-[#22808F] ring-1 ring-[#3FB7C9]/40"
-                  : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-800"
+                  ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/50 font-semibold"
+                  : "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:ring-slate-400"
               }`}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.primary, boxShadow: `0 0 6px ${c.primary}66` }}/>
               {cat.label.toLowerCase()}
@@ -855,8 +857,8 @@ export function Inspector({
 }) {
   return (
     <aside className="w-64 bg-white/95 backdrop-blur-xl border-l border-slate-200 flex flex-col">
-      <div className="px-4 h-10 flex items-center border-b border-slate-200">
-        <div className="text-[10px] tracking-[0.3em] text-slate-600 uppercase font-medium">Inspector</div>
+      <div className="px-4 h-11 flex items-center border-b border-slate-200">
+        <div className="text-[15px] font-semibold text-slate-900" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Inspector</div>
       </div>
 
       {selectedItem ? (

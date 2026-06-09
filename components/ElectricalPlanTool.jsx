@@ -123,6 +123,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [spacePressed, setSpacePressed] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [normaliseFlash, setNormaliseFlash] = useState(false);
   const [showMeta, setShowMeta] = useState(false);     // metadata edit modal
   const [printPreview, setPrintPreview] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
@@ -519,9 +520,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     });
   };
   const normaliseSizes = () => {
-    if (!placed.length) return;
-    snapshot();
-    updateProject({ placed: placed.map(it => ({ ...it, scale: 1 })) });
+    if (placed.length) {
+      snapshot();
+      updateProject({ placed: placed.map(it => ({ ...it, scale: 1 })) });
+    }
+    setNormaliseFlash(true);
+    setTimeout(() => setNormaliseFlash(false), 1300);
   };
   const deleteSelected = () => {
     if (selectedId) {
@@ -766,6 +770,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         colourMode={colourMode}
         onToggleColour={() => setColourMode(m => m === "red" ? "colour" : m === "colour" ? "mono" : "red")}
         onNormalise={normaliseSizes}
+        normaliseFlash={normaliseFlash}
         snapEnabled={snapEnabled}
         onToggleSnap={() => setSnapEnabled(s => !s)}
         onShowBoq={() => setShowBoq(true)}
