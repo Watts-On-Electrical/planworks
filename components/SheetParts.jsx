@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
@@ -1520,6 +1521,9 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
     : [{ id: "legacy", name: meta.sheetName, drawingNumber: meta.drawingNumber,
          bgImage: project.bgImage, placed: project.placed || [], wires: project.wires || [], annotations: project.annotations || [] }];
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const legendFor = (placed) => {
     const ids = new Set((placed || []).map(p => p.symbolId));
     return Array.from(ids).map(id => ({
@@ -1528,76 +1532,76 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
     })).filter(x => x.symbol);
   };
 
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm overflow-auto">
-        <div className="print:hidden sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-5 py-3 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Print preview</div>
-            <div className="text-sm font-medium mt-0.5">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] text-slate-500">
-              Choose <span className="text-slate-800">Save as PDF</span> in the print dialog — each floor prints on its own A3 page.
-            </div>
-            <button onClick={onClose}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">
-              Close
-            </button>
-            <button onClick={onPrint}
-              className="px-4 py-1.5 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition flex items-center gap-1.5">
-              <Printer size={12}/> Print / Save PDF
-            </button>
-          </div>
-        </div>
+  if (!mounted) return null;
 
-        {/* One sheet per floor */}
-        <div id="print-sheet-host" className="flex flex-col items-center gap-8 p-8">
-          {sheets.map((s, i) => (
-            <div key={s.id} className="print-page bg-white shadow-2xl">
-              <PrintSheet
-                meta={{ ...meta, sheetName: s.name, drawingNumber: s.drawingNumber || meta.drawingNumber }}
-                notes={notes}
-                bgImage={s.bgImage}
-                placed={s.placed} wires={s.wires} annotations={s.annotations}
-                legendItems={legendFor(s.placed)}
-                colourMode={colourMode}
-                DRAW={DRAW}
-              />
-            </div>
-          ))}
+  // Rendered as a direct child of <body> so it's clear of the editor's
+  // overflow-hidden / fixed-height shell — that's what lets every sheet
+  // print onto its own page instead of just the first.
+  return createPortal(
+    <div id="print-root">
+      <div className="pp-chrome">
+        <div>
+          <div className="pp-eyebrow">Print preview</div>
+          <div className="pp-title">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
+        </div>
+        <div className="pp-actions">
+          <span className="pp-hint">Choose <b>Save as PDF</b> in the dialog — each floor prints on its own A3 page.</span>
+          <button onClick={onClose} className="pp-btn pp-btn-ghost">Close</button>
+          <button onClick={onPrint} className="pp-btn pp-btn-primary"><Printer size={12}/> Print / Save PDF</button>
         </div>
       </div>
 
-      {/* When the browser prints, only #print-sheet-host renders; each page breaks */}
-      <style jsx global>{`
+      <div className="pp-pages">
+        {sheets.map((s) => (
+          <div key={s.id} className="print-page">
+            <PrintSheet
+              meta={{ ...meta, sheetName: s.name, drawingNumber: s.drawingNumber || meta.drawingNumber }}
+              notes={notes}
+              bgImage={s.bgImage}
+              placed={s.placed} wires={s.wires} annotations={s.annotations}
+              legendItems={legendFor(s.placed)}
+              colourMode={colourMode}
+              DRAW={DRAW}
+            />
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        #print-root{position:fixed; inset:0; z-index:60; background:rgba(15,23,42,.5); overflow:auto; font-family:'Inter',system-ui,sans-serif}
+        #print-root .pp-chrome{position:sticky; top:0; z-index:2; background:#fff; border-bottom:1px solid #e2e8f0; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px}
+        #print-root .pp-eyebrow{font-size:10px; letter-spacing:.3em; text-transform:uppercase; color:#64748b}
+        #print-root .pp-title{font-size:14px; font-weight:600; margin-top:2px; color:#0f172a}
+        #print-root .pp-actions{display:flex; align-items:center; gap:12px}
+        #print-root .pp-hint{font-size:10px; color:#64748b}
+        #print-root .pp-hint b{color:#0f172a}
+        #print-root .pp-btn{display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:7px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; border:none; cursor:pointer}
+        #print-root .pp-btn-ghost{background:#f1f5f9; color:#1e293b}
+        #print-root .pp-btn-ghost:hover{background:#e2e8f0}
+        #print-root .pp-btn-primary{background:#3FB7C9; color:#08313a}
+        #print-root .pp-btn-primary:hover{background:#52C4D5}
+        #print-root .pp-pages{display:flex; flex-direction:column; align-items:center; gap:32px; padding:32px}
+        #print-root .print-page{width:${SHEET.width}px; height:${SHEET.height}px; background:#fff; box-shadow:0 20px 50px -10px rgba(0,0,0,.5); flex:none}
+
         @media print {
           @page { size: A3 landscape; margin: 0; }
-          html, body { background: #ffffff !important; }
-          body * { visibility: hidden !important; }
-          #print-sheet-host, #print-sheet-host * { visibility: visible !important; }
-          #print-sheet-host {
-            position: absolute !important;
-            left: 0 !important; top: 0 !important;
-            margin: 0 !important; padding: 0 !important; gap: 0 !important;
-            display: block !important;
+          html, body { background:#fff !important; }
+          body > div:not(#print-root){ display:none !important; }
+          #print-root{ position:static !important; inset:auto !important; background:#fff !important; overflow:visible !important; }
+          #print-root .pp-chrome{ display:none !important; }
+          #print-root .pp-pages{ display:block !important; padding:0 !important; gap:0 !important; }
+          #print-root .print-page{
+            box-shadow:none !important;
+            width:${SHEET.width}px !important; height:${SHEET.height}px !important;
+            overflow:hidden;
+            page-break-after:always; break-after:page;
           }
-          #print-sheet-host .print-page {
-            box-shadow: none !important;
-            page-break-after: always;
-            break-after: page;
-          }
-          #print-sheet-host .print-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-          #print-sheet-host * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
+          #print-root .print-page:last-child{ page-break-after:auto; break-after:auto; }
+          #print-root .print-page *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
         }
       `}</style>
-    </>
+    </div>,
+    document.body
   );
 }
 
