@@ -1,0 +1,1444 @@
+"use client";
+
+import React, { useMemo } from "react";
+import {
+  Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
+  MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
+  Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings,
+  ChevronRight, X, FileText, PanelLeftClose, PanelLeftOpen,
+} from "lucide-react";
+import {
+  SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
+  findSymbol, findCategory, resolveColours,
+} from "@/lib/symbols.jsx";
+
+/* ============================================================================
+ * The sheet model
+ * Re-declared here so this file is self-contained. Must match the values
+ * in ElectricalPlanTool.jsx.
+ * ========================================================================= */
+const SHEET = {
+  width: 1587,
+  height: 1123,
+  margin: 18,
+  legendWidth: 230,
+  notesWidth: 280,
+  titleHeight: 110,
+};
+
+const TOOLS = {
+  select: { icon: MousePointer2, label: "Select", hint: "V" },
+  pan:    { icon: Hand,          label: "Pan",    hint: "H" },
+  wire:   { icon: Cable,         label: "Wire",   hint: "W" },
+  note:   { icon: Type,          label: "Note",   hint: "N" },
+};
+
+/* ============================================================================
+ * TOP BAR
+ * ========================================================================= */
+export function TopBar({
+  meta, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onLoad,
+  onExportJSON, onPrint, colourMode, onToggleColour, onNormalise,
+  sidebarHidden, onToggleSidebar,
+}) {
+  const projectLabel = meta.projectName || "Untitled Project";
+  const sheetLabel = meta.sheetName || "Drawing";
+  return (
+    <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-[#0d1014]/95 backdrop-blur-xl border-b border-white/[0.06]">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
+          <div className="text-[11px] tracking-[0.35em] font-semibold">PLAN.WORKS</div>
+        </div>
+        <div className="w-px h-5 bg-white/[0.08]"/>
+        <button
+          onClick={onShowMeta}
+          className="group flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-white/[0.04] transition-colors min-w-0">
+          <FileText size={12} className="text-stone-500 group-hover:text-stone-300 shrink-0"/>
+          <div className="text-left min-w-0">
+            <div className="text-[11px] font-medium text-stone-200 truncate max-w-[200px]">{projectLabel}</div>
+            <div className="text-[9px] text-stone-500 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
+          </div>
+          <ChevronRight size={11} className="text-stone-600 group-hover:text-stone-400 shrink-0"/>
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <ToolbarButton onClick={onImport} icon={Upload} label="Import" primary/>
+        <Divider />
+        <ToolbarButton onClick={onUndo} icon={Undo2} label="Undo" hint="⌘Z"/>
+        <ToolbarButton onClick={onRedo} icon={Redo2} label="Redo" hint="⌘⇧Z"/>
+        <Divider />
+        <ToolbarButton
+          onClick={onToggleColour} icon={PaletteIcon}
+          label={colourMode === "colour" ? "Colour" : "Mono"}
+          active={colourMode === "colour"}/>
+        <ToolbarButton onClick={onNormalise} icon={Ruler} label="Normalise"/>
+        <Divider />
+        <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
+        <ToolbarButton onClick={onLoad} icon={FolderOpen} label="Load"/>
+        <ToolbarButton onClick={onExportJSON} icon={Download} label="JSON"/>
+        <ToolbarButton onClick={onPrint} icon={Printer} label="Print" hint="⌘P" primary/>
+        <Divider />
+        <ToolbarButton
+          onClick={onToggleSidebar}
+          icon={sidebarHidden ? PanelLeftOpen : PanelLeftClose}
+          label={sidebarHidden ? "Show" : "Hide"}
+          hint=""/>
+      </div>
+    </header>
+  );
+}
+
+function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flash }) {
+  return (
+    <button onClick={onClick}
+      title={hint ? `${label} (${hint})` : label}
+      className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wider flex items-center gap-1.5 rounded-md transition-all duration-150 ${
+        primary
+          ? "bg-amber-400 text-stone-900 hover:bg-amber-300 font-semibold shadow-[0_0_16px_-4px_rgba(251,191,36,0.4)]"
+          : flash
+          ? "bg-emerald-400/[0.15] text-emerald-400 ring-1 ring-emerald-400/30"
+          : active
+          ? "bg-white/[0.06] text-amber-400 ring-1 ring-amber-400/20"
+          : "text-stone-300 hover:text-stone-100 hover:bg-white/[0.04]"
+      }`}>
+      <Icon size={12.5} /> <span>{label}</span>
+    </button>
+  );
+}
+
+function Divider() { return <div className="w-px h-5 bg-white/[0.06] mx-1" />; }
+
+/* ============================================================================
+ * PALETTE (left sidebar)
+ * ========================================================================= */
+export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart, symbolScale, setSymbolScale }) {
+  return (
+    <aside className="w-64 bg-[#0d1014]/95 backdrop-blur-xl border-r border-white/[0.06] flex flex-col">
+      <div className="px-4 h-10 flex items-center justify-between border-b border-white/[0.06]">
+        <div className="text-[10px] tracking-[0.3em] text-stone-400 uppercase font-medium">Symbols</div>
+        <div className="text-[9px] tracking-wider text-stone-600">UK ARCH</div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 px-3 py-3 border-b border-white/[0.04]">
+        {Object.entries(SYMBOLS).map(([key, cat]) => {
+          const c = CATEGORY_COLOURS[key];
+          const active = activeCategory === key;
+          return (
+            <button key={key}
+              onClick={() => setActiveCategory(key)}
+              className={`px-2.5 py-1 text-[10px] tracking-wider rounded-full transition-all duration-200 flex items-center gap-1.5 ${
+                active
+                  ? "bg-white/[0.08] text-amber-400 ring-1 ring-amber-400/30"
+                  : "bg-white/[0.02] text-stone-400 ring-1 ring-white/[0.04] hover:bg-white/[0.05] hover:text-stone-200"
+              }`}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.primary, boxShadow: `0 0 6px ${c.primary}66` }}/>
+              {cat.label.toLowerCase()}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2.5
+                      [&::-webkit-scrollbar]:w-1.5
+                      [&::-webkit-scrollbar-track]:bg-transparent
+                      [&::-webkit-scrollbar-thumb]:bg-white/10
+                      [&::-webkit-scrollbar-thumb]:rounded-full">
+        {SYMBOLS[activeCategory].items.map(sym => {
+          const cols = resolveColours(sym.id, "colour");
+          const meta = SYMBOL_META[sym.id];
+          return (
+            <div key={sym.id}
+              draggable
+              onDragStart={(e) => onPaletteDragStart(e, sym.id)}
+              title={meta?.description + (meta?.height ? ` · ${meta.height}` : "")}
+              className="group relative bg-white/[0.03] hover:bg-white/[0.06] rounded-xl ring-1 ring-white/[0.06] hover:ring-amber-400/30
+                         cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
+                         transition-all duration-200 hover:-translate-y-0.5">
+              <svg viewBox={VIEWBOX} width="46" height="46"
+                   style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 5px ${cols.body}30)` }}
+                   className="relative z-10 transition-transform duration-200 group-hover:scale-110">
+                {sym.svg}
+              </svg>
+              <div className="relative z-10 text-[9px] text-center text-stone-300 leading-tight font-medium line-clamp-2">{sym.name}</div>
+              {meta?.height && (
+                <div className="text-[8px] text-stone-500 tabular-nums">{meta.height}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="border-t border-white/[0.06] px-4 py-3 bg-black/20">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="uppercase tracking-wider text-[9px] text-stone-500">Symbol Size</span>
+          <span className="tabular-nums text-stone-300 text-[10px]">{Math.round(symbolScale*100)}%</span>
+        </div>
+        <input type="range" min="0.6" max="2.5" step="0.1" value={symbolScale}
+               onChange={(e) => setSymbolScale(parseFloat(e.target.value))}
+               className="w-full accent-amber-500"/>
+      </div>
+    </aside>
+  );
+}
+
+/* ============================================================================
+ * WORKSPACE — the dark surround + the sheet inside it
+ * ========================================================================= */
+export function Workspace({
+  viewportRef, drawingAreaRef, pan, zoom,
+  meta, notes, updateMeta, updateNotes,
+  bgImage, placed, wires, annotations,
+  legendItems, colourMode, symbolSize,
+  selectedId, selectedAnnoId, wireStart,
+  tool, spacePressed, DRAW,
+  onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
+  onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
+  onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
+  startRotating,
+}) {
+  return (
+    <div
+      ref={viewportRef}
+      className="absolute inset-0 overflow-hidden"
+      style={{
+        background: "radial-gradient(circle at 50% 50%, #1a1d22, #0a0c0f 80%)",
+      }}
+      onMouseDown={onViewportMouseDown}
+      onMouseMove={onViewportMouseMove}
+      onMouseUp={onViewportMouseUp}
+      onMouseLeave={onViewportMouseUp}
+    >
+      {/* Sheet, transformed by pan + zoom */}
+      <div style={{
+        position: "absolute", top: 0, left: 0,
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+        transformOrigin: "0 0",
+        willChange: "transform",
+      }}>
+        <Sheet
+          drawingAreaRef={drawingAreaRef}
+          meta={meta} notes={notes}
+          updateMeta={updateMeta} updateNotes={updateNotes}
+          bgImage={bgImage}
+          placed={placed} wires={wires} annotations={annotations}
+          legendItems={legendItems}
+          colourMode={colourMode}
+          symbolSize={symbolSize}
+          selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
+          tool={tool} spacePressed={spacePressed}
+          DRAW={DRAW}
+          zoom={zoom}
+          onDrawingDrop={onDrawingDrop}
+          onDrawingDragOver={onDrawingDragOver}
+          onDrawingDragLeave={onDrawingDragLeave}
+          onItemMouseDown={onItemMouseDown}
+          onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
+          onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
+          startRotating={startRotating}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * THE SHEET ITSELF — white page rendered at SHEET.width × SHEET.height
+ * This is what prints. Layout:
+ *   ┌────────────────────────────────────────────────────────┐
+ *   │ LEGEND  │  DRAWING AREA              │  NOTES           │
+ *   │         │                            │                  │
+ *   │         │                            │                  │
+ *   │         │                            │                  │
+ *   ├─────────┴────────────────────────────┴──────────────────┤
+ *   │ TITLE BLOCK                                              │
+ *   └──────────────────────────────────────────────────────────┘
+ * ========================================================================= */
+export function Sheet({
+  drawingAreaRef,
+  meta, notes, updateMeta, updateNotes,
+  bgImage, placed, wires, annotations, legendItems,
+  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart,
+  tool, spacePressed, DRAW, zoom,
+  onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
+  onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
+  startRotating,
+}) {
+  return (
+    <div
+      data-sheet-bg
+      style={{
+        width: SHEET.width,
+        height: SHEET.height,
+        background: "#ffffff",
+        color: "#0a0a0a",
+        position: "relative",
+        boxShadow: "0 30px 80px -10px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.03)",
+        fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
+      }}
+    >
+      {/* Sheet border */}
+      <div style={{
+        position: "absolute",
+        left: SHEET.margin, top: SHEET.margin,
+        width: SHEET.width - SHEET.margin*2,
+        height: SHEET.height - SHEET.margin*2,
+        border: "1px solid #0a0a0a",
+        pointerEvents: "none",
+      }}/>
+
+      {/* LEGEND COLUMN */}
+      <LegendColumn legendItems={legendItems} colourMode={colourMode} />
+
+      {/* NOTES COLUMN */}
+      <NotesColumn notes={notes} updateNotes={updateNotes} />
+
+      {/* DRAWING AREA */}
+      <DrawingArea
+        drawingAreaRef={drawingAreaRef}
+        DRAW={DRAW}
+        bgImage={bgImage}
+        placed={placed} wires={wires} annotations={annotations}
+        colourMode={colourMode} symbolSize={symbolSize}
+        selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
+        tool={tool} spacePressed={spacePressed} zoom={zoom}
+        onDrop={onDrawingDrop}
+        onDragOver={onDrawingDragOver}
+        onDragLeave={onDrawingDragLeave}
+        onItemMouseDown={onItemMouseDown}
+        onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
+        onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
+        startRotating={startRotating}
+      />
+
+      {/* TITLE BLOCK */}
+      <TitleBlock meta={meta} updateMeta={updateMeta} />
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * LEGEND COLUMN — auto-generated from placed symbols
+ * ------------------------------------------------------------------------- */
+function LegendColumn({ legendItems, colourMode }) {
+  return (
+    <div style={{
+      position: "absolute",
+      left: SHEET.margin,
+      top: SHEET.margin,
+      width: SHEET.legendWidth,
+      height: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
+      borderRight: "1px solid #0a0a0a",
+      padding: "12px 12px 12px 14px",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        fontSize: 13, fontWeight: 700, marginBottom: 4,
+        letterSpacing: "0.05em",
+      }}>ELECTRICAL LEGEND</div>
+      <div style={{ fontSize: 8.5, color: "#404040", marginBottom: 10, letterSpacing: "0.06em" }}>
+        UK ARCHITECTURAL · TO BE READ IN COLOUR
+      </div>
+
+      {legendItems.length === 0 ? (
+        <div style={{ fontSize: 10, color: "#737373", fontStyle: "italic", marginTop: 14 }}>
+          Place symbols on the drawing — they'll be listed here automatically with mounting heights.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          {legendItems.map(({ id, symbol, meta }) => {
+            const cols = resolveColours(id, colourMode);
+            return (
+              <div key={id} style={{
+                display: "grid",
+                gridTemplateColumns: "26px 1fr",
+                alignItems: "center",
+                gap: 6,
+                padding: "3px 0",
+                borderBottom: "0.5px solid #e5e5e5",
+              }}>
+                <svg viewBox={VIEWBOX} width={22} height={22}
+                     style={{ color: cols.body, "--feeder": cols.feeder, flexShrink: 0 }}>
+                  {symbol.svg}
+                </svg>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: "#171717", lineHeight: 1.2 }}>
+                    {meta.description}
+                  </div>
+                  {meta.height && (
+                    <div style={{ fontSize: 8, color: "#525252", marginTop: 1 }}>
+                      {meta.height}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * NOTES COLUMN — editable MEP notes
+ * ------------------------------------------------------------------------- */
+function NotesColumn({ notes, updateNotes }) {
+  const updateNote = (i, patch) => {
+    updateNotes(notes.map((n, idx) => idx === i ? { ...n, ...patch } : n));
+  };
+  const addNote = () => {
+    updateNotes([...notes, { heading: "New Section", body: "Notes…" }]);
+  };
+  const removeNote = (i) => {
+    updateNotes(notes.filter((_, idx) => idx !== i));
+  };
+
+  return (
+    <div style={{
+      position: "absolute",
+      right: SHEET.margin,
+      top: SHEET.margin,
+      width: SHEET.notesWidth,
+      height: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
+      borderLeft: "1px solid #0a0a0a",
+      padding: "12px 14px",
+      overflow: "auto",
+      // Hide scrollbar in the editing view; print view will be at full size anyway
+    }}
+      className="no-print-scrollbar"
+    >
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>
+        MEP NOTES
+      </div>
+
+      {notes.map((n, i) => (
+        <div key={i} style={{ marginBottom: 12 }}>
+          <input
+            type="text"
+            value={n.heading}
+            onChange={(e) => updateNote(i, { heading: e.target.value })}
+            className="sheet-note-heading"
+            style={{
+              fontSize: 10.5, fontWeight: 700, color: "#171717",
+              width: "100%", border: "none", background: "transparent",
+              padding: 0, marginBottom: 3, outline: "none",
+              borderBottom: "0.5px dashed transparent",
+            }}
+          />
+          <textarea
+            value={n.body}
+            onChange={(e) => updateNote(i, { body: e.target.value })}
+            className="sheet-note-body"
+            style={{
+              fontSize: 9, color: "#262626", width: "100%",
+              border: "none", background: "transparent", resize: "none",
+              padding: 0, outline: "none",
+              lineHeight: 1.4,
+              minHeight: 60,
+              fontFamily: "inherit",
+              borderBottom: "0.5px dashed transparent",
+            }}
+            rows={Math.max(3, Math.ceil(n.body.length / 35))}
+          />
+          <button
+            onClick={() => removeNote(i)}
+            className="opacity-0 hover:opacity-100 transition-opacity text-[8px] text-red-600 print:hidden"
+            style={{ marginTop: 2 }}
+          >
+            Remove section
+          </button>
+        </div>
+      ))}
+
+      <button onClick={addNote}
+        className="text-[9px] text-stone-500 hover:text-stone-800 mt-2 print:hidden"
+        style={{ letterSpacing: "0.05em", textTransform: "uppercase" }}>
+        + Add section
+      </button>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * DRAWING AREA — the main canvas where the plan + symbols + annotations live
+ * ------------------------------------------------------------------------- */
+function DrawingArea({
+  drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
+  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, tool, spacePressed,
+  zoom,
+  onDrop, onDragOver, onDragLeave,
+  onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
+  startRotating,
+}) {
+  // Fit the bgImage into the drawing area
+  const imageDisplay = useMemo(() => {
+    if (!bgImage) return null;
+    const scale = Math.min(DRAW.w / bgImage.w, DRAW.h / bgImage.h);
+    const w = bgImage.w * scale;
+    const h = bgImage.h * scale;
+    return {
+      x: (DRAW.w - w) / 2,
+      y: (DRAW.h - h) / 2,
+      w, h,
+    };
+  }, [bgImage, DRAW.w, DRAW.h]);
+
+  return (
+    <div
+      ref={drawingAreaRef}
+      data-drawing-bg
+      style={{
+        position: "absolute",
+        left: DRAW.x, top: DRAW.y,
+        width: DRAW.w, height: DRAW.h,
+        background: "#ffffff",
+        border: "1px solid #0a0a0a",
+        overflow: "hidden",
+      }}
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+    >
+      {!bgImage && (
+        <div style={{
+          position: "absolute", inset: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexDirection: "column", gap: 8,
+          color: "#a3a3a3", pointerEvents: "none",
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: "#f5f5f5", display: "flex",
+            alignItems: "center", justifyContent: "center",
+            border: "1px solid #e5e5e5",
+          }}>
+            <Upload size={18} />
+          </div>
+          <div style={{ fontSize: 11, color: "#737373", fontWeight: 500 }}>No drawing loaded</div>
+          <div style={{ fontSize: 9, color: "#a3a3a3" }}>Click <b>Import</b> or drop a PDF/image here</div>
+        </div>
+      )}
+
+      {bgImage && imageDisplay && (
+        <img src={bgImage.src} alt="plan"
+             style={{
+               position: "absolute",
+               left: imageDisplay.x, top: imageDisplay.y,
+               width: imageDisplay.w, height: imageDisplay.h,
+               display: "block",
+             }}
+             draggable={false}/>
+      )}
+
+      <svg width={DRAW.w} height={DRAW.h}
+           style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", overflow: "visible" }}>
+        {/* Wires */}
+        {wires.map(w => {
+          const a = placed.find(p => p.id === w.fromId);
+          const b = placed.find(p => p.id === w.toId);
+          if (!a || !b) return null;
+          return (
+            <line key={w.id}
+              x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+              stroke={colourMode === "mono" ? "#0a0a0a" : "#dc2626"}
+              strokeWidth={1.2}
+              strokeDasharray="6 4"
+              strokeLinecap="round"
+            />
+          );
+        })}
+
+        {/* Annotations (leader lines first so they're behind text) */}
+        {annotations.map(a => {
+          const isSel = a.id === selectedAnnoId;
+          const stroke = colourMode === "mono" ? "#0a0a0a" : "#dc2626";
+          // Compute leader line endpoints
+          const dx = a.anchorX - a.x;
+          const dy = a.anchorY - a.y;
+          const len = Math.hypot(dx, dy);
+          const ux = len > 0 ? dx / len : 0;
+          const uy = len > 0 ? dy / len : 0;
+          // Start the leader at the edge of the text block
+          const startX = a.x + ux * 18;
+          const startY = a.y + uy * 6;
+          // Arrowhead at the anchor end
+          const ah = 6; // size
+          const angle = Math.atan2(dy, dx);
+          const ax1 = a.anchorX - ah * Math.cos(angle - Math.PI/7);
+          const ay1 = a.anchorY - ah * Math.sin(angle - Math.PI/7);
+          const ax2 = a.anchorX - ah * Math.cos(angle + Math.PI/7);
+          const ay2 = a.anchorY - ah * Math.sin(angle + Math.PI/7);
+          return (
+            <g key={a.id} style={{ pointerEvents: "none" }}>
+              <line x1={startX} y1={startY} x2={a.anchorX} y2={a.anchorY}
+                    stroke={stroke} strokeWidth={1}/>
+              <polygon points={`${a.anchorX},${a.anchorY} ${ax1},${ay1} ${ax2},${ay2}`} fill={stroke}/>
+              {isSel && (
+                <circle cx={a.anchorX} cy={a.anchorY} r={5}
+                        fill="rgba(251,191,36,0.4)" stroke="#d97706" strokeWidth={1}
+                        style={{ pointerEvents: "all", cursor: "grab" }}
+                        onMouseDown={(e) => onAnnotationAnchorMouseDown(e, a)}/>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Symbols */}
+        {placed.map(item => {
+          const sym = findSymbol(item.symbolId);
+          if (!sym) return null;
+          const isSel = item.id === selectedId;
+          const isWireStart = item.id === wireStart;
+          const itemScale = item.scale ?? 1;
+          const itemSize = symbolSize * itemScale;
+          const half = itemSize / 2;
+          const cols = resolveColours(item.symbolId, colourMode);
+          const handleOffset = half + 18;
+          return (
+            <g key={item.id}
+               transform={`translate(${item.x - half} ${item.y - half}) rotate(${item.rotation} ${half} ${half})`}>
+              {(isSel || isWireStart) && (
+                <>
+                  <rect x={-6} y={-6} width={itemSize+12} height={itemSize+12} rx={8}
+                        fill={isWireStart ? "rgba(251,191,36,0.18)" : "rgba(251,191,36,0.10)"}/>
+                  <rect x={-3} y={-3} width={itemSize+6} height={itemSize+6} rx={6}
+                        fill="none" stroke="#d97706" strokeWidth={1.2}
+                        strokeDasharray={isWireStart ? "4 3" : "none"}/>
+                </>
+              )}
+              <svg x={0} y={0} width={itemSize} height={itemSize} viewBox={VIEWBOX}
+                   style={{
+                     color: cols.body, "--feeder": cols.feeder,
+                     overflow: "visible", pointerEvents: "all",
+                     cursor: tool === "wire" ? "crosshair" : (tool === "pan" || spacePressed) ? "grab" : "move",
+                   }}
+                   onMouseDown={(e) => onItemMouseDown(e, item)}>
+                {sym.svg}
+              </svg>
+              {item.label && (
+                <text x={half} y={itemSize + 9} fontSize={9} textAnchor="middle"
+                      fill="#171717" fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600"
+                      transform={`rotate(${-item.rotation} ${half} ${itemSize + 9})`}>
+                  {item.label}
+                </text>
+              )}
+              {isSel && tool === "select" && !spacePressed && (
+                <g style={{ pointerEvents: "all", cursor: "grab" }}
+                   onMouseDown={(e) => { e.stopPropagation(); startRotating(item.id); }}>
+                  <line x1={half} y1={-3} x2={half} y2={-handleOffset+5}
+                        stroke="#d97706" strokeWidth={1} strokeDasharray="3 2"/>
+                  <circle cx={half} cy={-handleOffset} r={4}
+                          fill="#fbbf24" stroke="#fff" strokeWidth={1}/>
+                </g>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Annotation text blocks (rendered last so they're on top) */}
+        {annotations.map(a => {
+          const isSel = a.id === selectedAnnoId;
+          const stroke = colourMode === "mono" ? "#0a0a0a" : "#dc2626";
+          // Wrap text by guessing — split on newlines first, then split long lines
+          const lines = a.text.split("\n").flatMap(line => wrapText(line, 22));
+          const padding = 4;
+          const lineHeight = 11;
+          const textW = Math.max(60, ...lines.map(l => estimateWidth(l, 8.5)));
+          const textH = lines.length * lineHeight + padding * 2 - 2;
+          return (
+            <g key={a.id + "-text"}
+               style={{ pointerEvents: "all", cursor: "move" }}
+               onMouseDown={(e) => onAnnotationBodyMouseDown(e, a)}>
+              <rect
+                x={a.x - textW/2 - padding}
+                y={a.y - textH/2}
+                width={textW + padding*2}
+                height={textH}
+                rx={3}
+                fill={isSel ? "rgba(255,255,200,0.95)" : "rgba(255,255,255,0.95)"}
+                stroke={isSel ? "#d97706" : stroke}
+                strokeWidth={isSel ? 1.2 : 0.6}
+              />
+              {lines.map((line, i) => (
+                <text
+                  key={i}
+                  x={a.x}
+                  y={a.y - textH/2 + padding + lineHeight * (i + 1) - 2}
+                  fontSize={8.5}
+                  textAnchor="middle"
+                  fill={stroke}
+                  fontWeight={600}
+                  fontFamily="ui-sans-serif, system-ui, sans-serif"
+                  style={{ pointerEvents: "none" }}
+                >{line}</text>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// Naive text wrapping helpers for SVG annotations
+function wrapText(line, maxChars) {
+  if (line.length <= maxChars) return [line];
+  const words = line.split(" ");
+  const out = [];
+  let current = "";
+  for (const w of words) {
+    if ((current + " " + w).trim().length > maxChars) {
+      if (current) out.push(current);
+      current = w;
+    } else {
+      current = (current ? current + " " : "") + w;
+    }
+  }
+  if (current) out.push(current);
+  return out;
+}
+function estimateWidth(s, fontSize) {
+  return s.length * fontSize * 0.55;
+}
+
+/* ----------------------------------------------------------------------------
+ * TITLE BLOCK — bottom strip, editable fields
+ * ------------------------------------------------------------------------- */
+function TitleBlock({ meta, updateMeta }) {
+  const left = SHEET.margin;
+  const width = SHEET.width - SHEET.margin * 2;
+  const top = SHEET.height - SHEET.margin - SHEET.titleHeight;
+  return (
+    <div style={{
+      position: "absolute",
+      left, top, width,
+      height: SHEET.titleHeight,
+      borderTop: "1px solid #0a0a0a",
+      display: "grid",
+      gridTemplateColumns: "1.4fr 1fr 1.1fr",
+      fontSize: 10,
+    }}>
+      {/* Left: company / project */}
+      <div style={{
+        padding: "10px 14px",
+        borderRight: "1px solid #0a0a0a",
+        display: "flex", flexDirection: "column", justifyContent: "space-between",
+      }}>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>COMPANY</div>
+          <EditableField value={meta.company} onChange={(v) => updateMeta({ company: v })}
+                         fontSize={15} weight={700} />
+        </div>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
+          <EditableField value={meta.projectName} onChange={(v) => updateMeta({ projectName: v })}
+                         fontSize={11} weight={600} placeholder="Project name"/>
+          <EditableField value={meta.plot} onChange={(v) => updateMeta({ plot: v })}
+                         fontSize={9} weight={500} placeholder="Plot / address"/>
+        </div>
+      </div>
+
+      {/* Middle: sheet info */}
+      <div style={{
+        padding: "10px 14px",
+        borderRight: "1px solid #0a0a0a",
+        display: "flex", flexDirection: "column", justifyContent: "space-between",
+      }}>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
+          <EditableField value={meta.sheetName} onChange={(v) => updateMeta({ sheetName: v })}
+                         fontSize={12} weight={700} />
+        </div>
+        <div style={{ display: "flex", gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
+            <EditableField value={meta.scale} onChange={(v) => updateMeta({ scale: v })}
+                           fontSize={10} weight={600} />
+          </div>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
+            <EditableField value={meta.date} onChange={(v) => updateMeta({ date: v })}
+                           fontSize={10} weight={600} />
+          </div>
+        </div>
+      </div>
+
+      {/* Right: drawing number & revision */}
+      <div style={{
+        padding: "10px 14px",
+        display: "grid", gridTemplateColumns: "1fr auto",
+        columnGap: 14, rowGap: 6,
+      }}>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
+          <EditableField value={meta.drawingNumber} onChange={(v) => updateMeta({ drawingNumber: v })}
+                         fontSize={11} weight={700} placeholder="e.g. WOE-PB-XX-00-D-A-010401"/>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
+          <EditableField value={meta.revision} onChange={(v) => updateMeta({ revision: v })}
+                         fontSize={18} weight={800} align="right"/>
+        </div>
+        <div style={{ gridColumn: "1 / span 2" }}>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
+          <EditableField value={meta.revNote} onChange={(v) => updateMeta({ revNote: v })}
+                         fontSize={9} weight={500} placeholder="First issue"/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditableField({ value, onChange, fontSize = 10, weight = 500, placeholder, align = "left" }) {
+  return (
+    <input
+      type="text"
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{
+        fontSize, fontWeight: weight, color: "#0a0a0a",
+        width: "100%", border: "none", background: "transparent",
+        padding: 0, outline: "none", textAlign: align,
+        fontFamily: "inherit",
+      }}
+      className="hover:bg-amber-50/40 focus:bg-amber-50 transition-colors duration-150"
+    />
+  );
+}
+
+/* ============================================================================
+ * INSPECTOR (right sidebar)
+ * ========================================================================= */
+export function Inspector({
+  selectedItem, selectedAnno,
+  updateLabel, updateAnnoText, setRotation, setItemScale,
+  rotateSelected, deleteSelected, placed,
+}) {
+  return (
+    <aside className="w-64 bg-[#0d1014]/95 backdrop-blur-xl border-l border-white/[0.06] flex flex-col">
+      <div className="px-4 h-10 flex items-center border-b border-white/[0.06]">
+        <div className="text-[10px] tracking-[0.3em] text-stone-400 uppercase font-medium">Inspector</div>
+      </div>
+
+      {selectedItem ? (
+        <SymbolInspector
+          item={selectedItem}
+          updateLabel={updateLabel}
+          setRotation={setRotation}
+          setItemScale={setItemScale}
+          rotateSelected={rotateSelected}
+          deleteSelected={deleteSelected}
+        />
+      ) : selectedAnno ? (
+        <AnnoInspector
+          anno={selectedAnno}
+          updateAnnoText={updateAnnoText}
+          deleteSelected={deleteSelected}
+        />
+      ) : (
+        <EmptyInspector placed={placed} />
+      )}
+    </aside>
+  );
+}
+
+function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateSelected, deleteSelected }) {
+  const sym = findSymbol(item.symbolId);
+  const meta = SYMBOL_META[item.symbolId];
+  const cols = resolveColours(item.symbolId, "colour");
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4
+                    [&::-webkit-scrollbar]:w-1.5
+                    [&::-webkit-scrollbar-thumb]:bg-white/10
+                    [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-2">Type</div>
+        <div className="flex items-center gap-3">
+          <svg viewBox={VIEWBOX} width="44" height="44"
+               style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 8px ${cols.body}50)` }}
+               className="bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] p-1.5">
+            {sym?.svg}
+          </svg>
+          <div>
+            <div className="text-sm font-medium text-stone-100">{sym?.name}</div>
+            {meta?.height && <div className="text-[10px] text-stone-500 mt-0.5">{meta.height}</div>}
+          </div>
+        </div>
+        {meta?.description && (
+          <div className="text-[10px] text-stone-400 mt-2 leading-relaxed">{meta.description}</div>
+        )}
+      </div>
+
+      <div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-1.5">Label / Reference</div>
+        <input
+          type="text"
+          value={item.label}
+          onChange={(e) => updateLabel(e.target.value)}
+          placeholder="e.g. S1 / K-01"
+          className="w-full px-3 py-2 text-xs bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] focus:ring-amber-400/40 focus:bg-white/[0.05] focus:outline-none transition-all text-stone-100 placeholder:text-stone-600"
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Stat label="X" value={Math.round(item.x)}/>
+        <Stat label="Y" value={Math.round(item.y)}/>
+        <Stat label="ROT" value={Math.round(item.rotation) + "°"}/>
+      </div>
+
+      <div className="pt-3 border-t border-white/[0.06]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] tracking-[0.2em] uppercase text-stone-500">Rotation</span>
+          <span className="tabular-nums text-stone-200 text-[10px]">{Math.round(item.rotation)}°</span>
+        </div>
+        <input type="range" min="0" max="359" step="1" value={item.rotation}
+               onChange={(e) => setRotation(parseInt(e.target.value))}
+               className="w-full accent-amber-500 mb-2"/>
+        <div className="grid grid-cols-4 gap-1">
+          {[0, 90, 180, 270].map(deg => (
+            <button key={deg} onClick={() => setRotation(deg)}
+              className={`px-1 py-1 text-[9px] tracking-wider rounded-md transition-all ${
+                Math.round(item.rotation) === deg
+                  ? "bg-amber-400/[0.15] text-amber-400 ring-1 ring-amber-400/30"
+                  : "bg-white/[0.03] text-stone-400 ring-1 ring-white/[0.06] hover:bg-white/[0.06]"
+              }`}>{deg}°</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-3 border-t border-white/[0.06]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] tracking-[0.2em] uppercase text-stone-500">Scale</span>
+          <span className="tabular-nums text-stone-200 text-[10px]">{Math.round((item.scale ?? 1)*100)}%</span>
+        </div>
+        <input type="range" min="0.4" max="3" step="0.05" value={item.scale ?? 1}
+               onChange={(e) => setItemScale(parseFloat(e.target.value))}
+               className="w-full accent-amber-500 mb-2"/>
+        <button onClick={() => setItemScale(1)}
+          className="w-full px-2 py-1.5 text-[9px] uppercase tracking-wider bg-white/[0.03] text-stone-400 ring-1 ring-white/[0.06] hover:bg-white/[0.06] rounded-md transition-all">
+          Reset to 100%
+        </button>
+      </div>
+
+      <div className="flex gap-2 pt-3 border-t border-white/[0.06]">
+        <button onClick={rotateSelected}
+          className="flex-1 px-3 py-2 bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06] text-stone-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+          <RotateCw size={12}/> +15°
+        </button>
+        <button onClick={deleteSelected}
+          className="flex-1 px-3 py-2 bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-red-500/[0.1] hover:text-red-300 text-stone-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+          <Trash2 size={12}/> Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AnnoInspector({ anno, updateAnnoText, deleteSelected }) {
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-2">Annotation</div>
+        <div className="text-[10px] text-stone-400 leading-relaxed mb-3">
+          Edit the note text below. Drag the box to move it. Drag the amber dot at the arrow tip to point it elsewhere.
+        </div>
+      </div>
+      <div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-1.5">Text</div>
+        <textarea
+          value={anno.text}
+          onChange={(e) => updateAnnoText(e.target.value)}
+          rows={5}
+          className="w-full px-3 py-2 text-xs bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] focus:ring-amber-400/40 focus:bg-white/[0.05] focus:outline-none transition-all text-stone-100 resize-none"
+        />
+      </div>
+      <button onClick={deleteSelected}
+        className="w-full px-3 py-2 bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-red-500/[0.1] hover:text-red-300 text-stone-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+        <Trash2 size={12}/> Delete Annotation
+      </button>
+    </div>
+  );
+}
+
+function EmptyInspector({ placed }) {
+  const counts = {};
+  placed.forEach(p => {
+    const sym = findSymbol(p.symbolId);
+    if (!sym) return;
+    counts[sym.name] = (counts[sym.name] || 0) + 1;
+  });
+  const entries = Object.entries(counts).sort();
+  return (
+    <div className="flex-1 overflow-y-auto p-4 text-[11px] text-stone-500 leading-relaxed
+                    [&::-webkit-scrollbar]:w-1.5
+                    [&::-webkit-scrollbar-thumb]:bg-white/10
+                    [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div className="mb-4 text-stone-400">Select a symbol or annotation to inspect.</div>
+      <div className="text-stone-500 uppercase tracking-[0.2em] text-[9px] mb-2">Schedule</div>
+      {!entries.length ? (
+        <div className="text-stone-600 mt-2 text-[10px] italic">No items placed yet.</div>
+      ) : (
+        <table className="w-full text-[10px] tabular-nums">
+          <tbody>
+            {entries.map(([name, n]) => (
+              <tr key={name} className="border-b border-white/[0.04]">
+                <td className="py-1.5 text-stone-300">{name}</td>
+                <td className="py-1.5 text-right text-amber-400 font-semibold">{n}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] px-2.5 py-2">
+      <div className="text-stone-500 uppercase tracking-wider text-[8.5px] mb-0.5">{label}</div>
+      <div className="tabular-nums text-stone-100 font-medium text-[11px]">{value}</div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * FLOATING TOOLBARS
+ * ========================================================================= */
+export function FloatingToolbar({ tool, setTool }) {
+  return (
+    <div className="absolute top-4 left-4 z-20 flex flex-col bg-[#0d1014]/95 backdrop-blur-xl rounded-xl ring-1 ring-white/[0.06] shadow-2xl shadow-black/50 overflow-hidden">
+      {Object.entries(TOOLS).map(([key, info]) => {
+        const Icon = info.icon;
+        const active = tool === key;
+        return (
+          <button key={key}
+            onClick={() => setTool(key)}
+            title={`${info.label} (${info.hint})`}
+            className={`relative p-2.5 transition-colors duration-150 ${
+              active ? "text-amber-400" : "text-stone-400 hover:text-stone-100 hover:bg-white/[0.04]"
+            }`}>
+            {active && <div className="absolute inset-0 bg-amber-400/[0.08]"/>}
+            {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-amber-400 rounded-r-full"/>}
+            <Icon size={15} className="relative"/>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ZoomControls({ zoom, onIn, onOut, onFit }) {
+  return (
+    <div className="absolute top-4 right-4 z-20 flex bg-[#0d1014]/95 backdrop-blur-xl rounded-xl ring-1 ring-white/[0.06] shadow-2xl shadow-black/50 overflow-hidden">
+      <button onClick={onOut} className="p-2.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] transition-colors">
+        <ZoomOut size={14}/>
+      </button>
+      <div className="px-3 self-center text-[10px] text-stone-300 tabular-nums border-x border-white/[0.06] min-w-[56px] text-center">
+        {Math.round(zoom*100)}%
+      </div>
+      <button onClick={onIn} className="p-2.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] transition-colors">
+        <ZoomIn size={14}/>
+      </button>
+      <button onClick={onFit} title="Fit (0)"
+              className="p-2.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] transition-colors border-l border-white/[0.06]">
+        <Maximize2 size={14}/>
+      </button>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * METADATA EDITOR (modal)
+ * ========================================================================= */
+export function MetaEditor({ meta, updateMeta, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+         onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+           className="bg-[#0d1014] rounded-2xl ring-1 ring-white/[0.08] w-full max-w-xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-stone-500">Project Settings</div>
+            <div className="text-base font-semibold mt-0.5">Sheet metadata</div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] rounded-md">
+            <X size={16}/>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <MetaField label="Project name"   value={meta.projectName}   onChange={(v) => updateMeta({ projectName: v })} />
+          <MetaField label="Plot / address" value={meta.plot}          onChange={(v) => updateMeta({ plot: v })} />
+          <MetaField label="Sheet name"     value={meta.sheetName}     onChange={(v) => updateMeta({ sheetName: v })} />
+          <MetaField label="Scale"          value={meta.scale}         onChange={(v) => updateMeta({ scale: v })} />
+          <MetaField label="Drawing number" value={meta.drawingNumber} onChange={(v) => updateMeta({ drawingNumber: v })} />
+          <MetaField label="Date"           value={meta.date}          onChange={(v) => updateMeta({ date: v })} type="date"/>
+          <MetaField label="Revision"       value={meta.revision}      onChange={(v) => updateMeta({ revision: v })} />
+          <MetaField label="Revision note"  value={meta.revNote}       onChange={(v) => updateMeta({ revNote: v })} />
+          <MetaField label="Company"        value={meta.company}       onChange={(v) => updateMeta({ company: v })} span={2}/>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 bg-amber-400 text-stone-900 rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-300 transition">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetaField({ label, value, onChange, type = "text", span = 1 }) {
+  return (
+    <div style={{ gridColumn: span === 2 ? "1 / span 2" : "auto" }}>
+      <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-1.5">{label}</div>
+      <input
+        type={type} value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 text-sm bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] focus:ring-amber-400/40 focus:bg-white/[0.05] focus:outline-none transition-all text-stone-100"
+      />
+    </div>
+  );
+}
+
+/* ============================================================================
+ * PRINT PREVIEW
+ * Renders a clean copy of the sheet at 1:1, full-screen,
+ * with the rest of the app hidden via the print stylesheet.
+ * ========================================================================= */
+export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, onPrint }) {
+  const { meta, notes, bgImage, placed, wires, annotations } = project;
+  return (
+    <>
+      {/* Controls (hidden in print) */}
+      <div className="print:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm overflow-auto">
+        <div className="sticky top-0 z-10 bg-[#0d1014]/95 backdrop-blur-xl border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-stone-500">Print preview</div>
+            <div className="text-sm font-medium mt-0.5">{meta.sheetName || "Drawing"}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-[10px] text-stone-500">
+              Choose <span className="text-stone-200">Save as PDF</span> in the print dialog to export.
+            </div>
+            <button onClick={onClose}
+              className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-stone-200 rounded-md text-[10px] uppercase tracking-wider">
+              Close
+            </button>
+            <button onClick={onPrint}
+              className="px-4 py-1.5 bg-amber-400 text-stone-900 rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-300 transition flex items-center gap-1.5">
+              <Printer size={12}/> Print / Save PDF
+            </button>
+          </div>
+        </div>
+
+        {/* The sheet, displayed at 1:1 */}
+        <div className="flex justify-center p-8">
+          <div className="bg-white shadow-2xl" id="print-sheet-host">
+            <PrintSheet
+              meta={meta} notes={notes}
+              bgImage={bgImage}
+              placed={placed} wires={wires} annotations={annotations}
+              legendItems={legendItems}
+              colourMode={colourMode}
+              DRAW={DRAW}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* When the browser prints, only #print-sheet-host renders */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A3 landscape;
+            margin: 0;
+          }
+          body * { visibility: hidden !important; }
+          #print-sheet-host, #print-sheet-host * { visibility: visible !important; }
+          #print-sheet-host {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
+
+// A non-interactive version of the Sheet used by Print Preview.
+function PrintSheet({ meta, notes, bgImage, placed, wires, annotations, legendItems, colourMode, DRAW }) {
+  return (
+    <div style={{
+      width: SHEET.width, height: SHEET.height,
+      background: "#ffffff", color: "#0a0a0a",
+      position: "relative",
+      fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
+    }}>
+      <div style={{
+        position: "absolute",
+        left: SHEET.margin, top: SHEET.margin,
+        width: SHEET.width - SHEET.margin*2,
+        height: SHEET.height - SHEET.margin*2,
+        border: "1px solid #0a0a0a",
+      }}/>
+      <LegendColumnStatic legendItems={legendItems} colourMode={colourMode} />
+      <NotesColumnStatic notes={notes} />
+      <DrawingAreaStatic
+        DRAW={DRAW}
+        bgImage={bgImage}
+        placed={placed} wires={wires} annotations={annotations}
+        colourMode={colourMode}
+      />
+      <TitleBlockStatic meta={meta} />
+    </div>
+  );
+}
+
+function LegendColumnStatic({ legendItems, colourMode }) {
+  return (
+    <div style={{
+      position: "absolute",
+      left: SHEET.margin, top: SHEET.margin,
+      width: SHEET.legendWidth,
+      height: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
+      borderRight: "1px solid #0a0a0a",
+      padding: "12px 12px 12px 14px",
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, letterSpacing: "0.05em" }}>ELECTRICAL LEGEND</div>
+      <div style={{ fontSize: 8.5, color: "#404040", marginBottom: 10, letterSpacing: "0.06em" }}>
+        UK ARCHITECTURAL · TO BE READ IN COLOUR
+      </div>
+      {legendItems.map(({ id, symbol, meta }) => {
+        const cols = resolveColours(id, colourMode);
+        return (
+          <div key={id} style={{
+            display: "grid", gridTemplateColumns: "26px 1fr",
+            alignItems: "center", gap: 6, padding: "3px 0",
+            borderBottom: "0.5px solid #e5e5e5",
+          }}>
+            <svg viewBox={VIEWBOX} width={22} height={22}
+                 style={{ color: cols.body, "--feeder": cols.feeder }}>
+              {symbol.svg}
+            </svg>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#171717", lineHeight: 1.2 }}>
+                {meta.description}
+              </div>
+              {meta.height && <div style={{ fontSize: 8, color: "#525252", marginTop: 1 }}>{meta.height}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NotesColumnStatic({ notes }) {
+  return (
+    <div style={{
+      position: "absolute",
+      right: SHEET.margin, top: SHEET.margin,
+      width: SHEET.notesWidth,
+      height: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
+      borderLeft: "1px solid #0a0a0a",
+      padding: "12px 14px",
+      overflow: "hidden",
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>MEP NOTES</div>
+      {notes.map((n, i) => (
+        <div key={i} style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#171717", marginBottom: 3 }}>{n.heading}</div>
+          <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{n.body}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMode }) {
+  const imageDisplay = useMemo(() => {
+    if (!bgImage) return null;
+    const scale = Math.min(DRAW.w / bgImage.w, DRAW.h / bgImage.h);
+    const w = bgImage.w * scale;
+    const h = bgImage.h * scale;
+    return { x: (DRAW.w - w) / 2, y: (DRAW.h - h) / 2, w, h };
+  }, [bgImage, DRAW.w, DRAW.h]);
+
+  return (
+    <div style={{
+      position: "absolute",
+      left: DRAW.x, top: DRAW.y, width: DRAW.w, height: DRAW.h,
+      background: "#ffffff", border: "1px solid #0a0a0a", overflow: "hidden",
+    }}>
+      {bgImage && imageDisplay && (
+        <img src={bgImage.src} alt="plan"
+             style={{
+               position: "absolute",
+               left: imageDisplay.x, top: imageDisplay.y,
+               width: imageDisplay.w, height: imageDisplay.h,
+               display: "block",
+             }}/>
+      )}
+      <svg width={DRAW.w} height={DRAW.h}
+           style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }}>
+        {wires.map(w => {
+          const a = placed.find(p => p.id === w.fromId);
+          const b = placed.find(p => p.id === w.toId);
+          if (!a || !b) return null;
+          return (
+            <line key={w.id}
+              x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+              stroke={colourMode === "mono" ? "#0a0a0a" : "#dc2626"}
+              strokeWidth={1.2} strokeDasharray="6 4" strokeLinecap="round"/>
+          );
+        })}
+        {annotations.map(a => {
+          const stroke = colourMode === "mono" ? "#0a0a0a" : "#dc2626";
+          const dx = a.anchorX - a.x;
+          const dy = a.anchorY - a.y;
+          const len = Math.hypot(dx, dy);
+          const ux = len > 0 ? dx / len : 0;
+          const uy = len > 0 ? dy / len : 0;
+          const startX = a.x + ux * 18;
+          const startY = a.y + uy * 6;
+          const ah = 6;
+          const angle = Math.atan2(dy, dx);
+          const ax1 = a.anchorX - ah * Math.cos(angle - Math.PI/7);
+          const ay1 = a.anchorY - ah * Math.sin(angle - Math.PI/7);
+          const ax2 = a.anchorX - ah * Math.cos(angle + Math.PI/7);
+          const ay2 = a.anchorY - ah * Math.sin(angle + Math.PI/7);
+          return (
+            <g key={a.id}>
+              <line x1={startX} y1={startY} x2={a.anchorX} y2={a.anchorY}
+                    stroke={stroke} strokeWidth={1}/>
+              <polygon points={`${a.anchorX},${a.anchorY} ${ax1},${ay1} ${ax2},${ay2}`} fill={stroke}/>
+            </g>
+          );
+        })}
+        {placed.map(item => {
+          const sym = findSymbol(item.symbolId);
+          if (!sym) return null;
+          const itemScale = item.scale ?? 1;
+          const itemSize = 48 * itemScale;
+          const half = itemSize / 2;
+          const cols = resolveColours(item.symbolId, colourMode);
+          return (
+            <g key={item.id}
+               transform={`translate(${item.x - half} ${item.y - half}) rotate(${item.rotation} ${half} ${half})`}>
+              <svg x={0} y={0} width={itemSize} height={itemSize} viewBox={VIEWBOX}
+                   style={{ color: cols.body, "--feeder": cols.feeder, overflow: "visible" }}>
+                {sym.svg}
+              </svg>
+              {item.label && (
+                <text x={half} y={itemSize + 9} fontSize={9} textAnchor="middle"
+                      fill="#171717" fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600"
+                      transform={`rotate(${-item.rotation} ${half} ${itemSize + 9})`}>
+                  {item.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {annotations.map(a => {
+          const stroke = colourMode === "mono" ? "#0a0a0a" : "#dc2626";
+          const lines = a.text.split("\n").flatMap(line => wrapText(line, 22));
+          const padding = 4;
+          const lineHeight = 11;
+          const textW = Math.max(60, ...lines.map(l => estimateWidth(l, 8.5)));
+          const textH = lines.length * lineHeight + padding * 2 - 2;
+          return (
+            <g key={a.id + "-text"}>
+              <rect
+                x={a.x - textW/2 - padding}
+                y={a.y - textH/2}
+                width={textW + padding*2}
+                height={textH}
+                rx={3}
+                fill="rgba(255,255,255,0.95)"
+                stroke={stroke}
+                strokeWidth={0.6}
+              />
+              {lines.map((line, i) => (
+                <text
+                  key={i}
+                  x={a.x}
+                  y={a.y - textH/2 + padding + lineHeight * (i + 1) - 2}
+                  fontSize={8.5}
+                  textAnchor="middle"
+                  fill={stroke}
+                  fontWeight={600}
+                >{line}</text>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function TitleBlockStatic({ meta }) {
+  return (
+    <div style={{
+      position: "absolute",
+      left: SHEET.margin,
+      top: SHEET.height - SHEET.margin - SHEET.titleHeight,
+      width: SHEET.width - SHEET.margin * 2,
+      height: SHEET.titleHeight,
+      borderTop: "1px solid #0a0a0a",
+      display: "grid",
+      gridTemplateColumns: "1.4fr 1fr 1.1fr",
+      fontSize: 10,
+    }}>
+      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>COMPANY</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#0a0a0a" }}>{meta.company}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#0a0a0a" }}>{meta.projectName || "—"}</div>
+          <div style={{ fontSize: 9, color: "#0a0a0a" }}>{meta.plot}</div>
+        </div>
+      </div>
+      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#0a0a0a" }}>{meta.sheetName}</div>
+        </div>
+        <div style={{ display: "flex", gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
+            <div style={{ fontSize: 10, fontWeight: 600 }}>{meta.scale}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
+            <div style={{ fontSize: 10, fontWeight: 600 }}>{meta.date}</div>
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
+          <div style={{ fontSize: 11, fontWeight: 700 }}>{meta.drawingNumber || "—"}</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{meta.revision}</div>
+        </div>
+        <div style={{ gridColumn: "1 / span 2" }}>
+          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
+          <div style={{ fontSize: 9 }}>{meta.revNote}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
