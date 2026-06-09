@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import {
   Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
-  Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon,
+  Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon, Mail,
   ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
   Grid3x3, ClipboardList, Plus, Clock,
 } from "lucide-react";
@@ -1486,6 +1486,14 @@ export function MetaEditor({ meta, updateMeta, onSheetField, onClose }) {
           <MetaField label="Company"        value={meta.company}       onChange={(v) => updateMeta({ company: v })} span={2}/>
         </div>
 
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <div className="text-[9px] tracking-[0.25em] uppercase text-slate-400 mb-3">Client — used for emailing drawings</div>
+          <div className="grid grid-cols-2 gap-3">
+            <MetaField label="Client name"  value={meta.clientName}  onChange={(v) => updateMeta({ clientName: v })} />
+            <MetaField label="Client email" value={meta.clientEmail} onChange={(v) => updateMeta({ clientEmail: v })} type="email"/>
+          </div>
+        </div>
+
         <div className="mt-5 flex justify-end">
           <button onClick={onClose}
             className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition">
@@ -1525,6 +1533,22 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const emailClient = () => {
+    const greeting = meta.clientName ? `Hi ${meta.clientName},` : "Hi,";
+    const what = sheets.length > 1 ? `the electrical drawings (${sheets.length} floors)` : "the electrical drawing";
+    const forWhat = meta.plot ? ` for ${meta.plot}` : (meta.projectName ? ` for ${meta.projectName}` : "");
+    const body = [
+      greeting,
+      "",
+      `Please find attached ${what}${forWhat}.`,
+      "",
+      "Any questions, just let me know.",
+    ].join("\n");
+    const subject = `Electrical drawings — ${meta.projectName || meta.plot || "your project"}`;
+    const href = `mailto:${meta.clientEmail || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+  };
+
   const legendFor = (placed) => {
     const ids = new Set((placed || []).map(p => p.symbolId));
     return Array.from(ids).map(id => ({
@@ -1546,8 +1570,9 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
           <div className="pp-title">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
         </div>
         <div className="pp-actions">
-          <span className="pp-hint">Choose <b>Save as PDF</b> in the dialog — each floor prints on its own A3 page.</span>
+          <span className="pp-hint">Save the PDF, then <b>Email client</b> and attach it.</span>
           <button onClick={onClose} className="pp-btn pp-btn-ghost">Close</button>
+          <button onClick={emailClient} className="pp-btn pp-btn-email"><Mail size={12}/> Email client</button>
           <button onClick={onPrint} className="pp-btn pp-btn-primary"><Printer size={12}/> Print / Save PDF</button>
         </div>
       </div>
@@ -1581,6 +1606,8 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
         #print-root .pp-btn-ghost:hover{background:#e2e8f0}
         #print-root .pp-btn-primary{background:#3FB7C9; color:#08313a}
         #print-root .pp-btn-primary:hover{background:#52C4D5}
+        #print-root .pp-btn-email{background:#fff; color:#22808F; box-shadow:inset 0 0 0 1px #3FB7C9}
+        #print-root .pp-btn-email:hover{background:#ECF8FA}
         #print-root .pp-pages{display:flex; flex-direction:column; align-items:center; gap:32px; padding:32px}
         #print-root .print-page{width:${SHEET.width}px; height:${SHEET.height}px; background:#fff; box-shadow:0 20px 50px -10px rgba(0,0,0,.5); flex:none}
 

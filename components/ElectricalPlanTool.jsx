@@ -55,6 +55,8 @@ const DEFAULT_META = {
   revision: "A",
   revNote: "First Issue",
   company: "Watts On Electrical Ltd",
+  clientName: "",
+  clientEmail: "",
 };
 
 const DEFAULT_NOTES = [
