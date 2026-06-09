@@ -14,7 +14,7 @@ import {
 } from "@/lib/symbols.jsx";
 import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
-  FloatingToolbar, ZoomControls, MetaEditor, PrintPreview,
+  FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
 } from "@/components/SheetParts";
 
 /* ============================================================================
@@ -125,6 +125,15 @@ export default function ElectricalPlanTool() {
   const [showMeta, setShowMeta] = useState(false);     // metadata edit modal
   const [printPreview, setPrintPreview] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [snapEnabled, setSnapEnabled] = useState(true); // snap symbols to grid
+  const [showBoq, setShowBoq] = useState(false);        // bill of quantities modal
+
+  // Grid size in drawing units; symbols snap to multiples of this
+  const GRID = 24;
+  const snap = useCallback(
+    (v) => (snapEnabled ? Math.round(v / GRID) * GRID : v),
+    [snapEnabled]
+  );
 
   // Refs
   const viewportRef = useRef(null);   // the dark workspace that holds the sheet
@@ -305,7 +314,7 @@ export default function ElectricalPlanTool() {
     snapshot();
     const newItem = {
       id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      symbolId, x, y, rotation: 0, scale: 1, label: "",
+      symbolId, x: snap(x), y: snap(y), rotation: 0, scale: 1, label: "",
     };
     updateProject({ placed: [...placed, newItem] });
     setSelectedId(newItem.id);
@@ -441,7 +450,7 @@ export default function ElectricalPlanTool() {
       updateProject({
         placed: placed.map(it =>
           it.id === draggingPlacedId
-            ? { ...it, x: x - dragOffset.x, y: y - dragOffset.y }
+            ? { ...it, x: snap(x - dragOffset.x), y: snap(y - dragOffset.y) }
             : it
         ),
       });
@@ -550,7 +559,7 @@ export default function ElectricalPlanTool() {
       if (isInput) return;
       if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
       else if (e.key === "r" || e.key === "R") rotateSelected();
-      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); }
+      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
       else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); redo(); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveProject(); }
@@ -644,7 +653,7 @@ export default function ElectricalPlanTool() {
   }, [placed]);
 
   return (
-    <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden select-none print:hidden"
+    <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden select-none"
          style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Inter', sans-serif" }}>
 
       {/* ==================== TOP BAR ==================== */}
@@ -660,6 +669,9 @@ export default function ElectricalPlanTool() {
         colourMode={colourMode}
         onToggleColour={() => setColourMode(m => m === "red" ? "colour" : m === "colour" ? "mono" : "red")}
         onNormalise={normaliseSizes}
+        snapEnabled={snapEnabled}
+        onToggleSnap={() => setSnapEnabled(s => !s)}
+        onShowBoq={() => setShowBoq(true)}
         sidebarHidden={sidebarHidden}
         onToggleSidebar={() => setSidebarHidden(s => !s)}
       />
@@ -701,6 +713,8 @@ export default function ElectricalPlanTool() {
             tool={tool}
             spacePressed={spacePressed}
             DRAW={DRAW}
+            showGrid={snapEnabled}
+            gridSize={GRID}
             onViewportMouseDown={onViewportMouseDown}
             onViewportMouseMove={onViewportMouseMove}
             onViewportMouseUp={onViewportMouseUp}
@@ -795,6 +809,11 @@ export default function ElectricalPlanTool() {
           onClose={() => setPrintPreview(false)}
           onPrint={printSheet}
         />
+      )}
+
+      {/* ==================== BILL OF QUANTITIES ==================== */}
+      {showBoq && (
+        <BillOfQuantities project={project} onClose={() => setShowBoq(false)} />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings,
   ChevronRight, X, FileText, PanelLeftClose, PanelLeftOpen,
+  Grid3x3, ClipboardList,
 } from "lucide-react";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
@@ -39,6 +40,7 @@ const TOOLS = {
 export function TopBar({
   meta, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onLoad,
   onExportJSON, onPrint, colourMode, onToggleColour, onNormalise,
+  snapEnabled, onToggleSnap, onShowBoq,
   sidebarHidden, onToggleSidebar,
 }) {
   const projectLabel = meta.projectName || "Untitled Project";
@@ -74,9 +76,11 @@ export function TopBar({
           label={colourMode === "red" ? "PB Red" : colourMode === "colour" ? "Colour" : "Mono"}
           active={colourMode === "red"}/>
         <ToolbarButton onClick={onNormalise} icon={Ruler} label="Normalise"/>
+        <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
         <Divider />
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
         <ToolbarButton onClick={onLoad} icon={FolderOpen} label="Load"/>
+        <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onExportJSON} icon={Download} label="JSON"/>
         <ToolbarButton onClick={onPrint} icon={Printer} label="Print" hint="⌘P" primary/>
         <Divider />
@@ -192,7 +196,7 @@ export function Workspace({
   bgImage, placed, wires, annotations,
   legendItems, colourMode, symbolSize,
   selectedId, selectedAnnoId, wireStart,
-  tool, spacePressed, DRAW,
+  tool, spacePressed, DRAW, showGrid, gridSize,
   onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
@@ -229,6 +233,7 @@ export function Workspace({
           selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
           tool={tool} spacePressed={spacePressed}
           DRAW={DRAW}
+          showGrid={showGrid} gridSize={gridSize}
           zoom={zoom}
           onDrawingDrop={onDrawingDrop}
           onDrawingDragOver={onDrawingDragOver}
@@ -260,7 +265,7 @@ export function Sheet({
   meta, notes, updateMeta, updateNotes,
   bgImage, placed, wires, annotations, legendItems,
   colourMode, symbolSize, selectedId, selectedAnnoId, wireStart,
-  tool, spacePressed, DRAW, zoom,
+  tool, spacePressed, DRAW, showGrid, gridSize, zoom,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   startRotating,
@@ -303,6 +308,7 @@ export function Sheet({
         colourMode={colourMode} symbolSize={symbolSize}
         selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
         tool={tool} spacePressed={spacePressed} zoom={zoom}
+        showGrid={showGrid} gridSize={gridSize}
         onDrop={onDrawingDrop}
         onDragOver={onDrawingDragOver}
         onDragLeave={onDrawingDragLeave}
@@ -467,7 +473,7 @@ function NotesColumn({ notes, updateNotes }) {
 function DrawingArea({
   drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
   colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, tool, spacePressed,
-  zoom,
+  zoom, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   startRotating,
@@ -501,6 +507,17 @@ function DrawingArea({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
     >
+      {/* Grid overlay — faint guide lines that symbols snap to */}
+      {showGrid && (
+        <div style={{
+          position: "absolute", inset: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            `linear-gradient(to right, rgba(15,23,42,0.06) 1px, transparent 1px),` +
+            `linear-gradient(to bottom, rgba(15,23,42,0.06) 1px, transparent 1px)`,
+          backgroundSize: `${gridSize}px ${gridSize}px`,
+        }}/>
+      )}
       {!bgImage && (
         <div style={{
           position: "absolute", inset: 0,
@@ -608,13 +625,20 @@ function DrawingArea({
                         strokeDasharray={isWireStart ? "4 3" : "none"}/>
                 </>
               )}
+              {/* Transparent hit area — whole symbol box is clickable, not
+                  just the painted strokes. Critical for the wire tool. */}
+              <rect x={0} y={0} width={itemSize} height={itemSize} fill="transparent"
+                    style={{
+                      pointerEvents: "all",
+                      cursor: tool === "wire" ? "crosshair" : (tool === "pan" || spacePressed) ? "grab" : "move",
+                    }}
+                    onMouseDown={(e) => onItemMouseDown(e, item)}/>
               <svg x={0} y={0} width={itemSize} height={itemSize} viewBox={VIEWBOX}
                    style={{
                      color: cols.body, "--feeder": cols.feeder,
-                     overflow: "visible", pointerEvents: "all",
+                     overflow: "visible", pointerEvents: "none",
                      cursor: tool === "wire" ? "crosshair" : (tool === "pan" || spacePressed) ? "grab" : "move",
-                   }}
-                   onMouseDown={(e) => onItemMouseDown(e, item)}>
+                   }}>
                 {sym.svg}
               </svg>
               {item.label && (
@@ -1052,6 +1076,126 @@ export function ZoomControls({ zoom, onIn, onOut, onFit }) {
 }
 
 /* ============================================================================
+ * BILL OF QUANTITIES (modal) — auto-counted schedule of placed symbols
+ * ========================================================================= */
+export function BillOfQuantities({ project, onClose }) {
+  const { meta, placed } = project;
+
+  // Aggregate placed symbols by type
+  const rows = useMemo(() => {
+    const counts = {};
+    placed.forEach(p => {
+      counts[p.symbolId] = (counts[p.symbolId] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([id, qty]) => {
+        const m = SYMBOL_META[id] || {};
+        const sym = findSymbol(id);
+        return {
+          id,
+          description: m.description || sym?.name || id,
+          height: m.height || "—",
+          qty,
+        };
+      })
+      .sort((a, b) => a.description.localeCompare(b.description));
+  }, [placed]);
+
+  const total = rows.reduce((s, r) => s + r.qty, 0);
+
+  const downloadCSV = () => {
+    const header = ["Item", "Description", "Mounting Height", "Quantity"];
+    const lines = rows.map((r, i) =>
+      [i + 1, r.description, r.height, r.qty]
+        .map(v => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    );
+    const meta1 = `"Project","${(meta.projectName || "").replace(/"/g, '""')}"`;
+    const meta2 = `"Plot","${(meta.plot || "").replace(/"/g, '""')}"`;
+    const meta3 = `"Sheet","${(meta.sheetName || "").replace(/"/g, '""')}"`;
+    const meta4 = `"Drawing No.","${(meta.drawingNumber || "").replace(/"/g, '""')}"`;
+    const csv = [meta1, meta2, meta3, meta4, "", header.join(","), ...lines,
+                 "", `"","TOTAL","",${total}`].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = ((meta.projectName || "plan").replace(/[^a-z0-9-_]+/gi, "_")) + "_BOQ.csv";
+    a.click();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6"
+         onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+           className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Bill of Quantities</div>
+            <div className="text-base font-semibold mt-0.5 text-slate-900">
+              {meta.projectName || "Untitled Project"}
+              {meta.plot ? <span className="text-slate-400 font-normal"> · {meta.plot}</span> : null}
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md">
+            <X size={16}/>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {rows.length === 0 ? (
+            <div className="text-sm text-slate-500 italic py-8 text-center">
+              No symbols placed yet. As you add items to the drawing, they'll be counted here automatically.
+            </div>
+          ) : (
+            <table className="w-full text-[12px] border-collapse">
+              <thead>
+                <tr className="text-left text-slate-500 uppercase tracking-wider text-[9px] border-b border-slate-200">
+                  <th className="py-2 pr-2 w-8">#</th>
+                  <th className="py-2 pr-2">Description</th>
+                  <th className="py-2 pr-2">Mounting Height</th>
+                  <th className="py-2 pl-2 text-right w-16">Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={r.id} className="border-b border-slate-100">
+                    <td className="py-2 pr-2 text-slate-400 tabular-nums">{i + 1}</td>
+                    <td className="py-2 pr-2 text-slate-800 font-medium">{r.description}</td>
+                    <td className="py-2 pr-2 text-slate-500">{r.height}</td>
+                    <td className="py-2 pl-2 text-right tabular-nums font-semibold text-slate-900">{r.qty}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-slate-300">
+                  <td/><td className="py-2 font-semibold text-slate-900 uppercase tracking-wider text-[10px]">Total</td>
+                  <td/>
+                  <td className="py-2 pl-2 text-right tabular-nums font-bold text-amber-600">{total}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
+          <div className="text-[10px] text-slate-500">
+            {rows.length} item type{rows.length === 1 ? "" : "s"} · {total} total fittings
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">
+              Close
+            </button>
+            <button onClick={downloadCSV} disabled={rows.length === 0}
+              className="px-4 py-2 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+              <Download size={12}/> Download CSV
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
  * METADATA EDITOR (modal)
  * ========================================================================= */
 export function MetaEditor({ meta, updateMeta, onClose }) {
@@ -1116,8 +1260,8 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
   return (
     <>
       {/* Controls (hidden in print) */}
-      <div className="print:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm overflow-auto">
-        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+      <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm overflow-auto">
+        <div className="print:hidden sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <div>
             <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Print preview</div>
             <div className="text-sm font-medium mt-0.5">{meta.sheetName || "Drawing"}</div>
@@ -1159,13 +1303,23 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
             size: A3 landscape;
             margin: 0;
           }
+          html, body {
+            background: #ffffff !important;
+          }
           body * { visibility: hidden !important; }
           #print-sheet-host, #print-sheet-host * { visibility: visible !important; }
           #print-sheet-host {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
+            margin: 0 !important;
             box-shadow: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #print-sheet-host * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
