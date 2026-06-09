@@ -15,7 +15,7 @@ import {
 import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
   FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
-  ProjectManager,
+  ProjectManager, SheetTabs,
 } from "@/components/SheetParts";
 
 /* ============================================================================
@@ -45,40 +45,84 @@ const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 5;
 const ZOOM_WHEEL_SPEED = 0.0015;
 
-const DEFAULT_PROJECT = {
-  meta: {
-    projectName: "",
-    plot: "",
-    sheetName: "Ground Floor MEP Plan",
-    scale: "1:50 @ A3",
-    drawingNumber: "",
-    date: new Date().toISOString().slice(0, 10),
-    revision: "A",
-    revNote: "First Issue",
-    company: "Watts On Electrical Ltd",
-  },
-  notes: [
-    {
-      heading: "Fixing Heights & Location",
-      body:
-        "Refer to Building Regulations Approved Document M for equipment mounting heights in all instances.\n\nAll switches & sockets in kitchen areas to be installed minimum 300mm clear of any adjacent sink, drainer or hob.",
-    },
-    {
-      heading: "Fire & Smoke Detection",
-      body:
-        "Dwelling to be provided with a fire detection and alarm system to Grade D2 Category LD3 standard, in accordance with BS 5839-6 (alarms in hallways and landings — circulation spaces and escape routes), plus alarms in kitchen and living room (high risk areas). Heat detection in kitchens and smoke detectors in circulation spaces.",
-    },
-    {
-      heading: "Important Note",
-      body:
-        "The electrical layout provided is indicative only and to show locations of client required electrical items. Contractor to confirm all locations, runs and products with the client prior to purchase or installation of goods. All electrical works are to be carried out by a certified electrician and provide completion certificates. All works to be completed in accordance with BS 7671.",
-    },
-  ],
-  bgImage: null,        // { src, w, h } — the imported plan
-  placed: [],           // [{ id, symbolId, x, y, rotation, scale, label }]
-  wires: [],            // [{ id, fromId, toId }]
-  annotations: [],      // [{ id, x, y, text, anchorX, anchorY }]
+const DEFAULT_META = {
+  projectName: "",
+  plot: "",
+  sheetName: "Ground Floor MEP Plan",
+  scale: "1:50 @ A3",
+  drawingNumber: "",
+  date: new Date().toISOString().slice(0, 10),
+  revision: "A",
+  revNote: "First Issue",
+  company: "Watts On Electrical Ltd",
 };
+
+const DEFAULT_NOTES = [
+  {
+    heading: "Fixing Heights & Location",
+    body:
+      "Refer to Building Regulations Approved Document M for equipment mounting heights in all instances.\n\nAll switches & sockets in kitchen areas to be installed minimum 300mm clear of any adjacent sink, drainer or hob.",
+  },
+  {
+    heading: "Fire & Smoke Detection",
+    body:
+      "Dwelling to be provided with a fire detection and alarm system to Grade D2 Category LD3 standard, in accordance with BS 5839-6 (alarms in hallways and landings — circulation spaces and escape routes), plus alarms in kitchen and living room (high risk areas). Heat detection in kitchens and smoke detectors in circulation spaces.",
+  },
+  {
+    heading: "Important Note",
+    body:
+      "The electrical layout provided is indicative only and to show locations of client required electrical items. Contractor to confirm all locations, runs and products with the client prior to purchase or installation of goods. All electrical works are to be carried out by a certified electrician and provide completion certificates. All works to be completed in accordance with BS 7671.",
+  },
+];
+
+const sid = () => "s_" + Math.random().toString(36).slice(2, 9);
+
+// A sheet holds one drawing (one floor). bgImage = imported plan.
+function freshSheet(name = "Ground floor") {
+  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [] };
+}
+
+// A project shares meta + notes across its sheets.
+function freshProject() {
+  const sheet = freshSheet("Ground floor");
+  return {
+    meta: { ...DEFAULT_META, date: new Date().toISOString().slice(0, 10) },
+    notes: DEFAULT_NOTES.map(n => ({ ...n })),
+    sheets: [sheet],
+    activeSheetId: sheet.id,
+  };
+}
+
+// Bring any saved project (including old single-drawing ones) up to the
+// multi-sheet shape without losing data.
+function normaliseProject(p) {
+  if (!p) return freshProject();
+  const meta = { ...DEFAULT_META, ...(p.meta || {}) };
+  const notes = p.notes || DEFAULT_NOTES.map(n => ({ ...n }));
+  if (Array.isArray(p.sheets) && p.sheets.length) {
+    const sheets = p.sheets.map(s => ({
+      id: s.id || sid(),
+      name: s.name || "Drawing",
+      drawingNumber: s.drawingNumber || "",
+      bgImage: s.bgImage || null,
+      placed: s.placed || [],
+      wires: s.wires || [],
+      annotations: s.annotations || [],
+    }));
+    return { meta, notes, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
+  }
+  // Legacy flat project → wrap its drawing into a single sheet.
+  const sheet = {
+    id: sid(),
+    name: meta.sheetName || "Ground floor",
+    drawingNumber: meta.drawingNumber || "",
+    bgImage: p.bgImage || null,
+    placed: p.placed || [],
+    wires: p.wires || [],
+    annotations: p.annotations || [],
+  };
+  return { meta, notes, sheets: [sheet], activeSheetId: sheet.id };
+}
 
 // Tool definitions
 const TOOLS = {
@@ -89,17 +133,37 @@ const TOOLS = {
 };
 
 // ============================================================================
-export default function ElectricalPlanTool({ initialTarget = null, onHome = null }) {
+export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null }) {
   // Project state
-  const [project, setProject] = useState(DEFAULT_PROJECT);
-  const { meta, notes, bgImage, placed, wires, annotations } = project;
+  const [project, setProject] = useState(() => freshProject());
+  const { meta, notes, sheets, activeSheetId } = project;
+  const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
+  const { bgImage, placed, wires, annotations } = activeSheet;
 
-  // Helper to patch parts of the project immutably
+  // Drawing-level fields live on the active sheet; everything else on the project.
+  const DRAW_FIELDS = ["bgImage", "placed", "wires", "annotations"];
+  // Patch the project. Any drawing fields in the patch are routed into the
+  // currently active sheet, so all existing handlers keep working unchanged.
   const updateProject = useCallback((patch) => {
-    setProject(p => ({ ...p, ...patch }));
+    setProject(p => {
+      const sheetPatch = {}; const projPatch = {};
+      for (const k in patch) {
+        if (DRAW_FIELDS.includes(k)) sheetPatch[k] = patch[k];
+        else projPatch[k] = patch[k];
+      }
+      let next = { ...p, ...projPatch };
+      if (Object.keys(sheetPatch).length) {
+        next.sheets = p.sheets.map(s => s.id === p.activeSheetId ? { ...s, ...sheetPatch } : s);
+      }
+      return next;
+    });
   }, []);
   const updateMeta = useCallback((patch) => {
     setProject(p => ({ ...p, meta: { ...p.meta, ...patch } }));
+  }, []);
+  // Patch arbitrary fields (name, drawingNumber, …) on the active sheet.
+  const setActiveSheet = useCallback((patch) => {
+    setProject(p => ({ ...p, sheets: p.sheets.map(s => s.id === p.activeSheetId ? { ...s, ...patch } : s) }));
   }, []);
 
   // UI state
@@ -167,7 +231,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       if (!h.length) return h;
       const prev = h[h.length - 1];
       setFuture(f => [{ placed, wires, annotations }, ...f].slice(0, 50));
-      setProject(p => ({ ...p, ...prev }));
+      updateProject(prev);
       return h.slice(0, -1);
     });
   };
@@ -176,10 +240,45 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       if (!f.length) return f;
       const next = f[0];
       setHistory(h => [...h, { placed, wires, annotations }].slice(-50));
-      setProject(p => ({ ...p, ...next }));
+      updateProject(next);
       return f.slice(1);
     });
   };
+
+  // ---------- Sheets (floors) ----------
+  const switchSheet = useCallback((id) => {
+    setProject(p => ({ ...p, activeSheetId: id }));
+    setSelectedId(null); setSelectedAnnoId(null); setWireStart(null);
+    setHistory([]); setFuture([]);
+    setTimeout(fitToScreen, 60);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addSheet = useCallback(() => {
+    setProject(p => {
+      const n = p.sheets.length + 1;
+      const name = n === 2 ? "First floor" : `Drawing ${n}`;
+      const s = freshSheet(name);
+      return { ...p, sheets: [...p.sheets, s], activeSheetId: s.id };
+    });
+    setSelectedId(null); setSelectedAnnoId(null); setWireStart(null);
+    setHistory([]); setFuture([]);
+    setTimeout(fitToScreen, 60);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const renameSheet = useCallback((id, name) => {
+    setProject(p => ({ ...p, sheets: p.sheets.map(s => s.id === id ? { ...s, name } : s) }));
+  }, []);
+
+  const deleteSheet = useCallback((id) => {
+    setProject(p => {
+      if (p.sheets.length <= 1) return p; // always keep one
+      const sheets = p.sheets.filter(s => s.id !== id);
+      const activeSheetId = p.activeSheetId === id ? sheets[0].id : p.activeSheetId;
+      return { ...p, sheets, activeSheetId };
+    });
+    setSelectedId(null); setSelectedAnnoId(null); setWireStart(null);
+    setHistory([]); setFuture([]);
+  }, []);
 
   // ---------- File import (PDF or image) ----------
   const handleFile = async (file) => {
@@ -660,15 +759,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       const r = await storage.get("proj:" + id);
       if (!r) { alert("Could not find that project."); return; }
       const p = JSON.parse(r.value);
-      setProject({
-        ...DEFAULT_PROJECT,
-        ...p,
-        meta: { ...DEFAULT_PROJECT.meta, ...(p.meta || {}) },
-        notes: p.notes || DEFAULT_PROJECT.notes,
-        annotations: p.annotations || [],
-        placed: (p.placed || []).map(it => ({ scale: 1, ...it })),
-        wires: p.wires || [],
-      });
+      setProject(normaliseProject(p));
       setCurrentProjectId(id);
       setShowProjects(false);
       setHistory([]); setFuture([]);
@@ -694,7 +785,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   const newProject = () => {
     if (placed.length && !confirm("Start a new blank project? Unsaved changes to the current drawing will be lost.")) return;
-    setProject(DEFAULT_PROJECT);
+    setProject(freshProject());
     setCurrentProjectId(null);
     setHistory([]); setFuture([]);
     setShowProjects(false);
@@ -710,7 +801,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     if (t.mode === "open" && t.projectId) {
       openProjectById(t.projectId);
     } else {
-      setProject(DEFAULT_PROJECT);
+      setProject(freshProject());
       setCurrentProjectId(null);
       if (t.category) setActiveCategory(t.category);
       if (t.mode === "import") setTimeout(() => fileInputRef.current?.click(), 250);
@@ -752,14 +843,22 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     })).filter(x => x.symbol);
   }, [placed]);
 
+  // Title-block view: sheet name + drawing number come from the active sheet.
+  const displayMeta = useMemo(
+    () => ({ ...meta, sheetName: activeSheet.name, drawingNumber: activeSheet.drawingNumber || "" }),
+    [meta, activeSheet.name, activeSheet.drawingNumber]
+  );
+
   return (
-    <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden select-none"
+    <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 dark:bg-[#0E141B] dark:text-slate-100 overflow-hidden select-none"
          style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
 
       {/* ==================== TOP BAR ==================== */}
       <TopBar
         meta={meta}
         onHome={onHome}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
         onShowMeta={() => setShowMeta(true)}
         onImport={() => fileInputRef.current.click()}
         onUndo={undo} onRedo={redo}
@@ -793,15 +892,24 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         )}
 
         {/* ==================== WORKSPACE (sheet inside) ==================== */}
-        <main className="flex-1 relative overflow-hidden bg-slate-200"
-              style={{ cursor: viewportCursor }}>
+        <main className="flex-1 relative overflow-hidden bg-slate-200 dark:bg-[#0B1117] flex flex-col">
+          <SheetTabs
+            sheets={sheets}
+            activeId={activeSheetId}
+            onSwitch={switchSheet}
+            onAdd={addSheet}
+            onRename={renameSheet}
+            onDelete={deleteSheet}
+          />
+          <div className="relative flex-1 overflow-hidden" style={{ cursor: viewportCursor }}>
           <Workspace
             viewportRef={viewportRef}
             drawingAreaRef={drawingAreaRef}
             pan={pan} zoom={zoom}
-            meta={meta} notes={notes}
+            meta={displayMeta} notes={notes}
             updateMeta={updateMeta}
             updateNotes={(n) => updateProject({ notes: n })}
+            onSheetField={setActiveSheet}
             bgImage={bgImage}
             placed={placed} wires={wires} annotations={annotations}
             legendItems={legendItems}
@@ -862,7 +970,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           )}
 
           {/* Status bar */}
-          <div className="absolute bottom-0 left-0 right-0 px-4 h-7 bg-white/95 backdrop-blur-xl text-slate-500 text-[10px] tracking-wider flex justify-between items-center border-t border-slate-200">
+          <div className="absolute bottom-0 left-0 right-0 px-4 h-7 bg-white dark:bg-[#16202B] text-slate-500 dark:text-slate-400 text-[10px] tracking-wider flex justify-between items-center border-t border-slate-200 dark:border-[#263441]">
             <div className="flex gap-5">
               <span>SYMBOLS <span className="text-[#22808F] ml-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{placed.length}</span></span>
               <span>WIRES <span className="text-[#22808F] ml-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{wires.length}</span></span>
@@ -875,6 +983,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             <div className="text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               SHEET A3 · {meta.scale}
             </div>
+          </div>
           </div>
         </main>
 
@@ -896,7 +1005,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
       {/* ==================== METADATA EDITOR ==================== */}
       {showMeta && (
-        <MetaEditor meta={meta} updateMeta={updateMeta} onClose={() => setShowMeta(false)} />
+        <MetaEditor meta={displayMeta} updateMeta={updateMeta} onSheetField={setActiveSheet} onClose={() => setShowMeta(false)} />
       )}
 
       {/* ==================== PRINT PREVIEW ==================== */}

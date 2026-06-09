@@ -44,7 +44,10 @@ function PlanThumb({ project }) {
       </svg>
     );
   }
-  const { bgImage, placed = [] } = project;
+  // Multi-sheet aware: preview the first drawing (ground floor); fall back to
+  // the legacy flat shape for projects saved before sheets existed.
+  const src = (project.sheets && project.sheets[0]) ? project.sheets[0] : project;
+  const { bgImage, placed = [] } = src;
   let img = null;
   if (bgImage && bgImage.w && bgImage.h) {
     const s = Math.min(DRAW.w / bgImage.w, DRAW.h / bgImage.h);
@@ -68,7 +71,7 @@ function PlanThumb({ project }) {
   );
 }
 
-export default function HomeScreen({ onOpenProject, onNewProject, onImport }) {
+export default function HomeScreen({ onOpenProject, onNewProject, onImport, theme, onToggleTheme }) {
   const [cards, setCards] = useState(null);
 
   useEffect(() => {
@@ -82,13 +85,19 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport }) {
             const r = await storage.get("proj:" + e.id);
             project = r ? JSON.parse(r.value) : null;
           } catch { /* ignore */ }
+          const sheets = project?.sheets || null;
+          const firstNumber = sheets ? (sheets[0]?.drawingNumber || "") : (project?.meta?.drawingNumber || "");
+          const itemCount = sheets
+            ? sheets.reduce((n, s) => n + (s.placed?.length || 0), 0)
+            : (project?.placed?.length || 0);
           return {
             id: e.id,
             name: e.name || project?.meta?.projectName || "Untitled drawing",
             addr: project?.meta?.plot || "",
-            reg: project?.meta?.drawingNumber || "",
+            reg: firstNumber || project?.meta?.drawingNumber || "",
+            floors: sheets ? sheets.length : 1,
             updatedAt: e.updatedAt,
-            count: project?.placed?.length || 0,
+            count: itemCount,
             project,
           };
         }));
@@ -133,6 +142,13 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport }) {
             <span className="wordmark">Plan<b>.</b>Works</span>
             <div className="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>Search drawings, plots, drawing numbers…</div>
             <div className="topbar-right">
+              <button className="theme-toggle" onClick={onToggleTheme} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label="Toggle theme">
+                {theme === "dark" ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+                )}
+              </button>
               <div className="account">
                 <div style={{ textAlign: "right" }}><div className="nm">{USER_NAME} Watts</div><div className="sub">Watts On Electrical</div></div>
                 <div className="pic">{USER_NAME.slice(0, 2).toUpperCase()}</div>
@@ -196,6 +212,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport }) {
                   <div key={c.id} className="card" onClick={() => onOpenProject(c.id)}>
                     <div className="thumb">
                       <span className="badge">{c.reg || "A3"}</span>
+                      {c.floors > 1 && <span className="badge badge-floors">{c.floors} floors</span>}
                       <PlanThumb project={c.project} />
                     </div>
                     <div className="card-body">
@@ -259,6 +276,26 @@ const CSS = `
 .pw-home .account .nm{font-size:13px; font-weight:500; line-height:1.15}
 .pw-home .account .sub{font-size:11px; color:var(--muted)}
 .pw-home .account .pic{width:32px; height:32px; border-radius:50%; background:var(--brand); color:#fff; display:grid; place-items:center; font-weight:600; font-size:12px; font-family:'Space Grotesk',sans-serif}
+.pw-home .theme-toggle{width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--muted); display:grid; place-items:center; cursor:pointer; transition:all .16s}
+.pw-home .theme-toggle:hover{color:var(--ink); border-color:var(--muted-2)}
+.pw-home .theme-toggle svg{width:18px; height:18px}
+
+/* ---- Dark theme ---- */
+html.dark .pw-home{
+  --ink:#E7EDF3; --ink-2:#B6C2CE; --muted:#8595A3; --muted-2:#6B7A88;
+  --paper:#0E141B; --surface:#16202B; --line:#263441; --line-2:#202C38;
+  --navy:#0A1016; --navy-2:#16202B; --navy-line:#283642;
+  --blueprint:rgba(63,183,201,.10);
+}
+html.dark .pw-home .topbar{background:rgba(14,20,27,.82); border-bottom-color:var(--line)}
+html.dark .pw-home .search{background:#0E141B; border-color:var(--line); color:var(--muted)}
+html.dark .pw-home .card{box-shadow:0 1px 2px rgba(0,0,0,.4)}
+html.dark .pw-home .card:hover{box-shadow:0 18px 40px -12px rgba(0,0,0,.6)}
+html.dark .pw-home .thumb{background:#0E141B}
+html.dark .pw-home .thumb::before{background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px)}
+html.dark .pw-home .tpl:hover{border-color:#2C5C66}
+html.dark .pw-home .new-card{border-color:#2A3947}
+html.dark .pw-home .card-foot .ct{background:#0E141B}
 .pw-home .scroll{flex:1; overflow-y:auto; padding:36px 40px 60px}
 .pw-home .hero{position:relative; overflow:hidden; border-radius:22px; background:linear-gradient(120deg,#1A2530 0%,#233241 60%,#2C4150 100%); padding:32px 34px; margin-bottom:34px; color:#fff; box-shadow:0 18px 40px -12px rgba(16,28,40,.22)}
 .pw-home .hero::before{content:""; position:absolute; inset:0; background-image:linear-gradient(var(--blueprint) 1px,transparent 1px),linear-gradient(90deg,var(--blueprint) 1px,transparent 1px); background-size:26px 26px; -webkit-mask-image:linear-gradient(105deg,transparent 40%,#000 100%); mask-image:linear-gradient(105deg,transparent 40%,#000 100%)}
@@ -294,6 +331,7 @@ const CSS = `
 .pw-home .thumb::before{content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(44,62,80,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(44,62,80,.05) 1px,transparent 1px); background-size:16px 16px}
 .pw-home .thumb svg{position:absolute; inset:0; width:100%; height:100%}
 .pw-home .badge{position:absolute; top:11px; left:11px; z-index:2; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; padding:3px 8px; border-radius:6px; background:rgba(26,37,48,.85); color:#cfeef3; letter-spacing:.02em}
+.pw-home .badge-floors{left:auto; right:11px; background:rgba(63,183,201,.92); color:#08313a; font-weight:600}
 .pw-home .card-body{padding:14px 16px 15px}
 .pw-home .card-title{font-size:14.5px; font-weight:600; letter-spacing:-.01em; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .pw-home .card-addr{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}

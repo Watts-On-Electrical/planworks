@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import {
   Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
-  Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search,
+  Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon,
   ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
   Grid3x3, ClipboardList, Plus, Clock,
 } from "lucide-react";
@@ -39,7 +39,7 @@ const TOOLS = {
  * TOP BAR
  * ========================================================================= */
 export function TopBar({
-  meta, onHome, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
+  meta, onHome, theme, onToggleTheme, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
   onExportJSON, onPrint, colourMode, onToggleColour, onNormalise, normaliseFlash,
   snapEnabled, onToggleSnap, onShowBoq,
   sidebarHidden, onToggleSidebar,
@@ -47,15 +47,15 @@ export function TopBar({
   const projectLabel = meta.projectName || "Untitled Project";
   const sheetLabel = meta.sheetName || "Drawing";
   return (
-    <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-white/95 backdrop-blur-xl border-b border-slate-200">
+    <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-white dark:bg-[#16202B] border-b border-slate-200 dark:border-[#263441]">
       <div className="flex items-center gap-3 min-w-0">
         {onHome && (
           <>
             <button onClick={onHome} title="Back to dashboard"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors text-[11px] font-medium">
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-[11px] font-medium">
               <ChevronLeft size={14}/> Dashboard
             </button>
-            <div className="w-px h-5 bg-slate-200"/>
+            <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
           </>
         )}
         <div className="flex items-center gap-2">
@@ -63,14 +63,14 @@ export function TopBar({
             Plan<span className="text-[#2C97A8]">.</span>Works
           </span>
         </div>
-        <div className="w-px h-5 bg-slate-200"/>
+        <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
         <button
           onClick={onShowMeta}
-          className="group flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-slate-100 transition-colors min-w-0">
-          <FileText size={12} className="text-slate-500 group-hover:text-slate-700 shrink-0"/>
+          className="group flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 transition-colors min-w-0">
+          <FileText size={12} className="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 shrink-0"/>
           <div className="text-left min-w-0">
-            <div className="text-[11px] font-medium text-slate-800 truncate max-w-[200px]">{projectLabel}</div>
-            <div className="text-[9px] text-slate-500 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
+            <div className="text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{projectLabel}</div>
+            <div className="text-[9px] text-slate-500 dark:text-slate-400 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
           </div>
           <ChevronRight size={11} className="text-slate-400 group-hover:text-slate-600 shrink-0"/>
         </button>
@@ -102,6 +102,16 @@ export function TopBar({
           icon={sidebarHidden ? PanelLeftOpen : PanelLeftClose}
           label={sidebarHidden ? "Show" : "Hide"}
           hint=""/>
+        {onToggleTheme && (
+          <>
+            <Divider />
+            <button onClick={onToggleTheme}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors">
+              {theme === "dark" ? <Sun size={15}/> : <Moon size={15}/>}
+            </button>
+          </>
+        )}
       </div>
     </header>
   );
@@ -118,14 +128,81 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
           ? "bg-emerald-500 text-white"
           : active
           ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45"
-          : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+          : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white"
       }`}>
       <Icon size={13} /> <span>{label}</span>
     </button>
   );
 }
 
-function Divider() { return <div className="w-px h-5 bg-slate-200 mx-1" />; }
+function Divider() { return <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-1" />; }
+
+/* ============================================================================
+ * SHEET TABS — switch between the drawings (floors) in a project
+ * ========================================================================= */
+export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelete }) {
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState("");
+
+  const startRename = (s) => { setEditingId(s.id); setDraft(s.name); };
+  const commit = () => {
+    if (editingId && draft.trim()) onRename(editingId, draft.trim());
+    setEditingId(null);
+  };
+
+  return (
+    <div className="flex items-stretch gap-1.5 px-3 h-10 bg-[#E7ECF3] dark:bg-[#16202B] border-b border-slate-300 dark:border-[#263441] shrink-0 overflow-x-auto
+                    [&::-webkit-scrollbar]:h-0">
+      <div className="flex items-center pr-1 text-[9px] font-medium tracking-wider text-slate-500 dark:text-slate-400 uppercase shrink-0"
+           style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+        Drawings
+      </div>
+      {sheets.map(s => {
+        const active = s.id === activeId;
+        return (
+          <div key={s.id}
+            onClick={() => !active && onSwitch(s.id)}
+            onDoubleClick={() => startRename(s)}
+            title={active ? "Double-click to rename" : "Click to open · double-click to rename"}
+            className={`group relative flex items-center gap-2 px-3 my-1.5 rounded-lg cursor-pointer transition-all shrink-0 ${
+              active
+                ? "bg-white dark:bg-[#22303D] ring-1 ring-[#3FB7C9]/50 shadow-sm"
+                : "bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300"
+            }`}>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#3FB7C9]" : "bg-slate-300 dark:bg-slate-600"}`}/>
+            {editingId === s.id ? (
+              <input
+                autoFocus value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commit}
+                onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditingId(null); }}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[12px] font-medium bg-transparent outline-none border-b border-[#3FB7C9] w-24"/>
+            ) : (
+              <span className={`text-[12px] whitespace-nowrap ${active ? "font-semibold text-slate-900 dark:text-white" : "font-medium"}`}>
+                {s.name}
+              </span>
+            )}
+            {sheets.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${s.name}"? This removes that drawing and everything on it.`)) onDelete(s.id); }}
+                title="Delete drawing"
+                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity shrink-0">
+                <X size={12}/>
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <button
+        onClick={onAdd}
+        title="Add another drawing (e.g. First floor)"
+        className="flex items-center gap-1 px-2.5 my-1.5 rounded-lg text-[11px] font-medium text-[#22808F] dark:text-[#5fd0e0] hover:bg-white/70 dark:hover:bg-white/10 transition-colors shrink-0">
+        <Plus size={13}/> Add floor
+      </button>
+    </div>
+  );
+}
 
 /* ============================================================================
  * PALETTE (left sidebar)
@@ -141,20 +218,20 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
     : all;
 
   return (
-    <aside className="w-64 bg-[#EBEFF6] border-r border-slate-200 flex flex-col">
-      <div className="px-4 h-11 flex items-center justify-between border-b border-slate-200">
-        <div className="text-[15px] font-semibold text-slate-900" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Symbols</div>
+    <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-r border-slate-200 dark:border-[#263441] flex flex-col">
+      <div className="px-4 h-11 flex items-center justify-between border-b border-slate-200 dark:border-[#263441]">
+        <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-100" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Symbols</div>
         <div className="text-[9px] tracking-wider text-slate-400 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>MEP LEGEND</div>
       </div>
 
-      <div className="px-3 py-3 border-b border-slate-200">
+      <div className="px-3 py-3 border-b border-slate-200 dark:border-[#263441]">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search symbols…"
-            className="w-full pl-9 pr-8 py-2 text-[12.5px] bg-white rounded-lg ring-1 ring-slate-300 focus:ring-[#3FB7C9]/50 focus:outline-none text-slate-900 placeholder:text-slate-400"/>
+            className="w-full pl-9 pr-8 py-2 text-[12.5px] bg-white dark:bg-[#0E141B] rounded-lg ring-1 ring-slate-300 dark:ring-[#2A3947] focus:ring-[#3FB7C9]/50 focus:outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"/>
           {query && (
             <button onClick={() => setQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
               <X size={13}/>
@@ -176,7 +253,7 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
               draggable
               onDragStart={(e) => onPaletteDragStart(e, sym.id)}
               title={label + (meta?.height ? ` · ${meta.height}` : "")}
-              className="group relative bg-white hover:bg-slate-50 rounded-xl ring-1 ring-slate-200 hover:ring-[#3FB7C9]/40 hover:shadow-sm
+              className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
                          cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
                          transition-all duration-200 hover:-translate-y-0.5">
               <svg viewBox={VIEWBOX} width="46" height="46"
@@ -184,7 +261,7 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
                    className="relative z-10 transition-transform duration-200 group-hover:scale-110">
                 {sym.svg}
               </svg>
-              <div className="relative z-10 text-[9px] text-center text-slate-700 leading-tight font-medium line-clamp-3">{label}</div>
+              <div className="relative z-10 text-[9px] text-center text-slate-700 dark:text-slate-200 leading-tight font-medium line-clamp-3">{label}</div>
               {meta?.height && (
                 <div className="text-[8px] text-slate-500 tabular-nums">{meta.height}</div>
               )}
@@ -196,7 +273,7 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
         )}
       </div>
 
-      <div className="border-t border-slate-200 px-4 py-3 bg-[#E3EAF3]">
+      <div className="border-t border-slate-200 dark:border-[#263441] px-4 py-3 bg-[#E3EAF3] dark:bg-[#141C24]">
         <div className="flex items-center justify-between mb-1.5">
           <span className="uppercase tracking-wider text-[9px] text-slate-500">Symbol Size</span>
           <span className="tabular-nums text-slate-700 text-[10px]">{Math.round(symbolScale*100)}%</span>
@@ -214,7 +291,7 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
  * ========================================================================= */
 export function Workspace({
   viewportRef, drawingAreaRef, pan, zoom,
-  meta, notes, updateMeta, updateNotes,
+  meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations,
   legendItems, colourMode, symbolSize,
   selectedId, selectedAnnoId, wireStart,
@@ -246,7 +323,7 @@ export function Workspace({
         <Sheet
           drawingAreaRef={drawingAreaRef}
           meta={meta} notes={notes}
-          updateMeta={updateMeta} updateNotes={updateNotes}
+          updateMeta={updateMeta} updateNotes={updateNotes} onSheetField={onSheetField}
           bgImage={bgImage}
           placed={placed} wires={wires} annotations={annotations}
           legendItems={legendItems}
@@ -284,7 +361,7 @@ export function Workspace({
  * ========================================================================= */
 export function Sheet({
   drawingAreaRef,
-  meta, notes, updateMeta, updateNotes,
+  meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations, legendItems,
   colourMode, symbolSize, selectedId, selectedAnnoId, wireStart,
   tool, spacePressed, DRAW, showGrid, gridSize, zoom,
@@ -341,7 +418,7 @@ export function Sheet({
       />
 
       {/* TITLE BLOCK */}
-      <TitleBlock meta={meta} updateMeta={updateMeta} />
+      <TitleBlock meta={meta} updateMeta={updateMeta} onSheetField={onSheetField} />
     </div>
   );
 }
@@ -754,7 +831,8 @@ function estimateWidth(s, fontSize) {
 /* ----------------------------------------------------------------------------
  * TITLE BLOCK — bottom strip, editable fields
  * ------------------------------------------------------------------------- */
-function TitleBlock({ meta, updateMeta }) {
+function TitleBlock({ meta, updateMeta, onSheetField }) {
+  const setSheet = onSheetField || (() => {});
   const left = SHEET.margin;
   const width = SHEET.width - SHEET.margin * 2;
   const top = SHEET.height - SHEET.margin - SHEET.titleHeight;
@@ -796,7 +874,7 @@ function TitleBlock({ meta, updateMeta }) {
       }}>
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
-          <EditableField value={meta.sheetName} onChange={(v) => updateMeta({ sheetName: v })}
+          <EditableField value={meta.sheetName} onChange={(v) => setSheet({ name: v })}
                          fontSize={12} weight={700} />
         </div>
         <div style={{ display: "flex", gap: 14 }}>
@@ -821,7 +899,7 @@ function TitleBlock({ meta, updateMeta }) {
       }}>
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
-          <EditableField value={meta.drawingNumber} onChange={(v) => updateMeta({ drawingNumber: v })}
+          <EditableField value={meta.drawingNumber} onChange={(v) => setSheet({ drawingNumber: v })}
                          fontSize={11} weight={700} placeholder="e.g. WOE-PB-XX-00-D-A-010401"/>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -866,9 +944,9 @@ export function Inspector({
   rotateSelected, deleteSelected, placed,
 }) {
   return (
-    <aside className="w-64 bg-[#EBEFF6] border-l border-slate-200 flex flex-col">
-      <div className="px-4 h-11 flex items-center border-b border-slate-200">
-        <div className="text-[15px] font-semibold text-slate-900" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Inspector</div>
+    <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-l border-slate-200 dark:border-[#263441] flex flex-col">
+      <div className="px-4 h-11 flex items-center border-b border-slate-200 dark:border-[#263441]">
+        <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-100" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Inspector</div>
       </div>
 
       {selectedItem ? (
@@ -903,31 +981,31 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
                     [&::-webkit-scrollbar-thumb]:bg-white/10
                     [&::-webkit-scrollbar-thumb]:rounded-full">
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-2">Type</div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400 mb-2">Type</div>
         <div className="flex items-center gap-3">
           <svg viewBox={VIEWBOX} width="44" height="44"
                style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 8px ${cols.body}50)` }}
-               className="bg-slate-50 rounded-lg ring-1 ring-slate-200 p-1.5">
+               className="bg-slate-50 dark:bg-[#22303D] rounded-lg ring-1 ring-slate-200 dark:ring-[#2A3947] p-1.5">
             {sym?.svg}
           </svg>
           <div>
-            <div className="text-sm font-medium text-slate-900">{sym?.name}</div>
-            {meta?.height && <div className="text-[10px] text-slate-500 mt-0.5">{meta.height}</div>}
+            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{sym?.name}</div>
+            {meta?.height && <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{meta.height}</div>}
           </div>
         </div>
         {meta?.description && (
-          <div className="text-[10px] text-slate-600 mt-2 leading-relaxed">{meta.description}</div>
+          <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">{meta.description}</div>
         )}
       </div>
 
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-1.5">Label / Reference</div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400 mb-1.5">Label / Reference</div>
         <input
           type="text"
           value={item.label}
           onChange={(e) => updateLabel(e.target.value)}
           placeholder="e.g. S1 / K-01"
-          className="w-full px-3 py-2 text-xs bg-white rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:bg-white focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
+          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0E141B] rounded-lg ring-1 ring-slate-200 dark:ring-[#2A3947] focus:ring-[#3FB7C9]/40 focus:bg-white focus:outline-none transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
         />
       </div>
 
@@ -939,8 +1017,8 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
 
       <div className="pt-3 border-t border-slate-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500">Rotation</span>
-          <span className="tabular-nums text-slate-800 text-[10px]">{Math.round(item.rotation)}°</span>
+          <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400">Rotation</span>
+          <span className="tabular-nums text-slate-800 dark:text-slate-200 text-[10px]">{Math.round(item.rotation)}°</span>
         </div>
         <input type="range" min="0" max="359" step="1" value={item.rotation}
                onChange={(e) => setRotation(parseInt(e.target.value))}
@@ -951,7 +1029,7 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
               className={`px-1 py-1 text-[9px] tracking-wider rounded-md transition-all ${
                 Math.round(item.rotation) === deg
                   ? "bg-[#D8F0F4] text-[#22808F] ring-1 ring-[#3FB7C9]/30"
-                  : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
+                  : "bg-slate-50 text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 hover:bg-slate-100"
               }`}>{deg}°</button>
           ))}
         </div>
@@ -959,25 +1037,25 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
 
       <div className="pt-3 border-t border-slate-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500">Scale</span>
-          <span className="tabular-nums text-slate-800 text-[10px]">{Math.round((item.scale ?? 1)*100)}%</span>
+          <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400">Scale</span>
+          <span className="tabular-nums text-slate-800 dark:text-slate-200 text-[10px]">{Math.round((item.scale ?? 1)*100)}%</span>
         </div>
         <input type="range" min="0.4" max="3" step="0.05" value={item.scale ?? 1}
                onChange={(e) => setItemScale(parseFloat(e.target.value))}
                className="w-full accent-[#3FB7C9] mb-2"/>
         <button onClick={() => setItemScale(1)}
-          className="w-full px-2 py-1.5 text-[9px] uppercase tracking-wider bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 rounded-md transition-all">
+          className="w-full px-2 py-1.5 text-[9px] uppercase tracking-wider bg-slate-50 text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 hover:bg-slate-100 rounded-md transition-all">
           Reset to 100%
         </button>
       </div>
 
       <div className="flex gap-2 pt-3 border-t border-slate-200">
         <button onClick={rotateSelected}
-          className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-slate-100 text-slate-800 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+          className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-slate-100 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
           <RotateCw size={12}/> +15°
         </button>
         <button onClick={deleteSelected}
-          className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+          className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
           <Trash2 size={12}/> Delete
         </button>
       </div>
@@ -989,22 +1067,22 @@ function AnnoInspector({ anno, updateAnnoText, deleteSelected }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-2">Annotation</div>
-        <div className="text-[10px] text-slate-600 leading-relaxed mb-3">
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400 mb-2">Annotation</div>
+        <div className="text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
           Edit the note text below. Drag the box to move it. Drag the amber dot at the arrow tip to point it elsewhere.
         </div>
       </div>
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-1.5">Text</div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400 mb-1.5">Text</div>
         <textarea
           value={anno.text}
           onChange={(e) => updateAnnoText(e.target.value)}
           rows={5}
-          className="w-full px-3 py-2 text-xs bg-white rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:bg-white focus:outline-none transition-all text-slate-900 resize-none"
+          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0E141B] rounded-lg ring-1 ring-slate-200 dark:ring-[#2A3947] focus:ring-[#3FB7C9]/40 focus:bg-white focus:outline-none transition-all text-slate-900 dark:text-slate-100 resize-none"
         />
       </div>
       <button onClick={deleteSelected}
-        className="w-full px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+        className="w-full px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
         <Trash2 size={12}/> Delete Annotation
       </button>
     </div>
@@ -1020,12 +1098,12 @@ function EmptyInspector({ placed }) {
   });
   const entries = Object.entries(counts).sort();
   return (
-    <div className="flex-1 overflow-y-auto p-4 text-[11px] text-slate-500 leading-relaxed
+    <div className="flex-1 overflow-y-auto p-4 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed
                     [&::-webkit-scrollbar]:w-1.5
                     [&::-webkit-scrollbar-thumb]:bg-white/10
                     [&::-webkit-scrollbar-thumb]:rounded-full">
-      <div className="mb-4 text-slate-600">Select a symbol or annotation to inspect.</div>
-      <div className="text-slate-500 uppercase tracking-[0.2em] text-[9px] mb-2">Schedule</div>
+      <div className="mb-4 text-slate-600 dark:text-slate-300">Select a symbol or annotation to inspect.</div>
+      <div className="text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] text-[9px] mb-2">Schedule</div>
       {!entries.length ? (
         <div className="text-slate-400 mt-2 text-[10px] italic">No items placed yet.</div>
       ) : (
@@ -1033,7 +1111,7 @@ function EmptyInspector({ placed }) {
           <tbody>
             {entries.map(([name, n]) => (
               <tr key={name} className="border-b border-slate-100">
-                <td className="py-1.5 text-slate-700">{name}</td>
+                <td className="py-1.5 text-slate-700 dark:text-slate-300">{name}</td>
                 <td className="py-1.5 text-right text-[#22808F] font-semibold">{n}</td>
               </tr>
             ))}
@@ -1046,9 +1124,9 @@ function EmptyInspector({ placed }) {
 
 function Stat({ label, value }) {
   return (
-    <div className="bg-slate-50 rounded-lg ring-1 ring-slate-200 px-2.5 py-2">
-      <div className="text-slate-500 uppercase tracking-wider text-[8.5px] mb-0.5">{label}</div>
-      <div className="tabular-nums text-slate-900 font-medium text-[11px]">{value}</div>
+    <div className="bg-slate-50 dark:bg-[#22303D] rounded-lg ring-1 ring-slate-200 dark:ring-[#2A3947] px-2.5 py-2">
+      <div className="text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[8.5px] mb-0.5">{label}</div>
+      <div className="tabular-nums text-slate-900 dark:text-slate-100 font-medium text-[11px]">{value}</div>
     </div>
   );
 }
@@ -1058,7 +1136,7 @@ function Stat({ label, value }) {
  * ========================================================================= */
 export function FloatingToolbar({ tool, setTool }) {
   return (
-    <div className="absolute top-4 left-4 z-20 flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl ring-1 ring-slate-200/70 shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
+    <div className="absolute top-4 left-4 z-20 flex flex-col bg-white dark:bg-[#16202B] rounded-2xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
       {Object.entries(TOOLS).map(([key, info]) => {
         const Icon = info.icon;
         const active = tool === key;
@@ -1067,9 +1145,9 @@ export function FloatingToolbar({ tool, setTool }) {
             onClick={() => setTool(key)}
             title={`${info.label} (${info.hint})`}
             className={`relative p-2.5 transition-colors duration-150 ${
-              active ? "text-[#22808F]" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              active ? "text-[#22808F]" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"
             }`}>
-            {active && <div className="absolute inset-0 bg-[#ECF8FA]"/>}
+            {active && <div className="absolute inset-0 bg-[#ECF8FA] dark:bg-[#3FB7C9]/15"/>}
             {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#3FB7C9] rounded-r-full"/>}
             <Icon size={15} className="relative"/>
           </button>
@@ -1081,18 +1159,18 @@ export function FloatingToolbar({ tool, setTool }) {
 
 export function ZoomControls({ zoom, onIn, onOut, onFit }) {
   return (
-    <div className="absolute top-4 right-4 z-20 flex bg-white/95 backdrop-blur-xl rounded-2xl ring-1 ring-slate-200/70 shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
-      <button onClick={onOut} className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+    <div className="absolute top-4 right-4 z-20 flex bg-white dark:bg-[#16202B] rounded-2xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
+      <button onClick={onOut} className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
         <ZoomOut size={14}/>
       </button>
-      <div className="px-3 self-center text-[11px] text-slate-700 tabular-nums border-x border-slate-200 min-w-[56px] text-center" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+      <div className="px-3 self-center text-[11px] text-slate-700 dark:text-slate-200 tabular-nums border-x border-slate-200 dark:border-[#2A3947] min-w-[56px] text-center" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
         {Math.round(zoom*100)}%
       </div>
-      <button onClick={onIn} className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+      <button onClick={onIn} className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
         <ZoomIn size={14}/>
       </button>
       <button onClick={onFit} title="Fit (0)"
-              className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors border-l border-slate-200">
+              className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors border-l border-slate-200 dark:border-[#2A3947]">
         <Maximize2 size={14}/>
       </button>
     </div>
@@ -1230,7 +1308,12 @@ export function ProjectManager({
  * BILL OF QUANTITIES (modal) — auto-counted schedule of placed symbols
  * ========================================================================= */
 export function BillOfQuantities({ project, onClose }) {
-  const { meta, placed } = project;
+  const { meta } = project;
+  // Count across every drawing (floor) in the project, not just the active one.
+  const placed = useMemo(
+    () => (project.sheets ? project.sheets.flatMap(s => s.placed || []) : (project.placed || [])),
+    [project]
+  );
 
   // Aggregate placed symbols by type
   const rows = useMemo(() => {
@@ -1372,7 +1455,8 @@ export function BillOfQuantities({ project, onClose }) {
 /* ============================================================================
  * METADATA EDITOR (modal)
  * ========================================================================= */
-export function MetaEditor({ meta, updateMeta, onClose }) {
+export function MetaEditor({ meta, updateMeta, onSheetField, onClose }) {
+  const setSheet = onSheetField || (() => {});
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-6"
          onClick={onClose}>
@@ -1391,9 +1475,9 @@ export function MetaEditor({ meta, updateMeta, onClose }) {
         <div className="grid grid-cols-2 gap-3">
           <MetaField label="Project name"   value={meta.projectName}   onChange={(v) => updateMeta({ projectName: v })} />
           <MetaField label="Plot / address" value={meta.plot}          onChange={(v) => updateMeta({ plot: v })} />
-          <MetaField label="Sheet name"     value={meta.sheetName}     onChange={(v) => updateMeta({ sheetName: v })} />
+          <MetaField label="Sheet name (this floor)" value={meta.sheetName}     onChange={(v) => setSheet({ name: v })} />
           <MetaField label="Scale"          value={meta.scale}         onChange={(v) => updateMeta({ scale: v })} />
-          <MetaField label="Drawing number" value={meta.drawingNumber} onChange={(v) => updateMeta({ drawingNumber: v })} />
+          <MetaField label="Drawing number (this floor)" value={meta.drawingNumber} onChange={(v) => setSheet({ drawingNumber: v })} />
           <MetaField label="Date"           value={meta.date}          onChange={(v) => updateMeta({ date: v })} type="date"/>
           <MetaField label="Revision"       value={meta.revision}      onChange={(v) => updateMeta({ revision: v })} />
           <MetaField label="Revision note"  value={meta.revNote}       onChange={(v) => updateMeta({ revNote: v })} />
@@ -1430,19 +1514,31 @@ function MetaField({ label, value, onChange, type = "text", span = 1 }) {
  * with the rest of the app hidden via the print stylesheet.
  * ========================================================================= */
 export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, onPrint }) {
-  const { meta, notes, bgImage, placed, wires, annotations } = project;
+  const { meta, notes } = project;
+  const sheets = project.sheets && project.sheets.length
+    ? project.sheets
+    : [{ id: "legacy", name: meta.sheetName, drawingNumber: meta.drawingNumber,
+         bgImage: project.bgImage, placed: project.placed || [], wires: project.wires || [], annotations: project.annotations || [] }];
+
+  const legendFor = (placed) => {
+    const ids = new Set((placed || []).map(p => p.symbolId));
+    return Array.from(ids).map(id => ({
+      id, symbol: findSymbol(id),
+      meta: SYMBOL_META[id] || { description: findSymbol(id)?.name || id, height: null },
+    })).filter(x => x.symbol);
+  };
+
   return (
     <>
-      {/* Controls (hidden in print) */}
       <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm overflow-auto">
         <div className="print:hidden sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <div>
             <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Print preview</div>
-            <div className="text-sm font-medium mt-0.5">{meta.sheetName || "Drawing"}</div>
+            <div className="text-sm font-medium mt-0.5">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-[10px] text-slate-500">
-              Choose <span className="text-slate-800">Save as PDF</span> in the print dialog to export.
+              Choose <span className="text-slate-800">Save as PDF</span> in the print dialog — each floor prints on its own A3 page.
             </div>
             <button onClick={onClose}
               className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">
@@ -1455,41 +1551,45 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
           </div>
         </div>
 
-        {/* The sheet, displayed at 1:1 */}
-        <div className="flex justify-center p-8">
-          <div className="bg-white shadow-2xl" id="print-sheet-host">
-            <PrintSheet
-              meta={meta} notes={notes}
-              bgImage={bgImage}
-              placed={placed} wires={wires} annotations={annotations}
-              legendItems={legendItems}
-              colourMode={colourMode}
-              DRAW={DRAW}
-            />
-          </div>
+        {/* One sheet per floor */}
+        <div id="print-sheet-host" className="flex flex-col items-center gap-8 p-8">
+          {sheets.map((s, i) => (
+            <div key={s.id} className="print-page bg-white shadow-2xl">
+              <PrintSheet
+                meta={{ ...meta, sheetName: s.name, drawingNumber: s.drawingNumber || meta.drawingNumber }}
+                notes={notes}
+                bgImage={s.bgImage}
+                placed={s.placed} wires={s.wires} annotations={s.annotations}
+                legendItems={legendFor(s.placed)}
+                colourMode={colourMode}
+                DRAW={DRAW}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* When the browser prints, only #print-sheet-host renders */}
+      {/* When the browser prints, only #print-sheet-host renders; each page breaks */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: A3 landscape;
-            margin: 0;
-          }
-          html, body {
-            background: #ffffff !important;
-          }
+          @page { size: A3 landscape; margin: 0; }
+          html, body { background: #ffffff !important; }
           body * { visibility: hidden !important; }
           #print-sheet-host, #print-sheet-host * { visibility: visible !important; }
           #print-sheet-host {
             position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            margin: 0 !important;
+            left: 0 !important; top: 0 !important;
+            margin: 0 !important; padding: 0 !important; gap: 0 !important;
+            display: block !important;
+          }
+          #print-sheet-host .print-page {
             box-shadow: none !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            page-break-after: always;
+            break-after: page;
+          }
+          #print-sheet-host .print-page:last-child {
+            page-break-after: auto;
+            break-after: auto;
           }
           #print-sheet-host * {
             -webkit-print-color-adjust: exact !important;
