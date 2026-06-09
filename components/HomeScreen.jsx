@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { storage } from "@/lib/storage";
+import { listProjects, localProjectsPending, migrateLocalProjects } from "@/lib/db";
 
 /* Sheet geometry — must match ElectricalPlanTool */
 const SHEET = { width: 1587, height: 1123, margin: 18, legendWidth: 230, notesWidth: 280, titleHeight: 110 };
@@ -71,43 +71,53 @@ function PlanThumb({ project }) {
   );
 }
 
-export default function HomeScreen({ onOpenProject, onNewProject, onImport, theme, onToggleTheme }) {
+export default function HomeScreen({ onOpenProject, onNewProject, onImport, theme, onToggleTheme, user, onSignOut }) {
   const [cards, setCards] = useState(null);
+  const [pending, setPending] = useState(0);   // local jobs awaiting upload
+  const [migrating, setMigrating] = useState(false);
+
+  const load = async () => {
+    try {
+      const rows = await listProjects();
+      const full = rows.map((r) => {
+        const project = r.data || null;
+        const sheets = project?.sheets || null;
+        const firstNumber = sheets ? (sheets[0]?.drawingNumber || "") : (project?.meta?.drawingNumber || "");
+        const itemCount = sheets
+          ? sheets.reduce((n, s) => n + (s.placed?.length || 0), 0)
+          : (project?.placed?.length || 0);
+        return {
+          id: r.id,
+          name: r.name || project?.meta?.projectName || "Untitled drawing",
+          addr: project?.meta?.plot || "",
+          reg: firstNumber || project?.meta?.drawingNumber || "",
+          floors: sheets ? sheets.length : 1,
+          updatedAt: r.updatedAt,
+          count: itemCount,
+          project,
+        };
+      });
+      setCards(full);
+    } catch (err) {
+      console.error(err);
+      setCards([]);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const idxRes = await storage.get("index");
-        const index = idxRes ? JSON.parse(idxRes.value) : [];
-        const full = await Promise.all(index.map(async (e) => {
-          let project = null;
-          try {
-            const r = await storage.get("proj:" + e.id);
-            project = r ? JSON.parse(r.value) : null;
-          } catch { /* ignore */ }
-          const sheets = project?.sheets || null;
-          const firstNumber = sheets ? (sheets[0]?.drawingNumber || "") : (project?.meta?.drawingNumber || "");
-          const itemCount = sheets
-            ? sheets.reduce((n, s) => n + (s.placed?.length || 0), 0)
-            : (project?.placed?.length || 0);
-          return {
-            id: e.id,
-            name: e.name || project?.meta?.projectName || "Untitled drawing",
-            addr: project?.meta?.plot || "",
-            reg: firstNumber || project?.meta?.drawingNumber || "",
-            floors: sheets ? sheets.length : 1,
-            updatedAt: e.updatedAt,
-            count: itemCount,
-            project,
-          };
-        }));
-        full.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
-        setCards(full);
-      } catch {
-        setCards([]);
-      }
-    })();
+    load();
+    setPending(localProjectsPending());
   }, []);
+
+  const runMigration = async () => {
+    setMigrating(true);
+    const n = await migrateLocalProjects();
+    setMigrating(false);
+    setPending(0);
+    await load();
+    if (n > 0) alert(`Uploaded ${n} drawing${n === 1 ? "" : "s"} to your account.`);
+  };
+  const dismissMigration = () => setPending(0);
 
   const stats = useMemo(() => {
     const list = cards || [];
@@ -149,14 +159,29 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
                 )}
               </button>
-              <div className="account">
-                <div style={{ textAlign: "right" }}><div className="nm">{USER_NAME} Watts</div><div className="sub">Watts On Electrical</div></div>
-                <div className="pic">{USER_NAME.slice(0, 2).toUpperCase()}</div>
+              <div className="account" title={user?.email || ""}>
+                <div style={{ textAlign: "right" }}><div className="nm">{USER_NAME} Watts</div><div className="sub">{user?.email || "Watts On Electrical"}</div></div>
+                <div className="pic">{(user?.email || USER_NAME).slice(0, 2).toUpperCase()}</div>
               </div>
+              <button className="theme-toggle" onClick={onSignOut} title="Sign out" aria-label="Sign out">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+              </button>
             </div>
           </header>
 
           <div className="scroll">
+            {pending > 0 && (
+              <div className="migrate-banner">
+                <div>
+                  <strong>{pending} drawing{pending === 1 ? "" : "s"} saved on this device.</strong>
+                  <span> Upload them to your account so they're backed up and on every device?</span>
+                </div>
+                <div className="migrate-actions">
+                  <button className="mg-ghost" onClick={dismissMigration} disabled={migrating}>Not now</button>
+                  <button className="mg-primary" onClick={runMigration} disabled={migrating}>{migrating ? "Uploading…" : "Upload to my account"}</button>
+                </div>
+              </div>
+            )}
             <section className="hero">
               <div className="hero-glow"></div>
               <div className="hero-inner">
@@ -280,6 +305,17 @@ const CSS = `
 .pw-home .theme-toggle:hover{color:var(--ink); border-color:var(--muted-2)}
 .pw-home .theme-toggle svg{width:18px; height:18px}
 
+/* ---- Migration banner ---- */
+.pw-home .migrate-banner{display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; background:linear-gradient(120deg,#E8F7FA,#F0FBFC); border:1px solid #BFE7ED; border-radius:16px; padding:16px 20px; margin-bottom:22px}
+.pw-home .migrate-banner strong{font-weight:600; color:var(--ink)}
+.pw-home .migrate-banner span{color:var(--ink-2)}
+.pw-home .migrate-actions{display:flex; gap:10px; flex-shrink:0}
+.pw-home .mg-ghost{padding:9px 16px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); font-weight:500; font-size:13px; cursor:pointer}
+.pw-home .mg-ghost:hover{color:var(--ink)}
+.pw-home .mg-primary{padding:9px 18px; border-radius:10px; border:none; background:#3FB7C9; color:#08313a; font-weight:600; font-size:13px; cursor:pointer; transition:background .15s}
+.pw-home .mg-primary:hover{background:#52C4D5}
+.pw-home .mg-ghost:disabled,.pw-home .mg-primary:disabled{opacity:.6; cursor:default}
+
 /* ---- Dark theme ---- */
 html.dark .pw-home{
   --ink:#E7EDF3; --ink-2:#B6C2CE; --muted:#8595A3; --muted-2:#6B7A88;
@@ -296,6 +332,7 @@ html.dark .pw-home .thumb::before{background-image:linear-gradient(rgba(255,255,
 html.dark .pw-home .tpl:hover{border-color:#2C5C66}
 html.dark .pw-home .new-card{border-color:#2A3947}
 html.dark .pw-home .card-foot .ct{background:#0E141B}
+html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#152832); border-color:#235662}
 .pw-home .scroll{flex:1; overflow-y:auto; padding:36px 40px 60px}
 .pw-home .hero{position:relative; overflow:hidden; border-radius:22px; background:linear-gradient(120deg,#1A2530 0%,#233241 60%,#2C4150 100%); padding:32px 34px; margin-bottom:34px; color:#fff; box-shadow:0 18px 40px -12px rgba(16,28,40,.22)}
 .pw-home .hero::before{content:""; position:absolute; inset:0; background-image:linear-gradient(var(--blueprint) 1px,transparent 1px),linear-gradient(90deg,var(--blueprint) 1px,transparent 1px); background-size:26px 26px; -webkit-mask-image:linear-gradient(105deg,transparent 40%,#000 100%); mask-image:linear-gradient(105deg,transparent 40%,#000 100%)}

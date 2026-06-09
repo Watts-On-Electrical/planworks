@@ -7,7 +7,7 @@ import {
   Palette, Ruler, Hand, Sparkles, Type, Printer, Settings,
   ChevronRight, X, FileText, Eye, EyeOff, Layers,
 } from "lucide-react";
-import { storage } from "@/lib/storage";
+import { listProjects, getProjectData, insertProject, updateProjectRow, deleteProjectRow } from "@/lib/db";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
@@ -697,69 +697,56 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   });
 
   // ---------- Projects (multi-project save/load) ----------
-  // Index: storage key "index" → [{ id, name, updatedAt }]
-  // Each project: storage key "proj:<id>" → full project JSON
+  // Project list lives in the cloud `projects` table (one row per drawing).
   const refreshProjectList = useCallback(async () => {
-    const r = await storage.get("index");
-    setProjectList(r ? JSON.parse(r.value) : []);
+    try {
+      const rows = await listProjects();
+      setProjectList(rows.map(r => ({ id: r.id, name: r.name, updatedAt: r.updatedAt })));
+    } catch (err) {
+      console.error("Could not load projects", err);
+    }
   }, []);
 
   // Load the project list once on mount
   useEffect(() => { refreshProjectList(); }, [refreshProjectList]);
 
-  // Quick-save: writes to the currently open project, or falls back to the
-  // autosave slot if none is open yet.
+  // Quick-save: writes to the currently open project, or creates one if new.
   const saveProject = async () => {
     try {
       if (currentProjectId) {
-        await storage.set("proj:" + currentProjectId, JSON.stringify(project));
-        // bump the index timestamp
-        const r = await storage.get("index");
-        let list = r ? JSON.parse(r.value) : [];
-        list = list.map(p => p.id === currentProjectId
-          ? { ...p, name: meta.projectName || p.name, updatedAt: new Date().toISOString() }
-          : p);
-        await storage.set("index", JSON.stringify(list));
-        setProjectList(list);
+        await updateProjectRow(currentProjectId, meta.projectName || "Untitled drawing", project);
+        await refreshProjectList();
       } else {
-        // No named project yet (e.g. started fresh from the dashboard) —
-        // create one so it appears on the dashboard immediately.
         await saveProjectAs(meta.projectName || "Untitled drawing");
         return;
       }
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
     } catch (err) {
-      alert("Save failed: " + err.message);
+      alert("Save failed: " + (err.message || err));
     }
   };
 
-  // Save As: store the current canvas under a new named project
+  // Save As: store the current canvas as a new named project (new cloud row)
   const saveProjectAs = async (name) => {
     try {
-      const id = "proj_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
       const projectToSave = { ...project, meta: { ...project.meta, projectName: name || project.meta.projectName } };
-      await storage.set("proj:" + id, JSON.stringify(projectToSave));
-      const r = await storage.get("index");
-      let list = r ? JSON.parse(r.value) : [];
-      list = [...list, { id, name: name || "Untitled", updatedAt: new Date().toISOString() }];
-      await storage.set("index", JSON.stringify(list));
-      setProjectList(list);
+      const id = await insertProject(name || projectToSave.meta.projectName || "Untitled drawing", projectToSave);
       setCurrentProjectId(id);
       setProject(projectToSave);
+      await refreshProjectList();
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
     } catch (err) {
-      alert("Save failed: " + err.message);
+      alert("Save failed: " + (err.message || err));
     }
   };
 
   const openProjectById = async (id) => {
     try {
-      const r = await storage.get("proj:" + id);
-      if (!r) { alert("Could not find that project."); return; }
-      const p = JSON.parse(r.value);
-      setProject(normaliseProject(p));
+      const data = await getProjectData(id);
+      if (!data) { alert("Could not find that project."); return; }
+      setProject(normaliseProject(data));
       setCurrentProjectId(id);
       setShowProjects(false);
       setHistory([]); setFuture([]);
@@ -771,12 +758,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   const deleteProjectById = async (id) => {
     try {
-      await storage.delete("proj:" + id);
-      const r = await storage.get("index");
-      let list = r ? JSON.parse(r.value) : [];
-      list = list.filter(p => p.id !== id);
-      await storage.set("index", JSON.stringify(list));
-      setProjectList(list);
+      await deleteProjectRow(id);
+      await refreshProjectList();
       if (currentProjectId === id) setCurrentProjectId(null);
     } catch (err) {
       alert("Delete failed.");
