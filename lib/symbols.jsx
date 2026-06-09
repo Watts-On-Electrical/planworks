@@ -1,14 +1,11 @@
 /* ============================================================================
  * SYMBOL LIBRARY — UK Architectural Plan Style
- * ----------------------------------------------------------------------------
- * Two layers:
- *   1. SYMBOLS — visual definitions (categories, SVG drawings)
- *   2. SYMBOL_META — specification metadata for each symbol used in the
- *      printable legend (description, mounting height, AFL flag)
+ * Aligned with industry-standard residential MEP legends
+ * (Preston Baker / Yorkshire Homes style reference).
  *
- * Mounting heights follow industry conventions (e.g. Approved Document M,
- * BS 7671 guidance, typical UK domestic specs). They can be overridden
- * per-project in the app.
+ * Two layers:
+ *   1. SYMBOLS — visual definitions, grouped by category
+ *   2. SYMBOL_META — legend descriptions + mounting heights (AFL)
  * ========================================================================= */
 
 "use client";
@@ -18,37 +15,39 @@ import React from "react";
 const STROKE = 2.0;
 const FEEDER = 1.4;
 
-// Category palette — desaturated, plan-appropriate hues.
 export const CATEGORY_COLOURS = {
   sockets:   { primary: "#1d4ed8", soft: "#93c5fd", label: "Blue"   },
   switches:  { primary: "#15803d", soft: "#86efac", label: "Green"  },
   lighting:  { primary: "#b45309", soft: "#fcd34d", label: "Amber"  },
   detectors: { primary: "#b91c1c", soft: "#fca5a5", label: "Red"    },
+  security:  { primary: "#7c2d12", soft: "#fdba74", label: "Burnt"  },
   fixtures:  { primary: "#6d28d9", soft: "#c4b5fd", label: "Violet" },
+  data:      { primary: "#0e7490", soft: "#67e8f9", label: "Cyan"   },
   heating:   { primary: "#0f172a", soft: "#94a3b8", label: "Slate"  },
-  annotation:{ primary: "#dc2626", soft: "#fca5a5", label: "Red"    },
 };
 
-const Wall = ({ y = 28, x1 = 4, x2 = 44 }) => (
-  <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
+// Small "H" mark used to differentiate high-level variants visually
+const HighLevelMark = ({ x = 38, y = 10 }) => (
+  <g>
+    <circle cx={x} cy={y} r={4} fill="#ffffff" stroke="currentColor" strokeWidth={1}/>
+    <text x={x} y={y + 2.7} fontSize="6" textAnchor="middle"
+          fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700"
+          fill="currentColor">H</text>
+  </g>
 );
 
 export const SYMBOLS = {
   sockets: {
     label: "Sockets",
     items: [
-      { id: "sock_sso_2a", name: "2A Socket", svg: (
-        <g>
-          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor" transform="scale(0.85) translate(4 5)"/>
-        </g>
-      )},
-      { id: "sock_sso", name: "SSO (Single)", svg: (
+      // ---- Low level (450mm AFL) ----
+      { id: "sock_sso_ll", name: "Single Socket (LL)", svg: (
         <g>
           <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor"/>
           <line x1="24" y1="20" x2="24" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "sock_dso", name: "DSO (Double)", svg: (
+      { id: "sock_dso_ll", name: "Double Socket (LL)", svg: (
         <g>
           <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
           <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
@@ -56,28 +55,57 @@ export const SYMBOLS = {
           <line x1="34" y1="20" x2="34" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "sock_usbc", name: "USB-C Socket", svg: (
+      { id: "sock_dso_usb_ll", name: "Double Socket USB (LL)", svg: (
         <g>
-          <path d="M 6 28 A 10 10 0 0 1 26 28 Z" fill="currentColor"/>
-          <line x1="16" y1="20" x2="16" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
-          <text x="36" y="26" fontSize="7.5" textAnchor="middle" fill="currentColor"
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
+          <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <text x="38" y="14" fontSize="6.5" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB</text>
-          <text x="36" y="34" fontSize="6.5" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">-C</text>
         </g>
       )},
-      { id: "sock_cat5", name: "Cat5 Outlet", svg: (
+
+      // ---- High level (1100mm AFL) — same drawing + 'H' badge ----
+      { id: "sock_sso_hl", name: "Single Socket (HL)", svg: (
         <g>
-          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor"/>
+          <line x1="24" y1="20" x2="24" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <HighLevelMark/>
         </g>
       )},
-      { id: "sock_cooker", name: "Cooker", svg: (
+      { id: "sock_dso_hl", name: "Double Socket (HL)", svg: (
+        <g>
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
+          <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <line x1="34" y1="20" x2="34" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <HighLevelMark x={44} y={6}/>
+        </g>
+      )},
+      { id: "sock_dso_usb_hl", name: "Double Socket USB (HL)", svg: (
+        <g>
+          <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
+          <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
+          <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <text x="38" y="14" fontSize="6.5" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB</text>
+          <HighLevelMark x={44} y={22}/>
+        </g>
+      )},
+
+      // ---- Specialist outlets ----
+      { id: "sock_2a", name: "2A Socket", svg: (
+        <g>
+          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="currentColor" transform="scale(0.85) translate(4 5)"/>
+        </g>
+      )},
+      { id: "sock_cooker", name: "Cooker Outlet", svg: (
         <g>
           <path d="M 6 30 A 14 14 0 0 1 42 30 Z" fill="currentColor"/>
           <line x1="24" y1="20" x2="24" y2="10" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "sock_shaver", name: "Shaver Point", svg: (
+      { id: "sock_shaver", name: "Shaver Socket", svg: (
         <g>
           <rect x="10" y="10" width="28" height="12" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <circle cx="18" cy="16" r="1.6" fill="currentColor"/>
@@ -86,7 +114,7 @@ export const SYMBOLS = {
           <line x1="34" y1="22" x2="34" y2="28" stroke="currentColor" strokeWidth={FEEDER}/>
         </g>
       )},
-      { id: "sock_tv", name: "TV Outlet", svg: (
+      { id: "sock_tv", name: "TV Point", svg: (
         <g>
           <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <text x="24" y="20" fontSize="9" textAnchor="middle" fill="currentColor"
@@ -94,7 +122,7 @@ export const SYMBOLS = {
           <line x1="34" y1="17" x2="44" y2="17" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "sock_fcu", name: "Fused Spur", svg: (
+      { id: "sock_fcu", name: "Fused Spur (switched)", svg: (
         <g>
           <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <text x="24" y="20" fontSize="8" textAnchor="middle" fill="currentColor"
@@ -142,12 +170,12 @@ export const SYMBOLS = {
           <polyline points="20,34 24,40 28,34" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round"/>
         </g>
       )},
-      { id: "sw_pir", name: "PIR Sensor", svg: (
+      { id: "sw_pir_light", name: "PIR Light Sensor", svg: (
         <g>
           <path d="M 12 14 L 32 22 L 12 30 Z" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
         </g>
       )},
-      { id: "sw_keycard", name: "Keycard", svg: (
+      { id: "sw_keycard", name: "Keycard Switch", svg: (
         <g>
           <rect x="12" y="10" width="24" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <line x1="18" y1="17" x2="30" y2="17" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
@@ -159,7 +187,7 @@ export const SYMBOLS = {
   lighting: {
     label: "Lighting",
     items: [
-      { id: "lt_pendant", name: "Pendant", svg: (
+      { id: "lt_pendant", name: "Pendant Light", svg: (
         <g>
           <circle cx="24" cy="24" r="8" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
           <line x1="24" y1="6" x2="24" y2="42" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
@@ -174,12 +202,20 @@ export const SYMBOLS = {
           <line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "lt_ceiling", name: "Ceiling Fitting", svg: (
+      { id: "lt_downlight_ip", name: "Downlighter IP-rated", svg: (
         <g>
-          <rect x="14" y="14" width="20" height="20" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <circle cx="24" cy="24" r="8" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
           <circle cx="24" cy="24" r="2.5" fill="currentColor"/>
+          <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" strokeWidth={FEEDER * 0.7} strokeDasharray="2 1.5"/>
+          <text x="40" y="14" fontSize="6" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">IP</text>
+        </g>
+      )},
+      { id: "lt_batten", name: "Batten Holder", svg: (
+        <g>
           <line x1="24" y1="6" x2="24" y2="42" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
           <line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <circle cx="24" cy="24" r="6" fill="currentColor"/>
         </g>
       )},
       { id: "lt_wall", name: "Wall Light", svg: (
@@ -196,7 +232,7 @@ export const SYMBOLS = {
           {[12, 18, 24, 30, 36].map(cx => <circle key={cx} cx={cx} cy="24" r="1.2" fill="currentColor"/>)}
         </g>
       )},
-      { id: "lt_emergency", name: "Emergency", svg: (
+      { id: "lt_emergency", name: "Emergency Light", svg: (
         <g>
           <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
           <text x="24" y="28" fontSize="11" textAnchor="middle" fill="currentColor"
@@ -211,6 +247,17 @@ export const SYMBOLS = {
           <line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
           <text x="40" y="44" fontSize="6" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">EXT</text>
+        </g>
+      )},
+      { id: "lt_external_updown", name: "External Up/Down (D/D)", svg: (
+        <g>
+          <rect x="14" y="14" width="20" height="20" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <polyline points="20,10 24,6 28,10" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round" strokeLinejoin="round"/>
+          <polyline points="20,38 24,42 28,38" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round" strokeLinejoin="round"/>
+          <line x1="24" y1="6" x2="24" y2="14" stroke="currentColor" strokeWidth={FEEDER}/>
+          <line x1="24" y1="34" x2="24" y2="42" stroke="currentColor" strokeWidth={FEEDER}/>
+          <text x="24" y="27" fontSize="7" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">D/D</text>
         </g>
       )},
     ],
@@ -243,7 +290,7 @@ export const SYMBOLS = {
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">CO</text>
         </g>
       )},
-      { id: "det_combined", name: "S/H/C Combined", svg: (
+      { id: "det_combined", name: "Smoke/Heat/CO", svg: (
         <g>
           <line x1="24" y1="6" x2="24" y2="42" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
           <circle cx="24" cy="24" r="9" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
@@ -253,36 +300,70 @@ export const SYMBOLS = {
       )},
       { id: "det_thermostat", name: "Thermostat", svg: (
         <g>
-          <Wall/>
           <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <text x="24" y="21" fontSize="9.5" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">T</text>
         </g>
       )},
-      { id: "det_alarm", name: "Alarm Sounder", svg: (
-        <g>
-          <path d="M 14 10 Q 14 6 24 6 Q 34 6 34 10 L 34 26 L 14 26 Z"
-                fill="currentColor" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <circle cx="24" cy="32" r="2.6" fill="currentColor"/>
-          <path d="M 38 12 Q 42 16 38 20" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
-          <path d="M 10 12 Q 6 16 10 20" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
-        </g>
-      )},
-      { id: "det_alarm_panel", name: "Alarm Panel", svg: (
-        <g>
-          <Wall/>
-          <rect x="10" y="6" width="28" height="18" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <circle cx="16" cy="11" r="1.4" fill="currentColor"/>
-          <circle cx="22" cy="11" r="1.4" fill="currentColor"/>
-          <line x1="14" y1="17" x2="34" y2="17" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
-          <line x1="14" y1="20" x2="28" y2="20" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
-        </g>
-      )},
-      { id: "det_pir_intruder", name: "Intruder PIR", svg: (
+    ],
+  },
+
+  security: {
+    label: "Security",
+    items: [
+      { id: "sec_pir", name: "Intruder PIR", svg: (
         <g>
           <path d="M 12 14 L 36 24 L 12 34 Z" fill="currentColor"/>
           <text x="22" y="26" fontSize="7" textAnchor="middle" fill="white"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">IR</text>
+        </g>
+      )},
+      { id: "sec_keypad", name: "Alarm Keypad", svg: (
+        <g>
+          <rect x="12" y="8" width="24" height="32" rx="2" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          {/* small screen */}
+          <rect x="15" y="11" width="18" height="5" fill="currentColor" opacity="0.85"/>
+          {/* 3x3 keypad dots */}
+          {[19, 24, 29].map((cx, i) => (
+            <g key={i}>
+              <circle cx={cx} cy={22} r={1.4} fill="currentColor"/>
+              <circle cx={cx} cy={28} r={1.4} fill="currentColor"/>
+              <circle cx={cx} cy={34} r={1.4} fill="currentColor"/>
+            </g>
+          ))}
+        </g>
+      )},
+      { id: "sec_hub", name: "Alarm Hub", svg: (
+        <g>
+          <rect x="10" y="14" width="28" height="22" rx="2" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          {/* antenna */}
+          <line x1="24" y1="14" x2="24" y2="6" stroke="currentColor" strokeWidth={FEEDER}/>
+          <circle cx="24" cy="6" r="1.4" fill="currentColor"/>
+          {/* signal arcs */}
+          <path d="M 18 9 Q 24 5 30 9" fill="none" stroke="currentColor" strokeWidth={FEEDER * 0.7}/>
+          {/* indicator lights */}
+          <circle cx="16" cy="20" r="1.5" fill="currentColor"/>
+          <circle cx="22" cy="20" r="1.5" fill="currentColor"/>
+          <text x="24" y="32" fontSize="7" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">HUB</text>
+        </g>
+      )},
+      { id: "sec_door", name: "Door Sensor", svg: (
+        <g>
+          {/* two small contact bodies side-by-side */}
+          <rect x="6" y="20" width="16" height="8" fill="currentColor"/>
+          <rect x="26" y="20" width="16" height="8" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          {/* the gap symbol */}
+          <line x1="22" y1="24" x2="26" y2="24" stroke="currentColor" strokeWidth={FEEDER} strokeDasharray="1 1"/>
+        </g>
+      )},
+      { id: "sec_cctv", name: "CCTV Camera", svg: (
+        <g>
+          <line x1="8" y1="14" x2="40" y2="14" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <path d="M 10 14 A 14 14 0 0 0 38 14 Z" fill="currentColor"/>
+          <circle cx="24" cy="22" r="5" fill="white"/>
+          <circle cx="24" cy="22" r="2.6" fill="currentColor"/>
+          <circle cx="22.5" cy="20.5" r="0.9" fill="white"/>
         </g>
       )},
     ],
@@ -291,14 +372,23 @@ export const SYMBOLS = {
   fixtures: {
     label: "Fixtures",
     items: [
-      { id: "fx_extractor", name: "Extractor", svg: (
+      { id: "fx_extractor", name: "Ceiling Extract", svg: (
         <g>
           <circle cx="24" cy="24" r="10" fill="currentColor"/>
           <line x1="17" y1="17" x2="31" y2="31" stroke="white" strokeWidth={STROKE}/>
           <line x1="31" y1="17" x2="17" y2="31" stroke="white" strokeWidth={STROKE}/>
         </g>
       )},
-      { id: "fx_ext_tap", name: "Ext. Tap", svg: (
+      { id: "fx_extractor_wall", name: "Wall Extract (SA)", svg: (
+        <g>
+          <rect x="10" y="14" width="28" height="20" fill="currentColor"/>
+          <line x1="14" y1="18" x2="34" y2="30" stroke="white" strokeWidth={STROKE}/>
+          <line x1="34" y1="18" x2="14" y2="30" stroke="white" strokeWidth={STROKE}/>
+          <text x="40" y="14" fontSize="6" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">SA</text>
+        </g>
+      )},
+      { id: "fx_ext_tap", name: "External Tap", svg: (
         <g>
           <path d="M 6 14 L 24 24 L 6 34 Z" fill="currentColor"/>
           <path d="M 42 14 L 24 24 L 42 34 Z" fill="currentColor"/>
@@ -309,15 +399,6 @@ export const SYMBOLS = {
           <path d="M 14 14 Q 14 8 24 8 Q 34 8 34 14 L 34 28 L 14 28 Z"
                 fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <circle cx="24" cy="34" r="2.5" fill="currentColor"/>
-        </g>
-      )},
-      { id: "fx_camera", name: "CCTV", svg: (
-        <g>
-          <line x1="8" y1="14" x2="40" y2="14" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
-          <path d="M 10 14 A 14 14 0 0 0 38 14 Z" fill="currentColor"/>
-          <circle cx="24" cy="22" r="5" fill="white"/>
-          <circle cx="24" cy="22" r="2.6" fill="currentColor"/>
-          <circle cx="22.5" cy="20.5" r="0.9" fill="white"/>
         </g>
       )},
       { id: "fx_motor", name: "Motor", svg: (
@@ -339,12 +420,48 @@ export const SYMBOLS = {
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700" letterSpacing="0.5">CU</text>
         </g>
       )},
+      { id: "fx_meter", name: "Electrical Meter Box", svg: (
+        <g>
+          <rect x="6" y="10" width="36" height="28" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <rect x="10" y="14" width="28" height="14" fill="none" stroke="currentColor" strokeWidth={FEEDER}/>
+          <line x1="16" y1="32" x2="32" y2="32" stroke="currentColor" strokeWidth={FEEDER}/>
+          <line x1="20" y1="35" x2="28" y2="35" stroke="currentColor" strokeWidth={FEEDER}/>
+          <text x="24" y="25" fontSize="9" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">M</text>
+        </g>
+      )},
       { id: "fx_isolator", name: "Isolator", svg: (
         <g>
-          <Wall/>
           <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
           <line x1="18" y1="20" x2="28" y2="14" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
           <circle cx="18" cy="20" r="1.4" fill="currentColor"/>
+        </g>
+      )},
+    ],
+  },
+
+  data: {
+    label: "Data",
+    items: [
+      { id: "data_point", name: "Data Point (Cat5/6)", svg: (
+        <g>
+          <path d="M 14 28 A 10 10 0 0 1 34 28 Z" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+        </g>
+      )},
+      { id: "data_internet", name: "Internet Connection Point", svg: (
+        <g>
+          <rect x="10" y="12" width="28" height="16" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="23" fontSize="8" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">ICP</text>
+        </g>
+      )},
+      { id: "data_ont", name: "Fibre Optic (ONT)", svg: (
+        <g>
+          <rect x="8" y="12" width="32" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="23" fontSize="8" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">ONT</text>
+          <circle cx="13" cy="32" r="1.4" fill="currentColor"/>
+          <circle cx="18" cy="32" r="1.4" fill="currentColor"/>
         </g>
       )},
     ],
@@ -379,73 +496,107 @@ export const SYMBOLS = {
 export const VIEWBOX = "0 0 48 48";
 
 /* ----------------------------------------------------------------------------
- * SYMBOL_META — legend-ready descriptions and mounting heights
- *
- * Each entry: { description, height (string e.g. "450mm AFL" or null) }
- * - description = exactly the line that appears in the legend
- * - height      = mounting reference; null if not applicable (e.g. ceiling)
- * AFL = "Above Finished Floor Level"
+ * SYMBOL_META — descriptions + mounting heights, phrased to match industry-
+ * standard UK residential MEP legends.
  * ------------------------------------------------------------------------- */
 export const SYMBOL_META = {
-  // Sockets
-  sock_sso_2a:   { description: "2A Socket Outlet",                       height: "450mm AFL" },
-  sock_sso:      { description: "Single Socket Low Level",                height: "450mm AFL" },
-  sock_dso:      { description: "Double Socket Low Level",                height: "450mm AFL" },
-  sock_usbc:     { description: "Double Socket with USB-C",               height: "450mm AFL" },
-  sock_cat5:     { description: "Data Outlet (Cat5e/Cat6)",               height: "450mm AFL" },
-  sock_cooker:   { description: "Cooker Outlet",                          height: "1100mm AFL" },
-  sock_shaver:   { description: "Shaver Socket",                          height: "1200mm AFL" },
-  sock_tv:       { description: "TV Outlet",                              height: "450mm AFL" },
-  sock_fcu:      { description: "Fused Spur (switched)",                  height: "Above worktop / per location" },
+  // Sockets — low level
+  sock_sso_ll:     { description: "Single Socket Low Level",                height: "450mm AFL" },
+  sock_dso_ll:     { description: "Double Socket Low Level",                height: "450mm AFL" },
+  sock_dso_usb_ll: { description: "Double Socket Low Level (USB)",          height: "450mm AFL" },
+
+  // Sockets — high level
+  sock_sso_hl:     { description: "Single Socket High Level",               height: "1100mm AFL" },
+  sock_dso_hl:     { description: "Double Socket High Level",               height: "1100mm AFL" },
+  sock_dso_usb_hl: { description: "Double Socket High Level (USB)",         height: "1100mm AFL" },
+
+  // Sockets — specialist
+  sock_2a:         { description: "2A Socket Outlet",                       height: "450mm AFL" },
+  sock_cooker:     { description: "Cooker Outlet",                          height: "1100mm AFL" },
+  sock_shaver:     { description: "Shaver Socket",                          height: "1200mm AFL" },
+  sock_tv:         { description: "TV Point",                               height: "450mm AFL" },
+  sock_fcu:        { description: "Fused Spur (switched)",                  height: "Above worktop / per location" },
 
   // Switches
-  sw_light:        { description: "Single Light Switch",                   height: "1200mm AFL" },
-  sw_2way:         { description: "2-Way Light Switch",                    height: "1200mm AFL" },
-  sw_intermediate: { description: "Intermediate Light Switch",             height: "1200mm AFL" },
-  sw_dimmer:       { description: "Dimmer Switch",                         height: "1200mm AFL" },
-  sw_pull:         { description: "Pull Cord Switch",                      height: "Ceiling (cord to 1000mm AFL)" },
-  sw_pir:          { description: "PIR Lighting Sensor",                   height: "Ceiling" },
-  sw_keycard:      { description: "Keycard Switch",                        height: "1200mm AFL" },
+  sw_light:        { description: "Light Switch",                            height: "1200mm AFL" },
+  sw_2way:         { description: "2-Way Light Switch",                      height: "1200mm AFL" },
+  sw_intermediate: { description: "Intermediate Light Switch",               height: "1200mm AFL" },
+  sw_dimmer:       { description: "Dimmer Switch",                           height: "1200mm AFL" },
+  sw_pull:         { description: "Pull Cord Switch",                        height: "Ceiling (cord to 1000mm)" },
+  sw_pir_light:    { description: "Passive Infrared Lighting Sensor",        height: "Ceiling" },
+  sw_keycard:      { description: "Keycard Switch",                          height: "1200mm AFL" },
 
   // Lighting
-  lt_pendant:    { description: "Pendant Light",                           height: "Ceiling" },
-  lt_downlight:  { description: "Downlighter (LED)",                       height: "Ceiling" },
-  lt_ceiling:    { description: "Ceiling Light Fitting",                   height: "Ceiling" },
-  lt_wall:       { description: "Wall Light",                              height: "1800mm AFL" },
-  lt_strip:      { description: "LED Strip Lighting",                      height: "Per location" },
-  lt_emergency:  { description: "Emergency Lighting",                      height: "Ceiling" },
-  lt_external:   { description: "External Light",                          height: "1800mm AFL" },
+  lt_pendant:        { description: "Pendant Light",                                 height: "Ceiling" },
+  lt_downlight:      { description: "Ceiling mounted downlight",                     height: "Ceiling" },
+  lt_downlight_ip:   { description: "Ceiling or under cabinet mounted downlight IP Rated", height: "Ceiling / under cabinet" },
+  lt_batten:         { description: "Light fitting — Batten Holder (Ceiling / Wall)", height: "Ceiling / wall" },
+  lt_wall:           { description: "Wall Light",                                    height: "1800mm AFL" },
+  lt_strip:          { description: "LED Strip Lighting",                            height: "Per location" },
+  lt_emergency:      { description: "Emergency Lighting",                            height: "Ceiling" },
+  lt_external:       { description: "External Light",                                height: "1800mm AFL" },
+  lt_external_updown:{ description: "External Up and Down Light (dusk till dawn)",   height: "1800mm AFL" },
 
   // Detectors
-  det_smoke:        { description: "Smoke Detector (Grade D2, Cat LD3)",    height: "Ceiling" },
-  det_heat:         { description: "Heat Detector",                         height: "Ceiling" },
-  det_co:           { description: "Carbon Monoxide Detector",              height: "Per manufacturer" },
-  det_combined:     { description: "Smoke / Heat / CO Combined",            height: "Ceiling" },
-  det_thermostat:   { description: "Room Thermostat",                       height: "1500mm AFL" },
-  det_alarm:        { description: "Alarm Sounder",                         height: "Ceiling / above doorway" },
-  det_alarm_panel:  { description: "Intruder Alarm Control Panel",          height: "1500mm AFL" },
-  det_pir_intruder: { description: "Intruder Alarm PIR",                    height: "2100mm AFL" },
+  det_smoke:       { description: "Smoke Detector (Grade D2, Cat LD3)",     height: "Ceiling" },
+  det_heat:        { description: "Heat Detector",                          height: "Ceiling" },
+  det_co:          { description: "Carbon Monoxide Detector",               height: "Per manufacturer" },
+  det_combined:    { description: "Smoke / Heat / CO Combined",             height: "Ceiling" },
+  det_thermostat:  { description: "Thermostat",                             height: "1500mm AFL" },
+
+  // Security
+  sec_pir:         { description: "Passive Infrared Detector",              height: "2100mm AFL" },
+  sec_keypad:      { description: "Security Alarm Keypad",                  height: "1500mm AFL" },
+  sec_hub:         { description: "Security Alarm Hub Unit",                height: "Per location" },
+  sec_door:        { description: "Door Sensor",                            height: "Door frame" },
+  sec_cctv:        { description: "CCTV Camera",                            height: "2400mm AFL" },
 
   // Fixtures
-  fx_extractor:  { description: "Extract Fan",                              height: "Ceiling / high wall" },
-  fx_ext_tap:    { description: "External Tap (electrically isolated)",     height: "Per location" },
-  fx_doorbell:   { description: "Door Bell Push",                           height: "1200mm AFL" },
-  fx_camera:     { description: "CCTV Camera (dome)",                       height: "2400mm AFL" },
-  fx_motor:      { description: "Motor / Plant Connection",                 height: "Per location" },
-  fx_consumer:   { description: "Consumer Unit",                            height: "1350–1450mm AFL" },
-  fx_isolator:   { description: "Isolator Switch",                          height: "1500mm AFL" },
+  fx_extractor:      { description: "Ceiling Mounted Extract",                                          height: "Ceiling" },
+  fx_extractor_wall: { description: "Sound attenuated wall mounted extractor (Part F & SAP Part O)",    height: "High wall" },
+  fx_ext_tap:        { description: "External Tap (electrically isolated)",                              height: "Per location" },
+  fx_doorbell:       { description: "Door Bell Push",                                                    height: "1200mm AFL" },
+  fx_motor:          { description: "Motor / Plant Connection",                                          height: "Per location" },
+  fx_consumer:       { description: "Consumer Unit — switches to between",                               height: "1350–1450mm AFL" },
+  fx_meter:          { description: "Electrical Meter Box (refer to site plans for plot locations)",     height: "Per site plan" },
+  fx_isolator:       { description: "Isolator Switch",                                                   height: "1500mm AFL" },
+
+  // Data
+  data_point:    { description: "Data Point (Cat5e / Cat6)",                 height: "450mm AFL" },
+  data_internet: { description: "Internet Connection Point",                 height: "450mm AFL" },
+  data_ont:      { description: "Fibre Optic (ONT)",                         height: "Per location" },
 
   // Heating
-  ht_towel:      { description: "Heated Towel Rail (electric)",             height: "Per location" },
-  ht_radiator:   { description: "Radiator",                                 height: "Per location" },
-  ht_uf:         { description: "Underfloor Heating Zone",                  height: "Floor" },
+  ht_towel:      { description: "Heated Towel Rail (electric)",              height: "Per location" },
+  ht_radiator:   { description: "Radiator",                                  height: "Per location" },
+  ht_uf:         { description: "Underfloor Heating Zone",                   height: "Floor" },
 };
 
 /* ============================================================================
  * Helpers
  * ========================================================================= */
 
+// Map legacy symbol IDs to their current equivalents so old saved projects
+// don't break when the library evolves.
+const ID_ALIASES = {
+  sock_sso:         "sock_sso_ll",
+  sock_dso:         "sock_dso_ll",
+  sock_usbc:        "sock_dso_usb_ll",
+  sock_sso_2a:      "sock_2a",
+  sock_cat5:        "data_point",
+  sw_pir:           "sw_pir_light",
+  lt_ceiling:       "lt_batten",
+  det_alarm_panel:  "sec_hub",
+  det_pir_intruder: "sec_pir",
+  fx_camera:        "sec_cctv",
+};
+
+function resolveId(id) {
+  return ID_ALIASES[id] || id;
+}
+
 export function findSymbol(id) {
+  id = resolveId(id);
   for (const cat of Object.values(SYMBOLS)) {
     const s = cat.items.find(i => i.id === id);
     if (s) return s;
@@ -454,6 +605,7 @@ export function findSymbol(id) {
 }
 
 export function findCategory(id) {
+  id = resolveId(id);
   for (const [key, cat] of Object.entries(SYMBOLS)) {
     if (cat.items.find(i => i.id === id)) return key;
   }
@@ -461,6 +613,7 @@ export function findCategory(id) {
 }
 
 export function resolveColours(symbolId, mode) {
+  symbolId = resolveId(symbolId);
   const sym = findSymbol(symbolId);
   if (!sym) return { body: "#e7e5e4", feeder: "#a8a29e" };
   if (sym.forceColor) return { body: sym.forceColor, feeder: "#78716c" };

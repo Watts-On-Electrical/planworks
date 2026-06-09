@@ -44,22 +44,22 @@ export function TopBar({
   const projectLabel = meta.projectName || "Untitled Project";
   const sheetLabel = meta.sheetName || "Drawing";
   return (
-    <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-[#0d1014]/95 backdrop-blur-xl border-b border-white/[0.06]">
+    <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-white/95 backdrop-blur-xl border-b border-slate-200">
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
           <div className="text-[11px] tracking-[0.35em] font-semibold">PLAN.WORKS</div>
         </div>
-        <div className="w-px h-5 bg-white/[0.08]"/>
+        <div className="w-px h-5 bg-slate-200"/>
         <button
           onClick={onShowMeta}
-          className="group flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-white/[0.04] transition-colors min-w-0">
-          <FileText size={12} className="text-stone-500 group-hover:text-stone-300 shrink-0"/>
+          className="group flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-slate-100 transition-colors min-w-0">
+          <FileText size={12} className="text-slate-500 group-hover:text-slate-700 shrink-0"/>
           <div className="text-left min-w-0">
-            <div className="text-[11px] font-medium text-stone-200 truncate max-w-[200px]">{projectLabel}</div>
-            <div className="text-[9px] text-stone-500 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
+            <div className="text-[11px] font-medium text-slate-800 truncate max-w-[200px]">{projectLabel}</div>
+            <div className="text-[9px] text-slate-500 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
           </div>
-          <ChevronRight size={11} className="text-stone-600 group-hover:text-stone-400 shrink-0"/>
+          <ChevronRight size={11} className="text-slate-400 group-hover:text-slate-600 shrink-0"/>
         </button>
       </div>
 
@@ -96,32 +96,32 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
       title={hint ? `${label} (${hint})` : label}
       className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wider flex items-center gap-1.5 rounded-md transition-all duration-150 ${
         primary
-          ? "bg-amber-400 text-stone-900 hover:bg-amber-300 font-semibold shadow-[0_0_16px_-4px_rgba(251,191,36,0.4)]"
+          ? "bg-amber-500 text-white hover:bg-amber-600 font-semibold shadow-amber-500/30 shadow-lg"
           : flash
           ? "bg-emerald-400/[0.15] text-emerald-400 ring-1 ring-emerald-400/30"
           : active
-          ? "bg-white/[0.06] text-amber-400 ring-1 ring-amber-400/20"
-          : "text-stone-300 hover:text-stone-100 hover:bg-white/[0.04]"
+          ? "bg-slate-100 text-amber-700 ring-1 ring-amber-400/20"
+          : "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
       }`}>
       <Icon size={12.5} /> <span>{label}</span>
     </button>
   );
 }
 
-function Divider() { return <div className="w-px h-5 bg-white/[0.06] mx-1" />; }
+function Divider() { return <div className="w-px h-5 bg-slate-100 mx-1" />; }
 
 /* ============================================================================
  * PALETTE (left sidebar)
  * ========================================================================= */
 export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart, symbolScale, setSymbolScale }) {
   return (
-    <aside className="w-64 bg-[#0d1014]/95 backdrop-blur-xl border-r border-white/[0.06] flex flex-col">
-      <div className="px-4 h-10 flex items-center justify-between border-b border-white/[0.06]">
-        <div className="text-[10px] tracking-[0.3em] text-stone-400 uppercase font-medium">Symbols</div>
-        <div className="text-[9px] tracking-wider text-stone-600">UK ARCH</div>
+    <aside className="w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col">
+      <div className="px-4 h-10 flex items-center justify-between border-b border-slate-200">
+        <div className="text-[10px] tracking-[0.3em] text-slate-600 uppercase font-medium">Symbols</div>
+        <div className="text-[9px] tracking-wider text-slate-400">UK ARCH</div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 px-3 py-3 border-b border-white/[0.04]">
+      <div className="flex flex-wrap gap-1.5 px-3 py-3 border-b border-slate-100">
         {Object.entries(SYMBOLS).map(([key, cat]) => {
           const c = CATEGORY_COLOURS[key];
           const active = activeCategory === key;
@@ -130,8 +130,8 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
               onClick={() => setActiveCategory(key)}
               className={`px-2.5 py-1 text-[10px] tracking-wider rounded-full transition-all duration-200 flex items-center gap-1.5 ${
                 active
-                  ? "bg-white/[0.08] text-amber-400 ring-1 ring-amber-400/30"
-                  : "bg-white/[0.02] text-stone-400 ring-1 ring-white/[0.04] hover:bg-white/[0.05] hover:text-stone-200"
+                  ? "bg-slate-200 text-amber-700 ring-1 ring-amber-400/30"
+                  : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-800"
               }`}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.primary, boxShadow: `0 0 6px ${c.primary}66` }}/>
               {cat.label.toLowerCase()}
@@ -153,7 +153,7 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
               draggable
               onDragStart={(e) => onPaletteDragStart(e, sym.id)}
               title={meta?.description + (meta?.height ? ` · ${meta.height}` : "")}
-              className="group relative bg-white/[0.03] hover:bg-white/[0.06] rounded-xl ring-1 ring-white/[0.06] hover:ring-amber-400/30
+              className="group relative bg-slate-50 hover:bg-slate-100 rounded-xl ring-1 ring-slate-200 hover:ring-amber-400/30
                          cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
                          transition-all duration-200 hover:-translate-y-0.5">
               <svg viewBox={VIEWBOX} width="46" height="46"
@@ -161,19 +161,19 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
                    className="relative z-10 transition-transform duration-200 group-hover:scale-110">
                 {sym.svg}
               </svg>
-              <div className="relative z-10 text-[9px] text-center text-stone-300 leading-tight font-medium line-clamp-2">{sym.name}</div>
+              <div className="relative z-10 text-[9px] text-center text-slate-700 leading-tight font-medium line-clamp-2">{sym.name}</div>
               {meta?.height && (
-                <div className="text-[8px] text-stone-500 tabular-nums">{meta.height}</div>
+                <div className="text-[8px] text-slate-500 tabular-nums">{meta.height}</div>
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="border-t border-white/[0.06] px-4 py-3 bg-black/20">
+      <div className="border-t border-slate-200 px-4 py-3 bg-slate-50">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="uppercase tracking-wider text-[9px] text-stone-500">Symbol Size</span>
-          <span className="tabular-nums text-stone-300 text-[10px]">{Math.round(symbolScale*100)}%</span>
+          <span className="uppercase tracking-wider text-[9px] text-slate-500">Symbol Size</span>
+          <span className="tabular-nums text-slate-700 text-[10px]">{Math.round(symbolScale*100)}%</span>
         </div>
         <input type="range" min="0.6" max="2.5" step="0.1" value={symbolScale}
                onChange={(e) => setSymbolScale(parseFloat(e.target.value))}
@@ -203,7 +203,7 @@ export function Workspace({
       ref={viewportRef}
       className="absolute inset-0 overflow-hidden"
       style={{
-        background: "radial-gradient(circle at 50% 50%, #1a1d22, #0a0c0f 80%)",
+        background: "radial-gradient(circle at 50% 50%, #e2e8f0, #cbd5e1 90%)",
       }}
       onMouseDown={onViewportMouseDown}
       onMouseMove={onViewportMouseMove}
@@ -274,7 +274,7 @@ export function Sheet({
         background: "#ffffff",
         color: "#0a0a0a",
         position: "relative",
-        boxShadow: "0 30px 80px -10px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.03)",
+        boxShadow: "0 20px 50px -12px rgba(15,23,42,0.25), 0 0 0 1px rgba(15,23,42,0.08)",
         fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
       }}
     >
@@ -453,7 +453,7 @@ function NotesColumn({ notes, updateNotes }) {
       ))}
 
       <button onClick={addNote}
-        className="text-[9px] text-stone-500 hover:text-stone-800 mt-2 print:hidden"
+        className="text-[9px] text-slate-500 hover:text-slate-900 mt-2 print:hidden"
         style={{ letterSpacing: "0.05em", textTransform: "uppercase" }}>
         + Add section
       </button>
@@ -818,9 +818,9 @@ export function Inspector({
   rotateSelected, deleteSelected, placed,
 }) {
   return (
-    <aside className="w-64 bg-[#0d1014]/95 backdrop-blur-xl border-l border-white/[0.06] flex flex-col">
-      <div className="px-4 h-10 flex items-center border-b border-white/[0.06]">
-        <div className="text-[10px] tracking-[0.3em] text-stone-400 uppercase font-medium">Inspector</div>
+    <aside className="w-64 bg-white/95 backdrop-blur-xl border-l border-slate-200 flex flex-col">
+      <div className="px-4 h-10 flex items-center border-b border-slate-200">
+        <div className="text-[10px] tracking-[0.3em] text-slate-600 uppercase font-medium">Inspector</div>
       </div>
 
       {selectedItem ? (
@@ -855,31 +855,31 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
                     [&::-webkit-scrollbar-thumb]:bg-white/10
                     [&::-webkit-scrollbar-thumb]:rounded-full">
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-2">Type</div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-2">Type</div>
         <div className="flex items-center gap-3">
           <svg viewBox={VIEWBOX} width="44" height="44"
                style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 8px ${cols.body}50)` }}
-               className="bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] p-1.5">
+               className="bg-slate-50 rounded-lg ring-1 ring-slate-200 p-1.5">
             {sym?.svg}
           </svg>
           <div>
-            <div className="text-sm font-medium text-stone-100">{sym?.name}</div>
-            {meta?.height && <div className="text-[10px] text-stone-500 mt-0.5">{meta.height}</div>}
+            <div className="text-sm font-medium text-slate-900">{sym?.name}</div>
+            {meta?.height && <div className="text-[10px] text-slate-500 mt-0.5">{meta.height}</div>}
           </div>
         </div>
         {meta?.description && (
-          <div className="text-[10px] text-stone-400 mt-2 leading-relaxed">{meta.description}</div>
+          <div className="text-[10px] text-slate-600 mt-2 leading-relaxed">{meta.description}</div>
         )}
       </div>
 
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-1.5">Label / Reference</div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-1.5">Label / Reference</div>
         <input
           type="text"
           value={item.label}
           onChange={(e) => updateLabel(e.target.value)}
           placeholder="e.g. S1 / K-01"
-          className="w-full px-3 py-2 text-xs bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] focus:ring-amber-400/40 focus:bg-white/[0.05] focus:outline-none transition-all text-stone-100 placeholder:text-stone-600"
+          className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-amber-400/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
         />
       </div>
 
@@ -889,10 +889,10 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
         <Stat label="ROT" value={Math.round(item.rotation) + "°"}/>
       </div>
 
-      <div className="pt-3 border-t border-white/[0.06]">
+      <div className="pt-3 border-t border-slate-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] tracking-[0.2em] uppercase text-stone-500">Rotation</span>
-          <span className="tabular-nums text-stone-200 text-[10px]">{Math.round(item.rotation)}°</span>
+          <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500">Rotation</span>
+          <span className="tabular-nums text-slate-800 text-[10px]">{Math.round(item.rotation)}°</span>
         </div>
         <input type="range" min="0" max="359" step="1" value={item.rotation}
                onChange={(e) => setRotation(parseInt(e.target.value))}
@@ -902,34 +902,34 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
             <button key={deg} onClick={() => setRotation(deg)}
               className={`px-1 py-1 text-[9px] tracking-wider rounded-md transition-all ${
                 Math.round(item.rotation) === deg
-                  ? "bg-amber-400/[0.15] text-amber-400 ring-1 ring-amber-400/30"
-                  : "bg-white/[0.03] text-stone-400 ring-1 ring-white/[0.06] hover:bg-white/[0.06]"
+                  ? "bg-amber-100 text-amber-700 ring-1 ring-amber-400/30"
+                  : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
               }`}>{deg}°</button>
           ))}
         </div>
       </div>
 
-      <div className="pt-3 border-t border-white/[0.06]">
+      <div className="pt-3 border-t border-slate-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] tracking-[0.2em] uppercase text-stone-500">Scale</span>
-          <span className="tabular-nums text-stone-200 text-[10px]">{Math.round((item.scale ?? 1)*100)}%</span>
+          <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500">Scale</span>
+          <span className="tabular-nums text-slate-800 text-[10px]">{Math.round((item.scale ?? 1)*100)}%</span>
         </div>
         <input type="range" min="0.4" max="3" step="0.05" value={item.scale ?? 1}
                onChange={(e) => setItemScale(parseFloat(e.target.value))}
                className="w-full accent-amber-500 mb-2"/>
         <button onClick={() => setItemScale(1)}
-          className="w-full px-2 py-1.5 text-[9px] uppercase tracking-wider bg-white/[0.03] text-stone-400 ring-1 ring-white/[0.06] hover:bg-white/[0.06] rounded-md transition-all">
+          className="w-full px-2 py-1.5 text-[9px] uppercase tracking-wider bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 rounded-md transition-all">
           Reset to 100%
         </button>
       </div>
 
-      <div className="flex gap-2 pt-3 border-t border-white/[0.06]">
+      <div className="flex gap-2 pt-3 border-t border-slate-200">
         <button onClick={rotateSelected}
-          className="flex-1 px-3 py-2 bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06] text-stone-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+          className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-slate-100 text-slate-800 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
           <RotateCw size={12}/> +15°
         </button>
         <button onClick={deleteSelected}
-          className="flex-1 px-3 py-2 bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-red-500/[0.1] hover:text-red-300 text-stone-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+          className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
           <Trash2 size={12}/> Delete
         </button>
       </div>
@@ -941,22 +941,22 @@ function AnnoInspector({ anno, updateAnnoText, deleteSelected }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-2">Annotation</div>
-        <div className="text-[10px] text-stone-400 leading-relaxed mb-3">
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-2">Annotation</div>
+        <div className="text-[10px] text-slate-600 leading-relaxed mb-3">
           Edit the note text below. Drag the box to move it. Drag the amber dot at the arrow tip to point it elsewhere.
         </div>
       </div>
       <div>
-        <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-1.5">Text</div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-1.5">Text</div>
         <textarea
           value={anno.text}
           onChange={(e) => updateAnnoText(e.target.value)}
           rows={5}
-          className="w-full px-3 py-2 text-xs bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] focus:ring-amber-400/40 focus:bg-white/[0.05] focus:outline-none transition-all text-stone-100 resize-none"
+          className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-amber-400/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900 resize-none"
         />
       </div>
       <button onClick={deleteSelected}
-        className="w-full px-3 py-2 bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-red-500/[0.1] hover:text-red-300 text-stone-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+        className="w-full px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
         <Trash2 size={12}/> Delete Annotation
       </button>
     </div>
@@ -972,21 +972,21 @@ function EmptyInspector({ placed }) {
   });
   const entries = Object.entries(counts).sort();
   return (
-    <div className="flex-1 overflow-y-auto p-4 text-[11px] text-stone-500 leading-relaxed
+    <div className="flex-1 overflow-y-auto p-4 text-[11px] text-slate-500 leading-relaxed
                     [&::-webkit-scrollbar]:w-1.5
                     [&::-webkit-scrollbar-thumb]:bg-white/10
                     [&::-webkit-scrollbar-thumb]:rounded-full">
-      <div className="mb-4 text-stone-400">Select a symbol or annotation to inspect.</div>
-      <div className="text-stone-500 uppercase tracking-[0.2em] text-[9px] mb-2">Schedule</div>
+      <div className="mb-4 text-slate-600">Select a symbol or annotation to inspect.</div>
+      <div className="text-slate-500 uppercase tracking-[0.2em] text-[9px] mb-2">Schedule</div>
       {!entries.length ? (
-        <div className="text-stone-600 mt-2 text-[10px] italic">No items placed yet.</div>
+        <div className="text-slate-400 mt-2 text-[10px] italic">No items placed yet.</div>
       ) : (
         <table className="w-full text-[10px] tabular-nums">
           <tbody>
             {entries.map(([name, n]) => (
-              <tr key={name} className="border-b border-white/[0.04]">
-                <td className="py-1.5 text-stone-300">{name}</td>
-                <td className="py-1.5 text-right text-amber-400 font-semibold">{n}</td>
+              <tr key={name} className="border-b border-slate-100">
+                <td className="py-1.5 text-slate-700">{name}</td>
+                <td className="py-1.5 text-right text-amber-700 font-semibold">{n}</td>
               </tr>
             ))}
           </tbody>
@@ -998,9 +998,9 @@ function EmptyInspector({ placed }) {
 
 function Stat({ label, value }) {
   return (
-    <div className="bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] px-2.5 py-2">
-      <div className="text-stone-500 uppercase tracking-wider text-[8.5px] mb-0.5">{label}</div>
-      <div className="tabular-nums text-stone-100 font-medium text-[11px]">{value}</div>
+    <div className="bg-slate-50 rounded-lg ring-1 ring-slate-200 px-2.5 py-2">
+      <div className="text-slate-500 uppercase tracking-wider text-[8.5px] mb-0.5">{label}</div>
+      <div className="tabular-nums text-slate-900 font-medium text-[11px]">{value}</div>
     </div>
   );
 }
@@ -1010,7 +1010,7 @@ function Stat({ label, value }) {
  * ========================================================================= */
 export function FloatingToolbar({ tool, setTool }) {
   return (
-    <div className="absolute top-4 left-4 z-20 flex flex-col bg-[#0d1014]/95 backdrop-blur-xl rounded-xl ring-1 ring-white/[0.06] shadow-2xl shadow-black/50 overflow-hidden">
+    <div className="absolute top-4 left-4 z-20 flex flex-col bg-white/95 backdrop-blur-xl rounded-xl ring-1 ring-slate-200 shadow-2xl shadow-slate-300/50 overflow-hidden">
       {Object.entries(TOOLS).map(([key, info]) => {
         const Icon = info.icon;
         const active = tool === key;
@@ -1019,9 +1019,9 @@ export function FloatingToolbar({ tool, setTool }) {
             onClick={() => setTool(key)}
             title={`${info.label} (${info.hint})`}
             className={`relative p-2.5 transition-colors duration-150 ${
-              active ? "text-amber-400" : "text-stone-400 hover:text-stone-100 hover:bg-white/[0.04]"
+              active ? "text-amber-700" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}>
-            {active && <div className="absolute inset-0 bg-amber-400/[0.08]"/>}
+            {active && <div className="absolute inset-0 bg-amber-50"/>}
             {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-amber-400 rounded-r-full"/>}
             <Icon size={15} className="relative"/>
           </button>
@@ -1033,18 +1033,18 @@ export function FloatingToolbar({ tool, setTool }) {
 
 export function ZoomControls({ zoom, onIn, onOut, onFit }) {
   return (
-    <div className="absolute top-4 right-4 z-20 flex bg-[#0d1014]/95 backdrop-blur-xl rounded-xl ring-1 ring-white/[0.06] shadow-2xl shadow-black/50 overflow-hidden">
-      <button onClick={onOut} className="p-2.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] transition-colors">
+    <div className="absolute top-4 right-4 z-20 flex bg-white/95 backdrop-blur-xl rounded-xl ring-1 ring-slate-200 shadow-2xl shadow-slate-300/50 overflow-hidden">
+      <button onClick={onOut} className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
         <ZoomOut size={14}/>
       </button>
-      <div className="px-3 self-center text-[10px] text-stone-300 tabular-nums border-x border-white/[0.06] min-w-[56px] text-center">
+      <div className="px-3 self-center text-[10px] text-slate-700 tabular-nums border-x border-slate-200 min-w-[56px] text-center">
         {Math.round(zoom*100)}%
       </div>
-      <button onClick={onIn} className="p-2.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] transition-colors">
+      <button onClick={onIn} className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
         <ZoomIn size={14}/>
       </button>
       <button onClick={onFit} title="Fit (0)"
-              className="p-2.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] transition-colors border-l border-white/[0.06]">
+              className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors border-l border-slate-200">
         <Maximize2 size={14}/>
       </button>
     </div>
@@ -1056,16 +1056,16 @@ export function ZoomControls({ zoom, onIn, onOut, onFit }) {
  * ========================================================================= */
 export function MetaEditor({ meta, updateMeta, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+    <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-6"
          onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
-           className="bg-[#0d1014] rounded-2xl ring-1 ring-white/[0.08] w-full max-w-xl p-6">
+           className="bg-white rounded-2xl ring-1 ring-slate-300 w-full max-w-xl p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <div className="text-[10px] tracking-[0.3em] uppercase text-stone-500">Project Settings</div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Project Settings</div>
             <div className="text-base font-semibold mt-0.5">Sheet metadata</div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-white/[0.04] rounded-md">
+          <button onClick={onClose} className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md">
             <X size={16}/>
           </button>
         </div>
@@ -1084,7 +1084,7 @@ export function MetaEditor({ meta, updateMeta, onClose }) {
 
         <div className="mt-5 flex justify-end">
           <button onClick={onClose}
-            className="px-4 py-2 bg-amber-400 text-stone-900 rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-300 transition">
+            className="px-4 py-2 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition">
             Done
           </button>
         </div>
@@ -1096,11 +1096,11 @@ export function MetaEditor({ meta, updateMeta, onClose }) {
 function MetaField({ label, value, onChange, type = "text", span = 1 }) {
   return (
     <div style={{ gridColumn: span === 2 ? "1 / span 2" : "auto" }}>
-      <div className="text-[9px] tracking-[0.2em] uppercase text-stone-500 mb-1.5">{label}</div>
+      <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 mb-1.5">{label}</div>
       <input
         type={type} value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06] focus:ring-amber-400/40 focus:bg-white/[0.05] focus:outline-none transition-all text-stone-100"
+        className="w-full px-3 py-2 text-sm bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-amber-400/40 focus:bg-slate-100 focus:outline-none transition-all text-slate-900"
       />
     </div>
   );
@@ -1116,22 +1116,22 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
   return (
     <>
       {/* Controls (hidden in print) */}
-      <div className="print:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm overflow-auto">
-        <div className="sticky top-0 z-10 bg-[#0d1014]/95 backdrop-blur-xl border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
+      <div className="print:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm overflow-auto">
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <div>
-            <div className="text-[10px] tracking-[0.3em] uppercase text-stone-500">Print preview</div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Print preview</div>
             <div className="text-sm font-medium mt-0.5">{meta.sheetName || "Drawing"}</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-[10px] text-stone-500">
-              Choose <span className="text-stone-200">Save as PDF</span> in the print dialog to export.
+            <div className="text-[10px] text-slate-500">
+              Choose <span className="text-slate-800">Save as PDF</span> in the print dialog to export.
             </div>
             <button onClick={onClose}
-              className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-stone-200 rounded-md text-[10px] uppercase tracking-wider">
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">
               Close
             </button>
             <button onClick={onPrint}
-              className="px-4 py-1.5 bg-amber-400 text-stone-900 rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-300 transition flex items-center gap-1.5">
+              className="px-4 py-1.5 bg-amber-500 text-white rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-amber-600 transition flex items-center gap-1.5">
               <Printer size={12}/> Print / Save PDF
             </button>
           </div>

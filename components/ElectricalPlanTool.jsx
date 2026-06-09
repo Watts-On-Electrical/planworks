@@ -644,7 +644,7 @@ export default function ElectricalPlanTool() {
   }, [placed]);
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#0a0c0f] text-stone-100 overflow-hidden select-none print:hidden"
+    <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden select-none print:hidden"
          style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Inter', sans-serif" }}>
 
       {/* ==================== TOP BAR ==================== */}
@@ -680,7 +680,7 @@ export default function ElectricalPlanTool() {
         )}
 
         {/* ==================== WORKSPACE (sheet inside) ==================== */}
-        <main className="flex-1 relative overflow-hidden bg-[#15181d]"
+        <main className="flex-1 relative overflow-hidden bg-slate-200"
               style={{ cursor: viewportCursor }}>
           <Workspace
             viewportRef={viewportRef}
@@ -731,33 +731,33 @@ export default function ElectricalPlanTool() {
 
           {/* PDF loading */}
           {pdfLoading && (
-            <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-[#0f1216] px-8 py-5 rounded-xl ring-1 ring-white/[0.08] flex items-center gap-3">
-                <Sparkles size={16} className="text-amber-400 animate-pulse"/>
-                <span className="text-xs tracking-[0.2em] uppercase text-stone-200">Rendering PDF</span>
+            <div className="absolute inset-0 z-30 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center">
+              <div className="bg-white px-8 py-5 rounded-xl ring-1 ring-slate-300 flex items-center gap-3">
+                <Sparkles size={16} className="text-amber-700 animate-pulse"/>
+                <span className="text-xs tracking-[0.2em] uppercase text-slate-800">Rendering PDF</span>
               </div>
             </div>
           )}
 
           {/* External file drop overlay */}
           {draggingFile && (
-            <div className="absolute inset-4 z-30 rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-400/[0.04] flex items-center justify-center pointer-events-none">
-              <div className="text-amber-400 text-sm tracking-[0.2em] uppercase">Drop to import</div>
+            <div className="absolute inset-4 z-30 rounded-2xl border-2 border-dashed border-amber-400/60 bg-amber-50 flex items-center justify-center pointer-events-none">
+              <div className="text-amber-700 text-sm tracking-[0.2em] uppercase">Drop to import</div>
             </div>
           )}
 
           {/* Status bar */}
-          <div className="absolute bottom-0 left-0 right-0 px-4 h-7 bg-[#0a0c0f]/95 backdrop-blur-xl text-stone-400 text-[10px] tracking-wider flex justify-between items-center border-t border-white/[0.06]">
+          <div className="absolute bottom-0 left-0 right-0 px-4 h-7 bg-white/95 backdrop-blur-xl text-slate-600 text-[10px] tracking-wider flex justify-between items-center border-t border-slate-200">
             <div className="flex gap-5">
-              <span>SYMBOLS <span className="text-amber-400 tabular-nums ml-1">{placed.length}</span></span>
-              <span>WIRES <span className="text-amber-400 tabular-nums ml-1">{wires.length}</span></span>
-              <span>NOTES <span className="text-amber-400 tabular-nums ml-1">{annotations.length}</span></span>
-              <span>TOOL <span className="text-amber-400 ml-1">{tool.toUpperCase()}</span></span>
-              {tool === "wire" && wireStart && <span className="text-amber-400 animate-pulse">→ click target</span>}
-              {tool === "note" && <span className="text-amber-400">click drawing area to add</span>}
-              {spacePressed && <span className="text-amber-400">PAN</span>}
+              <span>SYMBOLS <span className="text-amber-700 tabular-nums ml-1">{placed.length}</span></span>
+              <span>WIRES <span className="text-amber-700 tabular-nums ml-1">{wires.length}</span></span>
+              <span>NOTES <span className="text-amber-700 tabular-nums ml-1">{annotations.length}</span></span>
+              <span>TOOL <span className="text-amber-700 ml-1">{tool.toUpperCase()}</span></span>
+              {tool === "wire" && wireStart && <span className="text-amber-700 animate-pulse">→ click target</span>}
+              {tool === "note" && <span className="text-amber-700">click drawing area to add</span>}
+              {spacePressed && <span className="text-amber-700">PAN</span>}
             </div>
-            <div className="text-stone-600 tabular-nums">
+            <div className="text-slate-400 tabular-nums">
               SHEET A3 · {meta.scale}
             </div>
           </div>
