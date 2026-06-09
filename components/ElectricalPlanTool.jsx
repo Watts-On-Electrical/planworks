@@ -117,7 +117,7 @@ export default function ElectricalPlanTool() {
   const [future, setFuture] = useState([]);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [symbolScale, setSymbolScale] = useState(1.0);
-  const [colourMode, setColourMode] = useState("colour");
+  const [colourMode, setColourMode] = useState("red");
   const [isPanning, setIsPanning] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
@@ -658,7 +658,7 @@ export default function ElectricalPlanTool() {
         onExportJSON={exportJSON}
         onPrint={() => setPrintPreview(true)}
         colourMode={colourMode}
-        onToggleColour={() => setColourMode(m => m === "colour" ? "mono" : "colour")}
+        onToggleColour={() => setColourMode(m => m === "red" ? "colour" : m === "colour" ? "mono" : "red")}
         onNormalise={normaliseSizes}
         sidebarHidden={sidebarHidden}
         onToggleSidebar={() => setSidebarHidden(s => !s)}
@@ -676,6 +676,7 @@ export default function ElectricalPlanTool() {
             onPaletteDragStart={onPaletteDragStart}
             symbolScale={symbolScale}
             setSymbolScale={setSymbolScale}
+            colourMode={colourMode}
           />
         )}
 

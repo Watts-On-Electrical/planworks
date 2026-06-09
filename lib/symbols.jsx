@@ -251,13 +251,10 @@ export const SYMBOLS = {
       )},
       { id: "lt_external_updown", name: "External Up/Down (D/D)", svg: (
         <g>
-          <rect x="14" y="14" width="20" height="20" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
-          <polyline points="20,10 24,6 28,10" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round" strokeLinejoin="round"/>
-          <polyline points="20,38 24,42 28,38" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="24" y1="6" x2="24" y2="14" stroke="currentColor" strokeWidth={FEEDER}/>
-          <line x1="24" y1="34" x2="24" y2="42" stroke="currentColor" strokeWidth={FEEDER}/>
-          <text x="24" y="27" fontSize="7" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">D/D</text>
+          {/* bowtie — light projecting up and down */}
+          <path d="M 24 24 L 12 8 L 36 8 Z" fill="currentColor"/>
+          <path d="M 24 24 L 12 40 L 36 40 Z" fill="currentColor"/>
+          <circle cx="24" cy="24" r="2.5" fill="currentColor"/>
         </g>
       )},
     ],
@@ -300,9 +297,9 @@ export const SYMBOLS = {
       )},
       { id: "det_thermostat", name: "Thermostat", svg: (
         <g>
-          <rect x="14" y="10" width="20" height="14" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <text x="24" y="21" fontSize="9.5" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">T</text>
+          <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <line x1="16" y1="19" x2="32" y2="19" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+          <line x1="24" y1="19" x2="24" y2="31" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
         </g>
       )},
     ],
@@ -335,17 +332,9 @@ export const SYMBOLS = {
       )},
       { id: "sec_hub", name: "Alarm Hub", svg: (
         <g>
-          <rect x="10" y="14" width="28" height="22" rx="2" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          {/* antenna */}
-          <line x1="24" y1="14" x2="24" y2="6" stroke="currentColor" strokeWidth={FEEDER}/>
-          <circle cx="24" cy="6" r="1.4" fill="currentColor"/>
-          {/* signal arcs */}
-          <path d="M 18 9 Q 24 5 30 9" fill="none" stroke="currentColor" strokeWidth={FEEDER * 0.7}/>
-          {/* indicator lights */}
-          <circle cx="16" cy="20" r="1.5" fill="currentColor"/>
-          <circle cx="22" cy="20" r="1.5" fill="currentColor"/>
-          <text x="24" y="32" fontSize="7" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">HUB</text>
+          <rect x="6" y="16" width="36" height="16" rx="1.5" fill="currentColor"/>
+          <text x="24" y="27" fontSize="8" textAnchor="middle" fill="white"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700" letterSpacing="0.5">ALARM</text>
         </g>
       )},
       { id: "sec_door", name: "Door Sensor", svg: (
@@ -374,9 +363,9 @@ export const SYMBOLS = {
     items: [
       { id: "fx_extractor", name: "Ceiling Extract", svg: (
         <g>
-          <circle cx="24" cy="24" r="10" fill="currentColor"/>
-          <line x1="17" y1="17" x2="31" y2="31" stroke="white" strokeWidth={STROKE}/>
-          <line x1="31" y1="17" x2="17" y2="31" stroke="white" strokeWidth={STROKE}/>
+          <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <line x1="16.2" y1="16.2" x2="31.8" y2="31.8" stroke="currentColor" strokeWidth={STROKE}/>
+          <line x1="31.8" y1="16.2" x2="16.2" y2="31.8" stroke="currentColor" strokeWidth={STROKE}/>
         </g>
       )},
       { id: "fx_extractor_wall", name: "Wall Extract (SA)", svg: (
@@ -457,11 +446,9 @@ export const SYMBOLS = {
       )},
       { id: "data_ont", name: "Fibre Optic (ONT)", svg: (
         <g>
-          <rect x="8" y="12" width="32" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <text x="24" y="23" fontSize="8" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">ONT</text>
-          <circle cx="13" cy="32" r="1.4" fill="currentColor"/>
-          <circle cx="18" cy="32" r="1.4" fill="currentColor"/>
+          <rect x="8" y="16" width="32" height="16" rx="1.5" fill="currentColor"/>
+          <text x="24" y="27" fontSize="8.5" textAnchor="middle" fill="white"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700" letterSpacing="0.5">ONT</text>
         </g>
       )},
     ],
@@ -616,8 +603,9 @@ export function resolveColours(symbolId, mode) {
   symbolId = resolveId(symbolId);
   const sym = findSymbol(symbolId);
   if (!sym) return { body: "#e7e5e4", feeder: "#a8a29e" };
-  if (sym.forceColor) return { body: sym.forceColor, feeder: "#78716c" };
+  if (sym.forceColor) return { body: sym.forceColor, feeder: "#9a3412" };
   if (mode === "mono") return { body: "#0a0a0a", feeder: "#737373" };
+  if (mode === "red")  return { body: "#cc1418", feeder: "#e88a8a" };
   const cat = findCategory(symbolId);
   const palette = CATEGORY_COLOURS[cat] || CATEGORY_COLOURS.fixtures;
   return { body: palette.primary, feeder: palette.soft };

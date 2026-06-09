@@ -71,8 +71,8 @@ export function TopBar({
         <Divider />
         <ToolbarButton
           onClick={onToggleColour} icon={PaletteIcon}
-          label={colourMode === "colour" ? "Colour" : "Mono"}
-          active={colourMode === "colour"}/>
+          label={colourMode === "red" ? "PB Red" : colourMode === "colour" ? "Colour" : "Mono"}
+          active={colourMode === "red"}/>
         <ToolbarButton onClick={onNormalise} icon={Ruler} label="Normalise"/>
         <Divider />
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
@@ -113,7 +113,7 @@ function Divider() { return <div className="w-px h-5 bg-slate-100 mx-1" />; }
 /* ============================================================================
  * PALETTE (left sidebar)
  * ========================================================================= */
-export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart, symbolScale, setSymbolScale }) {
+export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart, symbolScale, setSymbolScale, colourMode }) {
   return (
     <aside className="w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col">
       <div className="px-4 h-10 flex items-center justify-between border-b border-slate-200">
@@ -146,7 +146,7 @@ export function Palette({ activeCategory, setActiveCategory, onPaletteDragStart,
                       [&::-webkit-scrollbar-thumb]:bg-white/10
                       [&::-webkit-scrollbar-thumb]:rounded-full">
         {SYMBOLS[activeCategory].items.map(sym => {
-          const cols = resolveColours(sym.id, "colour");
+          const cols = resolveColours(sym.id, colourMode || "colour");
           const meta = SYMBOL_META[sym.id];
           return (
             <div key={sym.id}
