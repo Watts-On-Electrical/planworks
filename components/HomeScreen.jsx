@@ -344,8 +344,8 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .hero-actions{display:flex; gap:11px}
 .pw-home .btn{height:46px; border-radius:12px; padding:0 20px; font-size:14px; font-weight:500; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:none; transition:all .17s ease; white-space:nowrap}
 .pw-home .btn svg{width:18px; height:18px}
-.pw-home .btn-primary{background:var(--teal-700); color:#fff; font-weight:600}
-.pw-home .btn-primary:hover{background:#1C6E7B; transform:translateY(-1px); box-shadow:0 8px 22px -6px rgba(34,128,143,.55)}
+.pw-home .btn-primary{background:var(--teal); color:#08313a; font-weight:600}
+.pw-home .btn-primary:hover{background:#52c4d5; transform:translateY(-1px); box-shadow:0 8px 22px -6px rgba(63,183,201,.6)}
 .pw-home .btn-ghost{background:rgba(255,255,255,.08); color:#e7eef4; border:1px solid rgba(255,255,255,.14)}
 .pw-home .btn-ghost:hover{background:rgba(255,255,255,.14)}
 .pw-home .stats{position:relative; display:flex; gap:34px; margin-top:26px; padding-top:22px; border-top:1px solid rgba(255,255,255,.1)}

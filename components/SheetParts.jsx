@@ -71,13 +71,13 @@ export function TopBar({
         <button
           onClick={onShowMeta}
           title="Project settings"
-          className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#22808F] hover:bg-[#1C6E7B] transition-colors min-w-0 shadow-sm">
-          <FileText size={12} className="text-[#9fd8e2] shrink-0"/>
+          className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#3FB7C9] hover:bg-[#52C4D5] text-[#08313a] transition-colors min-w-0 shadow-[#3FB7C9]/30 shadow-md">
+          <FileText size={12} className="text-[#08313a]/70 shrink-0"/>
           <div className="text-left min-w-0">
-            <div className="text-[11px] font-semibold text-white truncate max-w-[200px]">{projectLabel}</div>
-            <div className="text-[9px] text-[#bfe6ed] tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
+            <div className="text-[11px] font-semibold text-[#08313a] truncate max-w-[200px]">{projectLabel}</div>
+            <div className="text-[9px] text-[#08313a]/65 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
           </div>
-          <ChevronRight size={11} className="text-[#9fd8e2] shrink-0"/>
+          <ChevronRight size={11} className="text-[#08313a]/70 shrink-0"/>
         </button>
       </div>
 
