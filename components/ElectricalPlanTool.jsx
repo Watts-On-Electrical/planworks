@@ -79,9 +79,10 @@ const DEFAULT_NOTES = [
 
 const sid = () => "s_" + Math.random().toString(36).slice(2, 9);
 
-// A sheet holds one drawing (one floor). bgImage = imported plan.
+// A sheet holds one drawing (one floor). bgImage = imported plan. Each sheet
+// has its OWN editable notes (seeded from the defaults).
 function freshSheet(name = "Ground floor") {
-  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [] };
+  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [], notes: DEFAULT_NOTES.map(n => ({ ...n })) };
 }
 
 // A project shares meta + notes across its sheets.
@@ -100,7 +101,8 @@ function freshProject() {
 function normaliseProject(p) {
   if (!p) return freshProject();
   const meta = { ...DEFAULT_META, ...(p.meta || {}) };
-  const notes = p.notes || DEFAULT_NOTES.map(n => ({ ...n }));
+  const projNotes = p.notes || DEFAULT_NOTES;
+  const seedNotes = (sn) => (Array.isArray(sn) && sn.length ? sn : projNotes).map(n => ({ ...n }));
   if (Array.isArray(p.sheets) && p.sheets.length) {
     const sheets = p.sheets.map(s => ({
       id: s.id || sid(),
@@ -110,8 +112,9 @@ function normaliseProject(p) {
       placed: s.placed || [],
       wires: s.wires || [],
       annotations: s.annotations || [],
+      notes: seedNotes(s.notes),
     }));
-    return { meta, notes, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
+    return { meta, notes: projNotes.map(n => ({ ...n })), sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
   // Legacy flat project → wrap its drawing into a single sheet.
   const sheet = {
@@ -122,8 +125,9 @@ function normaliseProject(p) {
     placed: p.placed || [],
     wires: p.wires || [],
     annotations: p.annotations || [],
+    notes: seedNotes(null),
   };
-  return { meta, notes, sheets: [sheet], activeSheetId: sheet.id };
+  return { meta, notes: projNotes.map(n => ({ ...n })), sheets: [sheet], activeSheetId: sheet.id };
 }
 
 // Tool definitions
@@ -138,12 +142,12 @@ const TOOLS = {
 export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null, onProjectId = null }) {
   // Project state
   const [project, setProject] = useState(() => freshProject());
-  const { meta, notes, sheets, activeSheetId } = project;
+  const { meta, sheets, activeSheetId } = project;
   const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
-  const { bgImage, placed, wires, annotations } = activeSheet;
+  const { bgImage, placed, wires, annotations, notes } = activeSheet;
 
   // Drawing-level fields live on the active sheet; everything else on the project.
-  const DRAW_FIELDS = ["bgImage", "placed", "wires", "annotations"];
+  const DRAW_FIELDS = ["bgImage", "placed", "wires", "annotations", "notes"];
   // Patch the project. Any drawing fields in the patch are routed into the
   // currently active sheet, so all existing handlers keep working unchanged.
   const updateProject = useCallback((patch) => {

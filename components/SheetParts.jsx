@@ -536,7 +536,7 @@ function NotesColumn({ notes, updateNotes }) {
       className="no-print-scrollbar"
     >
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>
-        MEP NOTES
+        NOTES
       </div>
 
       {notes.map((n, i) => (
@@ -712,7 +712,7 @@ function DrawingArea({
           return (
             <g key={a.id} style={{ pointerEvents: "none" }}>
               <line x1={startX} y1={startY} x2={a.anchorX} y2={a.anchorY}
-                    stroke={stroke} strokeWidth={1}/>
+                    stroke={stroke} strokeWidth={1.3}/>
               <polygon points={`${a.anchorX},${a.anchorY} ${ax1},${ay1} ${ax2},${ay2}`} fill={stroke}/>
               {isSel && (
                 <circle cx={a.anchorX} cy={a.anchorY} r={5}
@@ -805,7 +805,8 @@ function DrawingArea({
                 rx={3}
                 fill={isSel ? "rgba(255,255,200,0.95)" : "rgba(255,255,255,0.95)"}
                 stroke={isSel ? "#d97706" : stroke}
-                strokeWidth={isSel ? 1.2 : 0.6}
+                strokeWidth={isSel ? 1.2 : 1}
+                strokeDasharray="4 2.5"
               />
               {lines.map((line, i) => (
                 <text
@@ -1756,7 +1757,7 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
           <div key={s.id} className="print-page">
             <PrintSheet
               meta={{ ...meta, sheetName: s.name, drawingNumber: s.drawingNumber || meta.drawingNumber }}
-              notes={notes}
+              notes={s.notes || notes}
               bgImage={s.bgImage}
               placed={s.placed} wires={s.wires} annotations={s.annotations}
               legendItems={legendFor(s.placed)}
@@ -1886,7 +1887,7 @@ function NotesColumnStatic({ notes }) {
       padding: "12px 14px",
       overflow: "hidden",
     }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>MEP NOTES</div>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>NOTES</div>
       {notes.map((n, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#171717", marginBottom: 3 }}>{n.heading}</div>
@@ -1952,7 +1953,7 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
           return (
             <g key={a.id}>
               <line x1={startX} y1={startY} x2={a.anchorX} y2={a.anchorY}
-                    stroke={stroke} strokeWidth={1}/>
+                    stroke={stroke} strokeWidth={1.3}/>
               <polygon points={`${a.anchorX},${a.anchorY} ${ax1},${ay1} ${ax2},${ay2}`} fill={stroke}/>
             </g>
           );
@@ -1998,7 +1999,8 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
                 rx={3}
                 fill="rgba(255,255,255,0.95)"
                 stroke={stroke}
-                strokeWidth={0.6}
+                strokeWidth={1}
+                strokeDasharray="4 2.5"
               />
               {lines.map((line, i) => (
                 <text
