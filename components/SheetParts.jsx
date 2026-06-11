@@ -7,13 +7,15 @@ import {
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon, Mail,
   ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Grid3x3, ClipboardList, Plus, Clock,
+  Grid3x3, ClipboardList, Plus, Clock, LayoutPanelTop, ImagePlus,
 } from "lucide-react";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
   getPaletteSymbols,
 } from "@/lib/symbols.jsx";
+import { useApp } from "@/components/AppShell";
+import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 
 /* ============================================================================
  * The sheet model
@@ -42,7 +44,7 @@ const TOOLS = {
 export function TopBar({
   meta, onHome, theme, onToggleTheme, onShowMeta, onImport, onUndo, onRedo, onSave, savedFlash, onShowProjects,
   onExportJSON, onPrint, colourMode, onToggleColour, onNormalise, normaliseFlash,
-  snapEnabled, onToggleSnap, onShowBoq,
+  snapEnabled, onToggleSnap, onShowBoq, onShowTitleBlock,
   sidebarHidden, onToggleSidebar,
 }) {
   const projectLabel = meta.projectName || "Untitled Project";
@@ -95,6 +97,7 @@ export function TopBar({
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
         <ToolbarButton onClick={onShowProjects} icon={FolderOpen} label="Projects"/>
         <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
+        <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Title block"/>
         <ToolbarButton onClick={onExportJSON} icon={Download} label="JSON"/>
         <ToolbarButton onClick={onPrint} icon={Printer} label="Print" hint="⌘P" primary/>
         <Divider />
@@ -833,8 +836,39 @@ function estimateWidth(s, fontSize) {
 /* ----------------------------------------------------------------------------
  * TITLE BLOCK — bottom strip, editable fields
  * ------------------------------------------------------------------------- */
+function TitleLogos({ logos, maxWidth = 240 }) {
+  const list = (logos || []).filter(Boolean);
+  if (!list.length) return <div style={{ width: 6 }} />;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center",
+                  gap: 10, padding: "8px 12px", maxWidth }}>
+      {list.map((src, i) => (
+        <img key={i} src={src} alt="" style={{ height: 40, width: "auto", maxWidth: 120, objectFit: "contain", display: "block" }} />
+      ))}
+    </div>
+  );
+}
+
+function TitleDetails({ details }) {
+  const list = (details || []).filter(d => d && (d.label || d.value));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {list.map((d, i) => (
+        <div key={i} style={{ lineHeight: 1.15 }}>
+          {d.label ? (
+            <div style={{ fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: "#737373" }}>{d.label}</div>
+          ) : null}
+          <div style={{ fontSize: i === 0 ? 14 : 9.5, fontWeight: i === 0 ? 700 : 500, color: "#0a0a0a" }}>{d.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TitleBlock({ meta, updateMeta, onSheetField }) {
   const setSheet = onSheetField || (() => {});
+  const { titleBlock } = useApp();
+  const tb = titleBlock || DEFAULT_TITLEBLOCK;
   const left = SHEET.margin;
   const width = SHEET.width - SHEET.margin * 2;
   const top = SHEET.height - SHEET.margin - SHEET.titleHeight;
@@ -845,25 +879,18 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "auto 1.3fr 0.9fr 1fr auto",
+      gridTemplateColumns: "auto 1.5fr 0.9fr 1fr",
       fontSize: 10,
     }}>
-      {/* Watts On logo */}
-      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px" }}>
-        <img src="/logos/watts.png" alt="Watts On Electrical" style={{ height: 56, width: "auto", display: "block" }} />
+      {/* Logos (account template) */}
+      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <TitleLogos logos={tb.logos} />
       </div>
 
-      {/* Left: company / project */}
-      <div style={{
-        padding: "10px 14px",
-        borderRight: "1px solid #0a0a0a",
-        display: "flex", flexDirection: "column", justifyContent: "space-between",
-      }}>
-        <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>COMPANY</div>
-          <EditableField value={meta.company} onChange={(v) => updateMeta({ company: v })}
-                         fontSize={15} weight={700} />
-        </div>
+      {/* Company details (account template) + project (per drawing) */}
+      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a",
+                    display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <TitleDetails details={tb.details} />
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
           <EditableField value={meta.projectName} onChange={(v) => updateMeta({ projectName: v })}
@@ -919,12 +946,6 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
           <EditableField value={meta.revNote} onChange={(v) => updateMeta({ revNote: v })}
                          fontSize={9} weight={500} placeholder="First issue"/>
         </div>
-      </div>
-
-      {/* Accreditations */}
-      <div style={{ borderLeft: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "8px 12px" }}>
-        <img src="/logos/napit.png" alt="NAPIT" style={{ height: 46, width: "auto", display: "block" }} />
-        <img src="/logos/trustmark.png" alt="TrustMark — Government Endorsed Quality" style={{ height: 34, width: "auto", display: "block" }} />
       </div>
     </div>
   );
@@ -1530,6 +1551,132 @@ function MetaField({ label, value, onChange, type = "text", span = 1 }) {
 }
 
 /* ============================================================================
+ * TITLE BLOCK EDITOR  (per-account template: detail lines + logos)
+ * Set once here, applied to every drawing and synced via the account.
+ * ========================================================================= */
+export function TitleBlockEditor({ onClose }) {
+  const { titleBlock, saveTitleBlock } = useApp();
+  const start = titleBlock || DEFAULT_TITLEBLOCK;
+  const [details, setDetails] = React.useState(() =>
+    (start.details && start.details.length ? start.details : DEFAULT_TITLEBLOCK.details).map(d => ({ ...d }))
+  );
+  const [logos, setLogos] = React.useState(() => [...(start.logos || [])]);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const fileRef = React.useRef(null);
+
+  const addDetail = () => setDetails(d => [...d, { label: "", value: "" }]);
+  const setDetail = (i, key, v) => setDetails(d => d.map((x, j) => (j === i ? { ...x, [key]: v } : x)));
+  const removeDetail = (i) => setDetails(d => d.filter((_, j) => j !== i));
+
+  const onPickLogos = async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = "";
+    for (const f of files) {
+      try { const url = await resizeImageToDataUrl(f); setLogos(l => [...l, url]); }
+      catch { setError("Couldn't read one of those images."); }
+    }
+  };
+  const removeLogo = (i) => setLogos(l => l.filter((_, j) => j !== i));
+
+  const save = async () => {
+    setSaving(true); setError("");
+    try {
+      await saveTitleBlock({ details: details.filter(d => d.label || d.value), logos });
+      onClose();
+    } catch (err) {
+      setError(err.message || "Couldn't save. If this is the first time, make sure the user_settings table exists.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+           className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Title block</div>
+            <div className="text-base font-semibold mt-0.5 text-slate-900">Your company template</div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md"><X size={16}/></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <p className="text-[12px] text-slate-500 -mt-1">Set once — these details and logos appear on the bottom of every drawing and in the PDF. Project, sheet, scale, date, drawing number and revision stay editable per drawing.</p>
+
+          {/* Logos */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] tracking-[0.2em] uppercase text-slate-500">Logos</div>
+              <button onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] uppercase tracking-wide font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">
+                <ImagePlus size={13}/> Add logo
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPickLogos} className="hidden"/>
+            </div>
+            {logos.length === 0 ? (
+              <div className="text-[12px] text-slate-400 italic py-3 px-3 rounded-lg bg-slate-50 ring-1 ring-slate-200">No logos yet — add your company and accreditation logos.</div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {logos.map((src, i) => (
+                  <div key={i} className="relative group rounded-lg ring-1 ring-slate-200 bg-slate-50 p-2 flex items-center justify-center" style={{ height: 56 }}>
+                    <img src={src} alt="" style={{ height: 40, width: "auto", maxWidth: 120, objectFit: "contain" }}/>
+                    <button onClick={() => removeLogo(i)} title="Remove"
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white ring-1 ring-slate-300 text-slate-500 hover:text-red-600 hover:ring-red-300 flex items-center justify-center shadow-sm">
+                      <X size={11}/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Detail lines */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] tracking-[0.2em] uppercase text-slate-500">Details</div>
+              <button onClick={addDetail}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] uppercase tracking-wide font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">
+                <Plus size={13}/> Add line
+              </button>
+            </div>
+            <div className="space-y-2">
+              {details.map((d, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={d.label} onChange={(e) => setDetail(i, "label", e.target.value)} placeholder="Label (e.g. Tel)"
+                    className="w-40 px-3 py-2 text-sm bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:outline-none text-slate-900"/>
+                  <input value={d.value} onChange={(e) => setDetail(i, "value", e.target.value)} placeholder="Value"
+                    className="flex-1 px-3 py-2 text-sm bg-slate-50 rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9]/40 focus:outline-none text-slate-900"/>
+                  <button onClick={() => removeDetail(i)} title="Remove"
+                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md shrink-0"><Trash2 size={14}/></button>
+                </div>
+              ))}
+              {details.length === 0 && (
+                <div className="text-[12px] text-slate-400 italic">No detail lines — add your company name, address, phone, email, registration…</div>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-2">The first line shows largest, as your company name.</div>
+          </div>
+
+          {error && <div className="text-[12px] text-red-600 bg-red-50 ring-1 ring-red-200 rounded-lg px-3 py-2">{error}</div>}
+        </div>
+
+        <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">Cancel</button>
+          <button onClick={save} disabled={saving}
+            className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-60">
+            {saving ? "Saving…" : "Save template"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ============================================================================
  * PRINT PREVIEW
  * Renders a clean copy of the sheet at 1:1, full-screen,
  * with the rest of the app hidden via the print stylesheet.
@@ -1857,6 +2004,8 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
 }
 
 function TitleBlockStatic({ meta }) {
+  const { titleBlock } = useApp();
+  const tb = titleBlock || DEFAULT_TITLEBLOCK;
   return (
     <div style={{
       position: "absolute",
@@ -1866,17 +2015,14 @@ function TitleBlockStatic({ meta }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "auto 1.3fr 0.9fr 1fr auto",
+      gridTemplateColumns: "auto 1.5fr 0.9fr 1fr",
       fontSize: 10,
     }}>
-      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px" }}>
-        <img src="/logos/watts.png" alt="Watts On Electrical" style={{ height: 56, width: "auto", display: "block" }} />
+      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <TitleLogos logos={tb.logos} />
       </div>
       <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>COMPANY</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0a0a0a" }}>{meta.company}</div>
-        </div>
+        <TitleDetails details={tb.details} />
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#0a0a0a" }}>{meta.projectName || "—"}</div>
@@ -1912,11 +2058,6 @@ function TitleBlockStatic({ meta }) {
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
           <div style={{ fontSize: 9 }}>{meta.revNote}</div>
         </div>
-      </div>
-
-      <div style={{ borderLeft: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "8px 12px" }}>
-        <img src="/logos/napit.png" alt="NAPIT" style={{ height: 46, width: "auto", display: "block" }} />
-        <img src="/logos/trustmark.png" alt="TrustMark — Government Endorsed Quality" style={{ height: 34, width: "auto", display: "block" }} />
       </div>
     </div>
   );

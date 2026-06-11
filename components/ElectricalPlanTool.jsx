@@ -15,7 +15,7 @@ import {
 import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
   FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
-  ProjectManager, SheetTabs,
+  ProjectManager, SheetTabs, TitleBlockEditor,
 } from "@/components/SheetParts";
 
 /* ============================================================================
@@ -195,6 +195,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(true); // snap symbols to grid
   const [showBoq, setShowBoq] = useState(false);        // bill of quantities modal
+  const [showTitleBlock, setShowTitleBlock] = useState(false); // title block template editor
   const [showProjects, setShowProjects] = useState(false); // project manager modal
   const [projectList, setProjectList] = useState([]);   // saved projects index
   const [currentProjectId, setCurrentProjectId] = useState(null);
@@ -939,6 +940,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         snapEnabled={snapEnabled}
         onToggleSnap={() => setSnapEnabled(s => !s)}
         onShowBoq={() => setShowBoq(true)}
+        onShowTitleBlock={() => setShowTitleBlock(true)}
         sidebarHidden={sidebarHidden}
         onToggleSidebar={() => setSidebarHidden(s => !s)}
       />
@@ -1089,6 +1091,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       {/* ==================== BILL OF QUANTITIES ==================== */}
       {showBoq && (
         <BillOfQuantities project={project} onClose={() => setShowBoq(false)} />
+      )}
+
+      {/* ==================== TITLE BLOCK TEMPLATE ==================== */}
+      {showTitleBlock && (
+        <TitleBlockEditor onClose={() => setShowTitleBlock(false)} />
       )}
 
       {/* ==================== PROJECT MANAGER ==================== */}
