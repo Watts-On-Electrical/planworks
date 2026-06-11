@@ -7,14 +7,14 @@ import {
   MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon, Mail,
   ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Grid3x3, ClipboardList, Plus, Clock, LayoutPanelTop, ImagePlus,
+  Grid3x3, ClipboardList, Plus, Clock, LayoutPanelTop, ImagePlus, SlidersHorizontal,
 } from "lucide-react";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
   getPaletteSymbols, getPaletteGroups,
 } from "@/lib/symbols.jsx";
-import { buildInitialBoq, refreshQuantities, newBoqItem } from "@/lib/boqTemplate";
+import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 
@@ -98,7 +98,7 @@ export function TopBar({
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
         <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onShowNotes} icon={Type} label="Notes"/>
-        <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Title block"/>
+        <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Project" teal/>
         <ToolbarButton onClick={onPrint} icon={Download} label="Save As" primary/>
         <Divider />
         <ToolbarButton
@@ -121,7 +121,7 @@ export function TopBar({
   );
 }
 
-function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flash }) {
+function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flash, teal }) {
   return (
     <button onClick={onClick}
       title={hint ? `${label} (${hint})` : label}
@@ -130,6 +130,8 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
           ? "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5] shadow-[#3FB7C9]/30 shadow-md"
           : flash
           ? "bg-emerald-500 text-white"
+          : teal
+          ? "bg-[#3FB7C9]/15 text-[#1C6E7B] dark:text-[#7fd6e3] ring-[1.5px] ring-[#3FB7C9]/70 hover:bg-[#3FB7C9]/25"
           : active
           ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45"
           : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white"
@@ -1430,14 +1432,57 @@ export function ProjectManager({
 /* ============================================================================
  * BILL OF QUANTITIES (modal) — auto-counted schedule of placed symbols
  * ========================================================================= */
-// Clean, read-only A4 layout of the BOQ used for PDF export (captured off-screen).
-function BoqPrintDocument({ boq, projectName, company }) {
-  const gbp = (n) => "£" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const lineTotal = (it) => (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
-  const subtotal = (sec) => sec.items.reduce((s, it) => s + lineTotal(it), 0);
-  const projectTotal = boq.sections.reduce((s, sec) => s + subtotal(sec), 0);
-  const vat = projectTotal * (boq.vatRate || 0) / 100;
+// ---- BOQ print layout (paginated A4) ----------------------------------------
+const boqGbp = (n) => "£" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const boqLine = (it) => (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
+const boqSub = (sec) => sec.items.reduce((s, it) => s + boqLine(it), 0);
+
+// Flow the BOQ into A4 pages. A section that spills onto the next page repeats
+// its title (marked "cont.") and the column header, so a heading never gets
+// stranded away from its rows.
+function paginateBoq(boq) {
+  const H = { header: 86, meta: 222, notes: 30 + ((boq.notes || []).length * 20) + 22, title: 42, thead: 26, row: 28, subtotal: 30, totals: 240, gap: 14 };
+  const CONTENT = 1010;
+  const pages = [];
+  let page = { preamble: true, chunks: [], totals: false };
+  let used = H.header + H.meta + H.notes;
+  const flush = () => { pages.push(page); page = { preamble: false, chunks: [], totals: false }; };
+
+  for (const sec of boq.sections) {
+    used += H.gap;
+    if (used + H.title + H.thead + H.row > CONTENT) { flush(); used = H.gap; }
+    let chunk = { secKey: sec.key, title: sec.title, subtitle: sec.subtitle, continued: false, startIndex: 0, rows: [], subtotal: null };
+    used += H.title + H.thead;
+    for (let i = 0; i < sec.items.length; i++) {
+      if (used + H.row > CONTENT) {
+        page.chunks.push(chunk); flush();
+        used = H.gap + H.title + H.thead;
+        chunk = { secKey: sec.key, title: sec.title, subtitle: sec.subtitle, continued: true, startIndex: i, rows: [], subtotal: null };
+      }
+      chunk.rows.push(sec.items[i]);
+      used += H.row;
+    }
+    if (used + H.subtotal > CONTENT) {
+      page.chunks.push(chunk); flush();
+      used = H.gap + H.title + H.thead + H.subtotal;
+      chunk = { secKey: sec.key, title: sec.title, subtitle: sec.subtitle, continued: true, startIndex: sec.items.length, rows: [], subtotal: boqSub(sec) };
+    } else {
+      chunk.subtotal = boqSub(sec);
+      used += H.subtotal;
+    }
+    page.chunks.push(chunk);
+  }
+  if (used + H.totals > CONTENT) { flush(); }
+  page.totals = true;
+  pages.push(page);
+  return pages;
+}
+
+function BoqPrintPages({ boq, projectName, company }) {
+  const pages = paginateBoq(boq);
   const m = boq.meta || {};
+  const projectTotal = boq.sections.reduce((s, sec) => s + boqSub(sec), 0);
+  const vat = projectTotal * (boq.vatRate || 0) / 100;
   const th = { textAlign: "left", padding: "6px", fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b", borderBottom: "1px solid #cbd5e1" };
   const td = { padding: "5px 6px", fontSize: 10, color: "#334155", borderBottom: "1px solid #eef2f6", verticalAlign: "top" };
   const metaRow = (label, val) => (
@@ -1446,103 +1491,196 @@ function BoqPrintDocument({ boq, projectName, company }) {
       <div style={{ fontSize: 11, color: "#0f172a", fontWeight: 600 }}>{val || "—"}</div>
     </div>
   );
+  const ColGroup = () => (
+    <colgroup>
+      <col style={{ width: 22 }} /><col /><col /><col style={{ width: 44 }} /><col style={{ width: 70 }} /><col style={{ width: 74 }} />
+    </colgroup>
+  );
+  const Thead = () => (
+    <thead><tr>
+      <th style={{ ...th, width: 22 }}>#</th><th style={th}>Item</th><th style={th}>Specification / Notes</th>
+      <th style={{ ...th, textAlign: "right" }}>Qty</th><th style={{ ...th, textAlign: "right" }}>Unit Rate</th><th style={{ ...th, textAlign: "right" }}>Total</th>
+    </tr></thead>
+  );
+
   return (
-    <div style={{ width: 794, padding: "44px 46px", background: "#fff", color: "#1e293b", fontFamily: "Inter, system-ui, sans-serif", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{company || "Watts On Electrical Ltd"}</div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "#22808F", fontWeight: 700 }}>Electrical Bill of Quantities</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginTop: 2, lineHeight: 1.1 }}>{m.development || projectName || "Project"}</div>
-          <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Issued for pricing · ex-VAT, GBP</div>
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 34, marginBottom: 22 }}>
-        {metaRow("Development", m.development || projectName)}
-        {metaRow("Site address", m.siteAddress)}
-        {metaRow("Prepared by", m.preparedBy)}
-        {metaRow("Supplier", m.supplier)}
-        {metaRow("Drawing no.", m.drawingNo)}
-        {metaRow("Date issued", m.dateIssued)}
-        {metaRow("Required on site", m.requiredOnSite)}
-      </div>
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px", marginBottom: 26, background: "#f8fafc" }}>
-        <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#22808F", fontWeight: 700, marginBottom: 7 }}>Notes to supplier</div>
-        {(boq.notes || []).map((n, i) => (
-          <div key={i} style={{ fontSize: 10, color: "#475569", marginBottom: 4, display: "flex", gap: 6 }}>
-            <span style={{ color: "#94a3b8" }}>•</span><span>{n}</span>
-          </div>
-        ))}
-      </div>
-      {boq.sections.map((sec, si) => (
-        <div key={si} style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{sec.title}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#22808F" }}>{gbp(subtotal(sec))}</div>
-          </div>
-          {sec.subtitle && <div style={{ fontSize: 9.5, color: "#94a3b8", marginBottom: 4 }}>{sec.subtitle}</div>}
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ ...th, width: 22 }}>#</th>
-                <th style={th}>Item</th>
-                <th style={th}>Specification / Notes</th>
-                <th style={{ ...th, textAlign: "right", width: 44 }}>Qty</th>
-                <th style={{ ...th, textAlign: "right", width: 70 }}>Unit Rate</th>
-                <th style={{ ...th, textAlign: "right", width: 74 }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sec.items.map((it, ii) => (
-                <tr key={it.id || ii}>
-                  <td style={{ ...td, color: "#94a3b8" }}>{ii + 1}</td>
-                  <td style={{ ...td, fontWeight: 600, color: "#1e293b" }}>{it.item}</td>
-                  <td style={{ ...td, color: "#64748b" }}>{it.spec}</td>
-                  <td style={{ ...td, textAlign: "right" }}>{it.qty === "" || it.qty == null ? "—" : it.qty}</td>
-                  <td style={{ ...td, textAlign: "right" }}>{Number(it.rate) ? gbp(it.rate) : "—"}</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 600, color: "#0f172a" }}>{lineTotal(it) ? gbp(lineTotal(it)) : "—"}</td>
-                </tr>
+    <>
+      {pages.map((pg, pi) => (
+        <div key={pi} className="boq-page" style={{ width: 794, height: 1123, background: "#fff", padding: "40px 46px 54px", boxSizing: "border-box", color: "#1e293b", fontFamily: "Inter, system-ui, sans-serif", position: "relative", overflow: "hidden" }}>
+          {pg.preamble && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 26 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{company || "Watts On Electrical Ltd"}</div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "#22808F", fontWeight: 700 }}>Electrical Bill of Quantities</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginTop: 2, lineHeight: 1.1 }}>{m.development || projectName || "Project"}</div>
+                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Issued for pricing · ex-VAT, GBP</div>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 34, marginBottom: 20 }}>
+                {metaRow("Development", m.development || projectName)}
+                {metaRow("Site address", m.siteAddress)}
+                {metaRow("Prepared by", m.preparedBy)}
+                {metaRow("Supplier", m.supplier)}
+                {metaRow("Drawing no.", m.drawingNo)}
+                {metaRow("Date issued", m.dateIssued)}
+                {metaRow("Required on site", m.requiredOnSite)}
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px", marginBottom: 8, background: "#f8fafc" }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#22808F", fontWeight: 700, marginBottom: 7 }}>Notes to supplier</div>
+                {(boq.notes || []).map((n, i) => (
+                  <div key={i} style={{ fontSize: 10, color: "#475569", marginBottom: 4, display: "flex", gap: 6 }}><span style={{ color: "#94a3b8" }}>•</span><span>{n}</span></div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {pg.chunks.map((ch, ci) => (
+            <div key={ci} style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{ch.title}{ch.continued ? <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8" }}>  (cont.)</span> : null}</div>
+                {ch.subtotal != null && <div style={{ fontSize: 13, fontWeight: 700, color: "#22808F" }}>{boqGbp(ch.subtotal)}</div>}
+              </div>
+              {!ch.continued && ch.subtitle && <div style={{ fontSize: 9.5, color: "#94a3b8", marginBottom: 4 }}>{ch.subtitle}</div>}
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <ColGroup />
+                <Thead />
+                <tbody>
+                  {ch.rows.map((it, ii) => (
+                    <tr key={it.id || ii}>
+                      <td style={{ ...td, color: "#94a3b8" }}>{ch.startIndex + ii + 1}</td>
+                      <td style={{ ...td, fontWeight: 600, color: "#1e293b" }}>{it.item}</td>
+                      <td style={{ ...td, color: "#64748b" }}>{it.spec}</td>
+                      <td style={{ ...td, textAlign: "right" }}>{it.qty === "" || it.qty == null ? "—" : it.qty}</td>
+                      <td style={{ ...td, textAlign: "right" }}>{Number(it.rate) ? boqGbp(it.rate) : "—"}</td>
+                      <td style={{ ...td, textAlign: "right", fontWeight: 600, color: "#0f172a" }}>{boqLine(it) ? boqGbp(boqLine(it)) : "—"}</td>
+                    </tr>
+                  ))}
+                  {ch.subtotal != null && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: "6px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "right", color: "#475569", fontWeight: 700 }}>{ch.title} subtotal</td>
+                      <td style={{ padding: "6px", fontSize: 11, textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{boqGbp(ch.subtotal)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ))}
+
+          {pg.totals && (
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 18px", marginTop: 16, background: "#f8fafc" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748b", fontWeight: 700, marginBottom: 8 }}>Plot total</div>
+              {boq.sections.map((sec, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eef2f6", padding: "5px 0", fontSize: 11 }}>
+                  <span style={{ color: "#475569" }}>{sec.title} subtotal</span><span style={{ fontWeight: 600 }}>{boqGbp(boqSub(sec))}</span>
+                </div>
               ))}
-              <tr>
-                <td colSpan={5} style={{ padding: "6px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "right", color: "#475569", fontWeight: 700 }}>{sec.title} subtotal</td>
-                <td style={{ padding: "6px", fontSize: 11, textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{gbp(subtotal(sec))}</td>
-              </tr>
-            </tbody>
-          </table>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 12, paddingTop: 8, borderTop: "2px solid #1e293b" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Project total</div>
+                  <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em", color: "#94a3b8" }}>Excluding VAT · Issued for pricing</div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{boqGbp(projectTotal)}</div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 11, marginTop: 4 }}><span style={{ color: "#475569" }}>VAT @ {boq.vatRate}%</span><span>{boqGbp(vat)}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 11, fontWeight: 700 }}><span>Total inc. VAT</span><span>{boqGbp(projectTotal + vat)}</span></div>
+            </div>
+          )}
+
+          <div style={{ position: "absolute", bottom: 22, left: 46, right: 46, fontSize: 8.5, color: "#94a3b8", display: "flex", justifyContent: "space-between", borderTop: "1px solid #eef2f6", paddingTop: 8 }}>
+            <span>Unit rates and totals to be completed by supplier · {company || "Watts On Electrical Ltd"}</span>
+            <span>Page {pi + 1} of {pages.length}</span>
+          </div>
         </div>
       ))}
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 18px", marginTop: 8, background: "#f8fafc" }}>
-        <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748b", fontWeight: 700, marginBottom: 8 }}>Plot total</div>
-        {boq.sections.map((sec, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eef2f6", padding: "5px 0", fontSize: 11 }}>
-            <span style={{ color: "#475569" }}>{sec.title} subtotal</span>
-            <span style={{ fontWeight: 600 }}>{gbp(subtotal(sec))}</span>
-          </div>
-        ))}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 12, paddingTop: 8, borderTop: "2px solid #1e293b" }}>
+    </>
+  );
+}
+
+/* ============================================================================
+ * BOQ TEMPLATE EDITOR — edit the default items/specs/sections saved per account.
+ * ========================================================================= */
+export function BoqTemplateEditor({ saved, onSave, onClose }) {
+  const [tpl, setTpl] = useState(() => templateForEditing(saved));
+  const [busy, setBusy] = useState(false);
+  const [flash, setFlash] = useState(false);
+
+  const setItem = (si, id, f, v) => setTpl(t => t.map((sec, i) => i !== si ? sec : ({ ...sec, items: sec.items.map(it => it.id === id ? { ...it, [f]: v } : it) })));
+  const addItem = (si) => setTpl(t => t.map((sec, i) => i !== si ? sec : ({ ...sec, items: [...sec.items, newTemplateItem()] })));
+  const removeItem = (si, id) => setTpl(t => t.map((sec, i) => i !== si ? sec : ({ ...sec, items: sec.items.filter(it => it.id !== id) })));
+  const setTitle = (si, v) => setTpl(t => t.map((sec, i) => i !== si ? sec : ({ ...sec, title: v })));
+
+  const doSave = async () => {
+    setBusy(true);
+    try {
+      await onSave(templateForSaving(tpl));
+      setFlash(true); setTimeout(() => setFlash(false), 1800);
+    } catch (e) { alert("Couldn't save presets: " + (e?.message || e)); }
+    finally { setBusy(false); }
+  };
+
+  const cell = "w-full bg-transparent outline-none rounded px-1.5 py-1 focus:bg-[#ECF8FA] focus:ring-1 focus:ring-[#3FB7C9]/40";
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 h-14 bg-[#2C3E50] shrink-0">
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Project total</div>
-            <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em", color: "#94a3b8" }}>Excluding VAT · Issued for pricing</div>
+            <div className="text-[9px] tracking-[0.3em] uppercase text-[#9fd8e2]">BOQ Presets</div>
+            <div className="text-white font-semibold text-[15px] -mt-0.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Default items &amp; specifications</div>
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{gbp(projectTotal)}</div>
+          <button onClick={onClose} className="text-slate-300 hover:text-white"><X size={18}/></button>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 11, marginTop: 4 }}>
-          <span style={{ color: "#475569" }}>VAT @ {boq.vatRate}%</span><span>{gbp(vat)}</span>
+        <div className="px-6 py-2.5 bg-[#ECF8FA] border-b border-[#3FB7C9]/30 text-[11px] text-[#22808F]">
+          Edit the standard items, specs and section names used every time a new BOQ is created. Items marked <b>auto</b> still pull their quantity from the drawing.
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 11, fontWeight: 700 }}>
-          <span>Total inc. VAT</span><span>{gbp(projectTotal + vat)}</span>
+        <div className="flex-1 overflow-y-auto px-6 py-4 text-slate-800">
+          {tpl.map((sec, si) => (
+            <div key={sec.key || si} className="mb-6">
+              <input value={sec.title} onChange={(e) => setTitle(si, e.target.value)}
+                className="text-[14px] font-bold text-slate-900 bg-transparent outline-none focus:bg-[#ECF8FA] rounded px-1 mb-1"/>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="text-left text-slate-400 uppercase tracking-wider text-[8.5px] border-b border-slate-200">
+                    <th className="py-1.5 w-6">#</th><th className="py-1.5 pr-2">Item</th><th className="py-1.5 pr-2">Specification / Notes</th>
+                    <th className="py-1.5 w-12 text-center">Qty</th><th className="w-6"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sec.items.map((it, ii) => (
+                    <tr key={it.id} className="group border-b border-slate-100">
+                      <td className="py-0.5 text-slate-400 tabular-nums text-[11px]">{ii + 1}</td>
+                      <td className="py-0.5 pr-1"><input value={it.item} onChange={(e) => setItem(si, it.id, "item", e.target.value)} className={`${cell} text-[12px] font-medium text-slate-800`} placeholder="Item"/></td>
+                      <td className="py-0.5 pr-1"><input value={it.spec} onChange={(e) => setItem(si, it.id, "spec", e.target.value)} className={`${cell} text-[11px] text-slate-500`} placeholder="Spec / notes"/></td>
+                      <td className="py-0.5 text-center">{it.sf ? <span title="Quantity auto-fills from the drawing" className="text-[8px] uppercase tracking-wider text-[#22808F] bg-[#3FB7C9]/15 rounded px-1.5 py-0.5">auto</span> : <span className="text-slate-300 text-[10px]">—</span>}</td>
+                      <td className="py-0.5 text-center"><button onClick={() => removeItem(si, it.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500"><X size={12}/></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button onClick={() => addItem(si)} className="mt-2 text-[11px] text-[#22808F] hover:text-[#08313a] font-medium flex items-center gap-1"><Plus size={13}/> Add item to {sec.title}</button>
+            </div>
+          ))}
         </div>
-      </div>
-      <div style={{ fontSize: 9, color: "#94a3b8", marginTop: 18, borderTop: "1px solid #e2e8f0", paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
-        <span>Unit rates and totals to be completed by supplier. This schedule is issued for pricing.</span>
-        <span>{company || "Watts On Electrical Ltd"}</span>
+        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 shrink-0">
+          <div className="text-[10px] text-slate-400">Presets apply to every new BOQ.</div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">Close</button>
+            <button onClick={doSave} disabled={busy} className={`px-4 py-2 rounded-md text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 ${flash ? "bg-emerald-500 text-white" : "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5]"}`}>
+              {flash ? "Saved ✓" : busy ? "Saving…" : "Save presets"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
 export function BillOfQuantities({ project, updateBoq, onClose }) {
+  const { boqTemplate, saveBoqTemplate } = useApp();
   const meta = project.meta || {};
-  const [boq, setBoq] = useState(() => project.boq || buildInitialBoq(project, SYMBOL_META, findSymbol));
+  const [boq, setBoq] = useState(() => project.boq || buildInitialBoq(project, SYMBOL_META, findSymbol, boqTemplate));
+  const [showTemplate, setShowTemplate] = useState(false);
 
   // Persist edits to the project (saved with the project on Save).
   useEffect(() => { updateBoq?.(boq); /* eslint-disable-next-line */ }, [boq]);
@@ -1562,6 +1700,10 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
   const addNote = () => setBoq(b => ({ ...b, notes: [...b.notes, ""] }));
   const removeNote = (i) => setBoq(b => ({ ...b, notes: b.notes.filter((_, idx) => idx !== i) }));
   const refresh = () => setBoq(b => refreshQuantities(b, project, SYMBOL_META, findSymbol));
+  const resetToTemplate = () => {
+    if (!window.confirm("Rebuild this BOQ from your saved presets and the current drawing? Quantities re-pull from the drawing and any rates you've typed will be cleared.")) return;
+    setBoq(buildInitialBoq(project, SYMBOL_META, findSymbol, boqTemplate));
+  };
 
   const printRef = useRef(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -1573,19 +1715,16 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
     try {
       const [{ default: jsPDF }, h2cMod] = await Promise.all([import("jspdf"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
-      const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: 794 });
+      const pages = printRef.current.querySelectorAll(".boq-page");
+      if (!pages.length) { setPdfBusy(false); return; }
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = 210, pageH = 297;
-      const imgH = canvas.height * pageW / canvas.width;
-      const img = canvas.toDataURL("image/jpeg", 0.95);
-      let heightLeft = imgH, position = 0;
-      pdf.addImage(img, "JPEG", 0, position, pageW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position -= pageH;
-        pdf.addPage();
-        pdf.addImage(img, "JPEG", 0, position, pageW, imgH);
-        heightLeft -= pageH;
+      const W = pdf.internal.pageSize.getWidth();
+      const Hpt = pdf.internal.pageSize.getHeight();
+      for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: 794 });
+        const img = canvas.toDataURL("image/jpeg", 0.95);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(img, "JPEG", 0, 0, W, Hpt);
       }
       pdf.save(fileBase() + "_BOQ.pdf");
     } catch (e) {
@@ -1642,7 +1781,7 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
         {/* Off-screen print layout captured for PDF export */}
         <div aria-hidden style={{ position: "absolute", left: -10000, top: 0, width: 794, pointerEvents: "none" }}>
           <div ref={printRef}>
-            <BoqPrintDocument boq={boq} projectName={meta.projectName} company={meta.company || boq.meta.preparedBy} />
+            <BoqPrintPages boq={boq} projectName={meta.projectName} company={meta.company || boq.meta.preparedBy} />
           </div>
         </div>
 
@@ -1654,7 +1793,13 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
               {boq.meta.development || meta.projectName || "Untitled Project"}
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-white"><X size={18}/></button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowTemplate(true)} title="Edit the default items/specs used for every BOQ"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] uppercase tracking-wider font-semibold bg-[#3FB7C9]/20 text-[#9fd8e2] ring-1 ring-[#3FB7C9]/50 hover:bg-[#3FB7C9]/30">
+              <SlidersHorizontal size={13}/> Presets
+            </button>
+            <button onClick={onClose} className="text-slate-300 hover:text-white"><X size={18}/></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 text-slate-800">
@@ -1763,10 +1908,16 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 shrink-0">
-          <button onClick={refresh} title="Re-pull Second Fix quantities from the current drawing"
-            className="px-3 py-2 text-[10px] uppercase tracking-wider text-[#22808F] hover:bg-[#ECF8FA] rounded-md font-semibold flex items-center gap-1.5">
-            <RotateCw size={12}/> Refresh from drawing
-          </button>
+          <div className="flex gap-1">
+            <button onClick={refresh} title="Re-pull Second Fix quantities from the current drawing"
+              className="px-3 py-2 text-[10px] uppercase tracking-wider text-[#22808F] hover:bg-[#ECF8FA] rounded-md font-semibold flex items-center gap-1.5">
+              <RotateCw size={12}/> Refresh from drawing
+            </button>
+            <button onClick={resetToTemplate} title="Rebuild this BOQ from your saved presets"
+              className="px-3 py-2 text-[10px] uppercase tracking-wider text-slate-400 hover:text-[#22808F] hover:bg-[#ECF8FA] rounded-md font-semibold">
+              Reset to presets
+            </button>
+          </div>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">Close</button>
             <button onClick={downloadCSV} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5"><Download size={12}/> CSV</button>
@@ -1777,6 +1928,14 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
           </div>
         </div>
       </div>
+
+      {showTemplate && (
+        <BoqTemplateEditor
+          saved={boqTemplate}
+          onSave={async (tpl) => { await saveBoqTemplate?.(tpl); }}
+          onClose={() => setShowTemplate(false)}
+        />
+      )}
     </div>
   );
 }
