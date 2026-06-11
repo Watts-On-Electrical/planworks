@@ -1777,7 +1777,45 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
          bgImage: project.bgImage, placed: project.placed || [], wires: project.wires || [], annotations: project.annotations || [] }];
 
   const [mounted, setMounted] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  const fileBase = () => (meta.projectName || meta.plot || "drawing").replace(/[^a-z0-9-_]+/gi, "_");
+
+  // One-click PDF: rasterise each A3 page and assemble a multi-page PDF.
+  const downloadPDF = async () => {
+    setPdfBusy(true);
+    try {
+      const [{ default: jsPDF }, h2cMod] = await Promise.all([import("jspdf"), import("html2canvas")]);
+      const html2canvas = h2cMod.default;
+      const pages = document.querySelectorAll("#print-root .print-page");
+      if (!pages.length) { setPdfBusy(false); return; }
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
+      const W = pdf.internal.pageSize.getWidth();
+      const H = pdf.internal.pageSize.getHeight();
+      for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+        const img = canvas.toDataURL("image/jpeg", 0.92);
+        if (i > 0) pdf.addPage("a3", "landscape");
+        pdf.addImage(img, "JPEG", 0, 0, W, H);
+      }
+      pdf.save(fileBase() + ".pdf");
+    } catch (e) {
+      alert("PDF export failed: " + (e?.message || e));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  // Tucked-away backup: download the whole project as a re-importable file.
+  const downloadBackup = () => {
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileBase() + ".json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
 
   const emailClient = () => {
     const greeting = meta.clientName ? `Hi ${meta.clientName},` : "Hi,";
@@ -1816,10 +1854,14 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
           <div className="pp-title">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
         </div>
         <div className="pp-actions">
-          <span className="pp-hint">Save the PDF, then <b>Email client</b> and attach it.</span>
+          <span className="pp-hint">Download the PDF, then attach it to your client email.</span>
           <button onClick={onClose} className="pp-btn pp-btn-ghost">Close</button>
+          <button onClick={downloadBackup} className="pp-btn pp-btn-ghost" title="Download a re-importable backup of the whole project (.json)">Backup</button>
           <button onClick={emailClient} className="pp-btn pp-btn-email"><Mail size={12}/> Email client</button>
-          <button onClick={onPrint} className="pp-btn pp-btn-primary"><Printer size={12}/> Print / Save PDF</button>
+          <button onClick={onPrint} className="pp-btn pp-btn-email"><Printer size={12}/> Print</button>
+          <button onClick={downloadPDF} disabled={pdfBusy} className="pp-btn pp-btn-primary" style={pdfBusy ? { opacity: 0.6, cursor: "wait" } : undefined}>
+            <Download size={12}/> {pdfBusy ? "Building…" : "Download PDF"}
+          </button>
         </div>
       </div>
 
