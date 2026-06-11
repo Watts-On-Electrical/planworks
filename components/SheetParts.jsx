@@ -12,7 +12,7 @@ import {
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
-  getPaletteSymbols,
+  getPaletteSymbols, getPaletteGroups,
 } from "@/lib/symbols.jsx";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
@@ -125,7 +125,7 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
   return (
     <button onClick={onClick}
       title={hint ? `${label} (${hint})` : label}
-      className={`px-2.5 py-1.5 text-[10px] uppercase tracking-wide font-semibold flex items-center gap-1.5 rounded-lg transition-all duration-150 ${
+      className={`px-3 py-2 text-[11px] uppercase tracking-wide font-semibold flex items-center gap-2 rounded-lg transition-all duration-150 ${
         primary
           ? "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5] shadow-[#3FB7C9]/30 shadow-md"
           : flash
@@ -134,7 +134,7 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
           ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45"
           : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white"
       }`}>
-      <Icon size={13} /> <span>{label}</span>
+      <Icon size={15} /> <span>{label}</span>
     </button>
   );
 }
@@ -213,13 +213,37 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
  * ========================================================================= */
 export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colourMode }) {
   const [query, setQuery] = useState("");
+  const groups = useMemo(() => getPaletteGroups(), []);
   const all = useMemo(() => getPaletteSymbols(), []);
   const q = query.trim().toLowerCase();
-  const list = q
-    ? all.filter(({ sym, meta }) =>
-        (meta?.description || sym.name).toLowerCase().includes(q) ||
-        sym.name.toLowerCase().includes(q))
-    : all;
+  const matches = ({ sym, meta }) =>
+    (meta?.description || sym.name).toLowerCase().includes(q) ||
+    sym.name.toLowerCase().includes(q);
+  const searchResults = q ? all.filter(matches) : null;
+
+  const Tile = ({ sym, meta }) => {
+    const cols = resolveColours(sym.id, colourMode || "colour");
+    const label = meta?.description || sym.name;
+    return (
+      <div
+        draggable
+        onDragStart={(e) => onPaletteDragStart(e, sym.id)}
+        title={label + (meta?.height ? ` · ${meta.height}` : "")}
+        className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
+                   cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
+                   transition-all duration-200 hover:-translate-y-0.5">
+        <svg viewBox={VIEWBOX} width="46" height="46"
+             style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 5px ${cols.body}30)` }}
+             className="relative z-10 transition-transform duration-200 group-hover:scale-110">
+          {sym.svg}
+        </svg>
+        <div className="relative z-10 text-[9px] text-center text-slate-700 dark:text-slate-200 leading-tight font-medium line-clamp-3">{label}</div>
+        {meta?.height && (
+          <div className="text-[8px] text-slate-500 tabular-nums">{meta.height}</div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-r border-slate-200 dark:border-[#263441] flex flex-col">
@@ -244,36 +268,28 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2.5
+      <div className="flex-1 overflow-y-auto px-3 py-3
                       [&::-webkit-scrollbar]:w-1.5
                       [&::-webkit-scrollbar-track]:bg-transparent
                       [&::-webkit-scrollbar-thumb]:bg-slate-300/60
                       [&::-webkit-scrollbar-thumb]:rounded-full">
-        {list.map(({ sym, meta }) => {
-          const cols = resolveColours(sym.id, colourMode || "colour");
-          const label = meta?.description || sym.name;
-          return (
-            <div key={sym.id}
-              draggable
-              onDragStart={(e) => onPaletteDragStart(e, sym.id)}
-              title={label + (meta?.height ? ` · ${meta.height}` : "")}
-              className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
-                         cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
-                         transition-all duration-200 hover:-translate-y-0.5">
-              <svg viewBox={VIEWBOX} width="46" height="46"
-                   style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 5px ${cols.body}30)` }}
-                   className="relative z-10 transition-transform duration-200 group-hover:scale-110">
-                {sym.svg}
-              </svg>
-              <div className="relative z-10 text-[9px] text-center text-slate-700 dark:text-slate-200 leading-tight font-medium line-clamp-3">{label}</div>
-              {meta?.height && (
-                <div className="text-[8px] text-slate-500 tabular-nums">{meta.height}</div>
-              )}
+        {searchResults ? (
+          searchResults.length ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              {searchResults.map(({ sym, meta }) => <Tile key={sym.id} sym={sym} meta={meta} />)}
             </div>
-          );
-        })}
-        {list.length === 0 && (
-          <div className="col-span-2 text-center text-[12px] text-slate-500 py-8">No symbols match “{query}”.</div>
+          ) : (
+            <div className="text-center text-[12px] text-slate-500 py-8">No symbols match “{query}”.</div>
+          )
+        ) : (
+          groups.map((g) => (
+            <section key={g.label} className="mb-4 last:mb-1">
+              <div className="px-0.5 mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{g.label}</div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {g.items.map(({ sym, meta }) => <Tile key={sym.id} sym={sym} meta={meta} />)}
+              </div>
+            </section>
+          ))
         )}
       </div>
 

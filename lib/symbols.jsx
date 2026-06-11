@@ -55,13 +55,13 @@ export const SYMBOLS = {
           <line x1="34" y1="20" x2="34" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "sock_dso_usb_ll", name: "Double Socket USB (LL)", svg: (
+      { id: "sock_dso_usb_ll", name: "Double Socket USB-C (LL)", svg: (
         <g>
           <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
           <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
           <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
-          <text x="38" y="14" fontSize="6.5" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB</text>
+          <text x="38" y="14" fontSize="5.5" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB-C</text>
         </g>
       )},
 
@@ -82,13 +82,13 @@ export const SYMBOLS = {
           <HighLevelMark x={44} y={6}/>
         </g>
       )},
-      { id: "sock_dso_usb_hl", name: "Double Socket USB (HL)", svg: (
+      { id: "sock_dso_usb_hl", name: "Double Socket USB-C (HL)", svg: (
         <g>
           <path d="M 4 28 A 10 10 0 0 1 24 28 Z" fill="currentColor"/>
           <path d="M 24 28 A 10 10 0 0 1 44 28 Z" fill="currentColor"/>
           <line x1="14" y1="20" x2="14" y2="12" stroke="var(--feeder)" strokeWidth={FEEDER} strokeLinecap="round"/>
-          <text x="38" y="14" fontSize="6.5" textAnchor="middle" fill="currentColor"
-                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB</text>
+          <text x="38" y="14" fontSize="5.5" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">USB-C</text>
           <HighLevelMark x={44} y={22}/>
         </g>
       )},
@@ -122,11 +122,22 @@ export const SYMBOLS = {
           <line x1="34" y1="17" x2="44" y2="17" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
         </g>
       )},
-      { id: "sock_fcu", name: "Fused Spur (switched)", svg: (
+      { id: "sock_fcu", name: "Switched Fused Spur", svg: (
         <g>
-          <rect x="14" y="10" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
-          <text x="24" y="20" fontSize="8" textAnchor="middle" fill="currentColor"
+          <rect x="14" y="8" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="18" fontSize="8" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">FCU</text>
+          <circle cx="15" cy="34" r="1.8" fill="currentColor"/>
+          <line x1="15" y1="34" x2="30" y2="28" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+        </g>
+      )},
+      { id: "spur_unsw", name: "Unswitched Fused Spur", svg: (
+        <g>
+          <rect x="14" y="8" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="18" fontSize="8" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">FCU</text>
+          <rect x="19" y="28" width="10" height="7" rx="1" fill="none" stroke="currentColor" strokeWidth={FEEDER}/>
+          <line x1="19" y1="31.5" x2="29" y2="31.5" stroke="currentColor" strokeWidth={FEEDER}/>
         </g>
       )},
     ],
@@ -238,6 +249,14 @@ export const SYMBOLS = {
           <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" strokeWidth={FEEDER * 0.8} strokeDasharray="2 1.5"/>
           <text x="40" y="14" fontSize="6" textAnchor="middle" fill="currentColor"
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">IP</text>
+        </g>
+      )},
+      { id: "lt_2d", name: "2D Fitting", svg: (
+        <g>
+          <circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
+          <rect x="18" y="18" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" strokeWidth={FEEDER}/>
+          <text x="24" y="27" fontSize="6.5" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">2D</text>
         </g>
       )},
       { id: "lt_batten", name: "Batten Holder", svg: (
@@ -366,6 +385,14 @@ export const SYMBOLS = {
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700" letterSpacing="0.5">ALARM</text>
         </g>
       )},
+      { id: "sec_bell", name: "Alarm Sounder (Bell)", svg: (
+        <g>
+          <rect x="13" y="11" width="22" height="20" rx="3" fill="currentColor"/>
+          <path d="M 20 26 Q 20 17 24 17 Q 28 17 28 26 Z" fill="white"/>
+          <circle cx="24" cy="28.5" r="1.4" fill="white"/>
+          <path d="M 33 14 Q 37 18 33 22" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
+        </g>
+      )},
       { id: "sec_door", name: "Door Sensor", svg: (
         <g>
           {/* two small contact bodies side-by-side */}
@@ -455,6 +482,42 @@ export const SYMBOLS = {
           <circle cx="18" cy="20" r="1.4" fill="currentColor"/>
         </g>
       )},
+      { id: "iso_dp", name: "1G DP Isolator", svg: (
+        <g>
+          <rect x="11" y="11" width="26" height="26" rx="3" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="22" fontSize="8.5" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">DP</text>
+          <circle cx="16" cy="31" r="1.6" fill="currentColor"/>
+          <line x1="16" y1="31" x2="30" y2="26" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+        </g>
+      )},
+      { id: "iso_rotary", name: "Rotary Isolator", svg: (
+        <g>
+          <rect x="11" y="11" width="26" height="26" rx="3" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <circle cx="24" cy="24" r="6.5" fill="none" stroke="currentColor" strokeWidth={FEEDER}/>
+          <line x1="24" y1="24" x2="24" y2="18.5" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+          <path d="M 31 19 A 9 9 0 0 1 31 29" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
+          <polyline points="29.5,28 31,29.5 32.5,27.8" fill="none" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round" strokeLinejoin="round"/>
+        </g>
+      )},
+      { id: "iso_cooker", name: "Cooker Control Unit (45A)", svg: (
+        <g>
+          <rect x="8" y="10" width="32" height="18" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="21" y="22" fontSize="8" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">45A</text>
+          <circle cx="33" cy="15" r="2.2" fill="currentColor"/>
+          <circle cx="15" cy="36" r="1.6" fill="currentColor"/>
+          <line x1="15" y1="36" x2="29" y2="31" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round"/>
+        </g>
+      )},
+      { id: "ev_charger", name: "EV Charge Point", svg: (
+        <g>
+          <rect x="13" y="8" width="22" height="28" rx="3.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="20" fontSize="9" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">EV</text>
+          <path d="M 26 23 L 21 31 L 24.5 31 L 22 38" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round"/>
+        </g>
+      )},
       { id: "fx_domed", name: "Domed Compact Fitting", svg: (
         <g>
           <circle cx="24" cy="24" r="7" fill="none" stroke="currentColor" strokeWidth={STROKE}/>
@@ -526,6 +589,16 @@ export const SYMBOLS = {
                 fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">UFH</text>
         </g>
       )},
+      { id: "ht_wiring_centre", name: "Heating Wiring Centre", svg: (
+        <g>
+          <rect x="7" y="13" width="34" height="20" rx="2.5" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinejoin="round"/>
+          <text x="24" y="26" fontSize="8" textAnchor="middle" fill="currentColor"
+                fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="700">HWC</text>
+          {[12, 18, 24, 30, 36].map(cx => (
+            <line key={cx} x1={cx} y1="33" x2={cx} y2="37" stroke="currentColor" strokeWidth={FEEDER} strokeLinecap="round"/>
+          ))}
+        </g>
+      )},
     ],
   },
 };
@@ -540,19 +613,19 @@ export const SYMBOL_META = {
   // Sockets — low level
   sock_sso_ll:     { description: "Single Socket Low Level",                height: "450mm AFL" },
   sock_dso_ll:     { description: "Double Socket Low Level",                height: "450mm AFL" },
-  sock_dso_usb_ll: { description: "Double Socket Low Level (USB)",          height: "450mm AFL" },
+  sock_dso_usb_ll: { description: "Double Socket Low Level (USB-C)",        height: "450mm AFL" },
 
   // Sockets — high level
   sock_sso_hl:     { description: "Single Socket High Level",               height: "1100mm AFL" },
   sock_dso_hl:     { description: "Double Socket High Level",               height: "1100mm AFL" },
-  sock_dso_usb_hl: { description: "Double Socket High Level (USB)",         height: "1100mm AFL" },
+  sock_dso_usb_hl: { description: "Double Socket High Level (USB-C)",       height: "1100mm AFL" },
 
   // Sockets — specialist
   sock_2a:         { description: "2A Socket Outlet",                       height: "450mm AFL" },
   sock_cooker:     { description: "Cooker Outlet",                          height: "1100mm AFL" },
   sock_shaver:     { description: "Shaver Socket",                          height: "1200mm AFL" },
   sock_tv:         { description: "TV Point",                               height: "450mm AFL" },
-  sock_fcu:        { description: "Fused Spur (switched)",                  height: "Above worktop / per location" },
+  sock_fcu:        { description: "Switched Fused Spur",                      height: "Above worktop / per location" },
 
   // Switches
   sw_light:        { description: "Light Switch",                            height: "1200mm AFL" },
@@ -613,6 +686,16 @@ export const SYMBOL_META = {
   ht_towel:      { description: "Heated Towel Rail (electric)",              height: "Per location" },
   ht_radiator:   { description: "Radiator",                                  height: "Per location" },
   ht_uf:         { description: "Underfloor Heating Zone",                   height: "Floor" },
+  ht_wiring_centre:{ description: "Heating Wiring Centre",                  height: "Per location" },
+
+  // Added — isolators, spurs & services
+  spur_unsw:       { description: "Unswitched Fused Spur",                  height: "Above worktop / per location" },
+  lt_2d:           { description: "2D Surface Fitting",                     height: "Ceiling" },
+  iso_dp:          { description: "1 Gang Double Pole Isolator",            height: "1500mm AFL" },
+  iso_rotary:      { description: "Rotary Isolator (IP65)",                 height: "Per location" },
+  iso_cooker:      { description: "Cooker Control Unit (45A DP)",           height: "1100\u20131450mm AFL" },
+  ev_charger:      { description: "EV Charge Point",                        height: "Per manufacturer" },
+  sec_bell:        { description: "External Alarm Sounder (Bell Box)",      height: "High level (eaves)" },
 };
 
 /* ============================================================================
@@ -668,62 +751,35 @@ export function resolveColours(symbolId, mode) {
 }
 
 /* ============================================================================
- * PALETTE_ORDER — a single flat list in the order of the Preston Baker MEP
- * legend (left column, then right column), with the gang/grid switches grouped
- * alongside the light switch. The palette renders exactly this set, no tabs.
+ * PALETTE_GROUPS — user-facing subcategories. The palette renders these as
+ * labelled sections; search flattens across all of them.
  * ========================================================================= */
-export const PALETTE_ORDER = [
-  // Sockets & spurs
-  "sock_fcu",
-  "sock_sso_ll",
-  "sock_sso_hl",
-  "sock_dso_ll",
-  "sock_dso_usb_ll",
-  "sock_dso_hl",
-  "sock_dso_usb_hl",
-  "sock_shaver",
-  "sock_tv",
-  // Lighting
-  "lt_downlight",
-  "lt_downlight_ip",
-  "fx_domed",
-  "lt_pendant",
-  "lt_batten",
-  "lt_external_updown",
-  // Switches (incl. gang + grid)
-  "sw_light",
-  "sw_2g",
-  "sw_3g",
-  "sw_4g",
-  "sw_grid",
-  // Ventilation
-  "fx_extractor",
-  "fx_extractor_wall",
-  // Detection & security
-  "det_smoke",
-  "det_heat",
-  "det_thermostat",
-  "sec_pir",
-  "sec_keypad",
-  "sec_hub",
-  "sec_door",
-  // Data & comms
-  "data_point",
-  "data_internet",
-  "data_ont",
-  // Power infrastructure
-  "fx_meter",
-  "fx_consumer",
-  "mk_csp",
+export const PALETTE_GROUPS = [
+  { label: "Sockets & Data",        ids: ["sock_sso_ll", "sock_dso_ll", "sock_dso_usb_ll", "sock_tv", "data_point"] },
+  { label: "Switches",              ids: ["sw_light", "sw_2g", "sw_3g", "sw_4g", "sw_grid"] },
+  { label: "Lighting",              ids: ["lt_downlight", "lt_pendant", "lt_2d", "lt_wall", "lt_strip", "lt_external"] },
+  { label: "Isolators & Spurs",     ids: ["iso_dp", "sock_fcu", "spur_unsw", "iso_rotary", "iso_cooker"] },
+  { label: "Detection & Security",  ids: ["det_smoke", "det_co", "det_heat", "sec_pir", "sec_bell", "sec_cctv"] },
+  { label: "Appliances & Services", ids: ["sock_cooker", "sock_shaver", "fx_extractor", "fx_extractor_wall", "ev_charger", "fx_consumer", "ht_wiring_centre"] },
 ];
 
-// Returns the flat, ordered list of palette entries: { sym, meta, category }.
+// Grouped palette: [{ label, items: [{ sym, meta, category }] }]
+export function getPaletteGroups() {
+  return PALETTE_GROUPS
+    .map(g => ({
+      label: g.label,
+      items: g.ids
+        .map(id => {
+          const sym = findSymbol(id);
+          if (!sym) return null;
+          return { sym, meta: SYMBOL_META[id] || {}, category: findCategory(id) };
+        })
+        .filter(Boolean),
+    }))
+    .filter(g => g.items.length);
+}
+
+// Flat list (used for search). Mirrors the grouped set.
 export function getPaletteSymbols() {
-  return PALETTE_ORDER
-    .map(id => {
-      const sym = findSymbol(id);
-      if (!sym) return null;
-      return { sym, meta: SYMBOL_META[id] || {}, category: findCategory(id) };
-    })
-    .filter(Boolean);
+  return getPaletteGroups().flatMap(g => g.items);
 }
