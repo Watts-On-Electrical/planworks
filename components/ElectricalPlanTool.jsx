@@ -15,7 +15,7 @@ import {
 import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
   FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
-  ProjectManager, SheetTabs, TitleBlockEditor,
+  ProjectManager, SheetTabs, TitleBlockEditor, NotesEditor,
 } from "@/components/SheetParts";
 
 /* ============================================================================
@@ -202,6 +202,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [snapEnabled, setSnapEnabled] = useState(false); // grid lines + snap to grid (off by default; toggle via Grid button)
   const [showBoq, setShowBoq] = useState(false);        // bill of quantities modal
   const [showTitleBlock, setShowTitleBlock] = useState(false); // title block template editor
+  const [showNotes, setShowNotes] = useState(false);    // notes editor modal
   const [showProjects, setShowProjects] = useState(false); // project manager modal
   const [projectList, setProjectList] = useState([]);   // saved projects index
   const [currentProjectId, setCurrentProjectId] = useState(null);
@@ -951,6 +952,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         snapEnabled={snapEnabled}
         onToggleSnap={() => setSnapEnabled(s => !s)}
         onShowBoq={() => setShowBoq(true)}
+        onShowNotes={() => setShowNotes(true)}
         onShowTitleBlock={() => setShowTitleBlock(true)}
         sidebarHidden={sidebarHidden}
         onToggleSidebar={() => setSidebarHidden(s => !s)}
@@ -1107,6 +1109,14 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       {/* ==================== TITLE BLOCK TEMPLATE ==================== */}
       {showTitleBlock && (
         <TitleBlockEditor onClose={() => setShowTitleBlock(false)} />
+      )}
+
+      {showNotes && (
+        <NotesEditor
+          notes={notes}
+          updateNotes={(n) => updateProject({ notes: n })}
+          onClose={() => setShowNotes(false)}
+        />
       )}
 
       {/* ==================== PROJECT MANAGER ==================== */}
