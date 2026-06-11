@@ -852,13 +852,13 @@ function TitleLogos({ logos, maxWidth = 240 }) {
 function TitleDetails({ details }) {
   const list = (details || []).filter(d => d && (d.label || d.value));
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       {list.map((d, i) => (
-        <div key={i} style={{ lineHeight: 1.15 }}>
+        <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 5, lineHeight: 1.15, minWidth: 0 }}>
           {d.label ? (
-            <div style={{ fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: "#737373" }}>{d.label}</div>
+            <span style={{ fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", whiteSpace: "nowrap", flexShrink: 0 }}>{d.label}</span>
           ) : null}
-          <div style={{ fontSize: i === 0 ? 14 : 9.5, fontWeight: i === 0 ? 700 : 500, color: "#0a0a0a" }}>{d.value}</div>
+          <span style={{ fontSize: i === 0 ? 13 : 9, fontWeight: i === 0 ? 700 : 500, color: "#0a0a0a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.value}</span>
         </div>
       ))}
     </div>
@@ -889,7 +889,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
 
       {/* Company details (account template) + project (per drawing) */}
       <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a",
-                    display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 7, overflow: "hidden" }}>
         <TitleDetails details={tb.details} />
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
@@ -904,7 +904,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       <div style={{
         padding: "10px 14px",
         borderRight: "1px solid #0a0a0a",
-        display: "flex", flexDirection: "column", justifyContent: "space-between",
+        display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 9,
       }}>
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
@@ -2021,7 +2021,7 @@ function TitleBlockStatic({ meta }) {
       <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <TitleLogos logos={tb.logos} />
       </div>
-      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 7, overflow: "hidden" }}>
         <TitleDetails details={tb.details} />
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
@@ -2029,7 +2029,7 @@ function TitleBlockStatic({ meta }) {
           <div style={{ fontSize: 9, color: "#0a0a0a" }}>{meta.plot}</div>
         </div>
       </div>
-      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 9 }}>
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#0a0a0a" }}>{meta.sheetName}</div>
