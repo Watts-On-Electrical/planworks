@@ -1430,6 +1430,116 @@ export function ProjectManager({
 /* ============================================================================
  * BILL OF QUANTITIES (modal) — auto-counted schedule of placed symbols
  * ========================================================================= */
+// Clean, read-only A4 layout of the BOQ used for PDF export (captured off-screen).
+function BoqPrintDocument({ boq, projectName, company }) {
+  const gbp = (n) => "£" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const lineTotal = (it) => (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
+  const subtotal = (sec) => sec.items.reduce((s, it) => s + lineTotal(it), 0);
+  const projectTotal = boq.sections.reduce((s, sec) => s + subtotal(sec), 0);
+  const vat = projectTotal * (boq.vatRate || 0) / 100;
+  const m = boq.meta || {};
+  const th = { textAlign: "left", padding: "6px", fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b", borderBottom: "1px solid #cbd5e1" };
+  const td = { padding: "5px 6px", fontSize: 10, color: "#334155", borderBottom: "1px solid #eef2f6", verticalAlign: "top" };
+  const metaRow = (label, val) => (
+    <div style={{ display: "flex", borderBottom: "1px solid #eef2f6", padding: "6px 0" }}>
+      <div style={{ width: 110, fontSize: 8.5, letterSpacing: "0.05em", textTransform: "uppercase", color: "#94a3b8" }}>{label}</div>
+      <div style={{ fontSize: 11, color: "#0f172a", fontWeight: 600 }}>{val || "—"}</div>
+    </div>
+  );
+  return (
+    <div style={{ width: 794, padding: "44px 46px", background: "#fff", color: "#1e293b", fontFamily: "Inter, system-ui, sans-serif", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{company || "Watts On Electrical Ltd"}</div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "#22808F", fontWeight: 700 }}>Electrical Bill of Quantities</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginTop: 2, lineHeight: 1.1 }}>{m.development || projectName || "Project"}</div>
+          <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Issued for pricing · ex-VAT, GBP</div>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 34, marginBottom: 22 }}>
+        {metaRow("Development", m.development || projectName)}
+        {metaRow("Site address", m.siteAddress)}
+        {metaRow("Prepared by", m.preparedBy)}
+        {metaRow("Supplier", m.supplier)}
+        {metaRow("Drawing no.", m.drawingNo)}
+        {metaRow("Date issued", m.dateIssued)}
+        {metaRow("Required on site", m.requiredOnSite)}
+      </div>
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px", marginBottom: 26, background: "#f8fafc" }}>
+        <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#22808F", fontWeight: 700, marginBottom: 7 }}>Notes to supplier</div>
+        {(boq.notes || []).map((n, i) => (
+          <div key={i} style={{ fontSize: 10, color: "#475569", marginBottom: 4, display: "flex", gap: 6 }}>
+            <span style={{ color: "#94a3b8" }}>•</span><span>{n}</span>
+          </div>
+        ))}
+      </div>
+      {boq.sections.map((sec, si) => (
+        <div key={si} style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{sec.title}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#22808F" }}>{gbp(subtotal(sec))}</div>
+          </div>
+          {sec.subtitle && <div style={{ fontSize: 9.5, color: "#94a3b8", marginBottom: 4 }}>{sec.subtitle}</div>}
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, width: 22 }}>#</th>
+                <th style={th}>Item</th>
+                <th style={th}>Specification / Notes</th>
+                <th style={{ ...th, textAlign: "right", width: 44 }}>Qty</th>
+                <th style={{ ...th, textAlign: "right", width: 70 }}>Unit Rate</th>
+                <th style={{ ...th, textAlign: "right", width: 74 }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sec.items.map((it, ii) => (
+                <tr key={it.id || ii}>
+                  <td style={{ ...td, color: "#94a3b8" }}>{ii + 1}</td>
+                  <td style={{ ...td, fontWeight: 600, color: "#1e293b" }}>{it.item}</td>
+                  <td style={{ ...td, color: "#64748b" }}>{it.spec}</td>
+                  <td style={{ ...td, textAlign: "right" }}>{it.qty === "" || it.qty == null ? "—" : it.qty}</td>
+                  <td style={{ ...td, textAlign: "right" }}>{Number(it.rate) ? gbp(it.rate) : "—"}</td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 600, color: "#0f172a" }}>{lineTotal(it) ? gbp(lineTotal(it)) : "—"}</td>
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={5} style={{ padding: "6px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "right", color: "#475569", fontWeight: 700 }}>{sec.title} subtotal</td>
+                <td style={{ padding: "6px", fontSize: 11, textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{gbp(subtotal(sec))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      ))}
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 18px", marginTop: 8, background: "#f8fafc" }}>
+        <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748b", fontWeight: 700, marginBottom: 8 }}>Plot total</div>
+        {boq.sections.map((sec, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eef2f6", padding: "5px 0", fontSize: 11 }}>
+            <span style={{ color: "#475569" }}>{sec.title} subtotal</span>
+            <span style={{ fontWeight: 600 }}>{gbp(subtotal(sec))}</span>
+          </div>
+        ))}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 12, paddingTop: 8, borderTop: "2px solid #1e293b" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Project total</div>
+            <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em", color: "#94a3b8" }}>Excluding VAT · Issued for pricing</div>
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{gbp(projectTotal)}</div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 11, marginTop: 4 }}>
+          <span style={{ color: "#475569" }}>VAT @ {boq.vatRate}%</span><span>{gbp(vat)}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 11, fontWeight: 700 }}>
+          <span>Total inc. VAT</span><span>{gbp(projectTotal + vat)}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: 9, color: "#94a3b8", marginTop: 18, borderTop: "1px solid #e2e8f0", paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
+        <span>Unit rates and totals to be completed by supplier. This schedule is issued for pricing.</span>
+        <span>{company || "Watts On Electrical Ltd"}</span>
+      </div>
+    </div>
+  );
+}
+
 export function BillOfQuantities({ project, updateBoq, onClose }) {
   const meta = project.meta || {};
   const [boq, setBoq] = useState(() => project.boq || buildInitialBoq(project, SYMBOL_META, findSymbol));
@@ -1452,6 +1562,38 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
   const addNote = () => setBoq(b => ({ ...b, notes: [...b.notes, ""] }));
   const removeNote = (i) => setBoq(b => ({ ...b, notes: b.notes.filter((_, idx) => idx !== i) }));
   const refresh = () => setBoq(b => refreshQuantities(b, project, SYMBOL_META, findSymbol));
+
+  const printRef = useRef(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const fileBase = () => (meta.projectName || "plan").replace(/[^a-z0-9-_]+/gi, "_");
+
+  const downloadPDF = async () => {
+    if (!printRef.current) return;
+    setPdfBusy(true);
+    try {
+      const [{ default: jsPDF }, h2cMod] = await Promise.all([import("jspdf"), import("html2canvas")]);
+      const html2canvas = h2cMod.default;
+      const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: 794 });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = 210, pageH = 297;
+      const imgH = canvas.height * pageW / canvas.width;
+      const img = canvas.toDataURL("image/jpeg", 0.95);
+      let heightLeft = imgH, position = 0;
+      pdf.addImage(img, "JPEG", 0, position, pageW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(img, "JPEG", 0, position, pageW, imgH);
+        heightLeft -= pageH;
+      }
+      pdf.save(fileBase() + "_BOQ.pdf");
+    } catch (e) {
+      alert("PDF export failed: " + (e?.message || e));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const downloadCSV = () => {
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -1496,6 +1638,13 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
         className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+
+        {/* Off-screen print layout captured for PDF export */}
+        <div aria-hidden style={{ position: "absolute", left: -10000, top: 0, width: 794, pointerEvents: "none" }}>
+          <div ref={printRef}>
+            <BoqPrintDocument boq={boq} projectName={meta.projectName} company={meta.company || boq.meta.preparedBy} />
+          </div>
+        </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 h-14 bg-[#2C3E50] shrink-0">
@@ -1620,7 +1769,11 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
           </button>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">Close</button>
-            <button onClick={downloadCSV} className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] flex items-center gap-1.5"><Download size={12}/> Export CSV</button>
+            <button onClick={downloadCSV} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5"><Download size={12}/> CSV</button>
+            <button onClick={downloadPDF} disabled={pdfBusy} style={pdfBusy ? { opacity: 0.6, cursor: "wait" } : undefined}
+              className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] flex items-center gap-1.5">
+              <Download size={12}/> {pdfBusy ? "Building…" : "Download PDF"}
+            </button>
           </div>
         </div>
       </div>

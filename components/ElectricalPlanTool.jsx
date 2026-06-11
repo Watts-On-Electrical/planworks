@@ -211,8 +211,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [projectList, setProjectList] = useState([]);   // saved projects index
   const [currentProjectId, setCurrentProjectId] = useState(null);
 
-  // Grid size in drawing units; symbols snap to multiples of this
-  const GRID = 24;
+  // Grid size in drawing units; symbols snap to multiples of this. Smaller =
+  // more squares / finer placement (better for spacing out lighting).
+  const GRID = 12;
   const snap = useCallback(
     (v) => (snapEnabled ? Math.round(v / GRID) * GRID : v),
     [snapEnabled]
