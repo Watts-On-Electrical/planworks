@@ -639,6 +639,9 @@ function NotesColumn({ notes, updateNotes }) {
           fontSize: 9, color: "#262626",
           outline: "none", lineHeight: 1.5,
           overflow: "auto",
+          userSelect: "text",
+          WebkitUserSelect: "text",
+          cursor: "text",
         }}
       />
       <style>{`.notes-editable:empty:before{content:attr(data-placeholder);color:#9ca3af}`}</style>
