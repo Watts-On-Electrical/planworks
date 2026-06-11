@@ -14,6 +14,7 @@ import {
   findSymbol, findCategory, resolveColours,
   getPaletteSymbols, getPaletteGroups,
 } from "@/lib/symbols.jsx";
+import { buildInitialBoq, refreshQuantities, newBoqItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 
@@ -1429,144 +1430,197 @@ export function ProjectManager({
 /* ============================================================================
  * BILL OF QUANTITIES (modal) — auto-counted schedule of placed symbols
  * ========================================================================= */
-export function BillOfQuantities({ project, onClose }) {
-  const { meta } = project;
-  // Count across every drawing (floor) in the project, not just the active one.
-  const placed = useMemo(
-    () => (project.sheets ? project.sheets.flatMap(s => s.placed || []) : (project.placed || [])),
-    [project]
-  );
+export function BillOfQuantities({ project, updateBoq, onClose }) {
+  const meta = project.meta || {};
+  const [boq, setBoq] = useState(() => project.boq || buildInitialBoq(project, SYMBOL_META, findSymbol));
 
-  // Aggregate placed symbols by type
-  const rows = useMemo(() => {
-    const counts = {};
-    placed.forEach(p => {
-      counts[p.symbolId] = (counts[p.symbolId] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([id, qty]) => {
-        const m = SYMBOL_META[id] || {};
-        const sym = findSymbol(id);
-        return {
-          id,
-          description: m.description || sym?.name || id,
-          height: m.height || "—",
-          qty,
-        };
-      })
-      .sort((a, b) => a.description.localeCompare(b.description));
-  }, [placed]);
+  // Persist edits to the project (saved with the project on Save).
+  useEffect(() => { updateBoq?.(boq); /* eslint-disable-next-line */ }, [boq]);
 
-  const total = rows.reduce((s, r) => s + r.qty, 0);
+  const gbp = (n) => "\u00A3" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const lineTotal = (it) => (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
+  const subtotal = (sec) => sec.items.reduce((s, it) => s + lineTotal(it), 0);
+  const projectTotal = boq.sections.reduce((s, sec) => s + subtotal(sec), 0);
+  const vat = projectTotal * (boq.vatRate || 0) / 100;
+
+  const setMeta = (f, v) => setBoq(b => ({ ...b, meta: { ...b.meta, [f]: v } }));
+  const setItem = (si, id, f, v) => setBoq(b => ({ ...b, sections: b.sections.map((sec, i) => i !== si ? sec : ({ ...sec, items: sec.items.map(it => it.id === id ? { ...it, [f]: v } : it) })) }));
+  const addItem = (si) => setBoq(b => ({ ...b, sections: b.sections.map((sec, i) => i !== si ? sec : ({ ...sec, items: [...sec.items, newBoqItem()] })) }));
+  const removeItem = (si, id) => setBoq(b => ({ ...b, sections: b.sections.map((sec, i) => i !== si ? sec : ({ ...sec, items: sec.items.filter(it => it.id !== id) })) }));
+  const setSectionTitle = (si, v) => setBoq(b => ({ ...b, sections: b.sections.map((sec, i) => i !== si ? sec : ({ ...sec, title: v })) }));
+  const setNote = (i, v) => setBoq(b => ({ ...b, notes: b.notes.map((n, idx) => idx === i ? v : n) }));
+  const addNote = () => setBoq(b => ({ ...b, notes: [...b.notes, ""] }));
+  const removeNote = (i) => setBoq(b => ({ ...b, notes: b.notes.filter((_, idx) => idx !== i) }));
+  const refresh = () => setBoq(b => refreshQuantities(b, project, SYMBOL_META, findSymbol));
 
   const downloadCSV = () => {
-    const header = ["Item", "Description", "Mounting Height", "Quantity"];
-    const lines = rows.map((r, i) =>
-      [i + 1, r.description, r.height, r.qty]
-        .map(v => `"${String(v).replace(/"/g, '""')}"`)
-        .join(",")
-    );
-    const meta1 = `"Project","${(meta.projectName || "").replace(/"/g, '""')}"`;
-    const meta2 = `"Plot","${(meta.plot || "").replace(/"/g, '""')}"`;
-    const meta3 = `"Sheet","${(meta.sheetName || "").replace(/"/g, '""')}"`;
-    const meta4 = `"Drawing No.","${(meta.drawingNumber || "").replace(/"/g, '""')}"`;
-    const csv = [meta1, meta2, meta3, meta4, "", header.join(","), ...lines,
-                 "", `"","TOTAL","",${total}`].join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const L = [];
+    L.push([esc("Electrical Bill of Quantities"), esc(boq.meta.development || meta.projectName || "")].join(","));
+    L.push([esc("Prepared by"), esc(boq.meta.preparedBy)].join(","));
+    L.push([esc("Site address"), esc(boq.meta.siteAddress)].join(","));
+    L.push([esc("Supplier"), esc(boq.meta.supplier)].join(","));
+    L.push([esc("Drawing no."), esc(boq.meta.drawingNo)].join(","));
+    L.push([esc("Date issued"), esc(boq.meta.dateIssued)].join(","));
+    L.push([esc("Required on site"), esc(boq.meta.requiredOnSite)].join(","));
+    L.push("");
+    boq.sections.forEach(sec => {
+      L.push(esc(sec.title));
+      L.push(["#", "Item", "Specification / Notes", "Qty", "Unit Rate", "Total"].map(esc).join(","));
+      sec.items.forEach((it, i) => L.push([i + 1, it.item, it.spec, it.qty, it.rate, lineTotal(it).toFixed(2)].map(esc).join(",")));
+      L.push([esc(""), esc(sec.title + " subtotal"), esc(""), esc(""), esc(""), esc(subtotal(sec).toFixed(2))].join(","));
+      L.push("");
+    });
+    L.push([esc("Project total (ex VAT)"), esc(""), esc(""), esc(""), esc(""), esc(projectTotal.toFixed(2))].join(","));
+    L.push([esc("VAT @ " + boq.vatRate + "%"), esc(""), esc(""), esc(""), esc(""), esc(vat.toFixed(2))].join(","));
+    L.push([esc("Total inc VAT"), esc(""), esc(""), esc(""), esc(""), esc((projectTotal + vat).toFixed(2))].join(","));
+    const blob = new Blob([L.join("\r\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = ((meta.projectName || "plan").replace(/[^a-z0-9-_]+/gi, "_")) + "_BOQ.csv";
     a.click();
   };
 
-  const [busyWord, setBusyWord] = React.useState(false);
-  const downloadWord = async () => {
-    setBusyWord(true);
-    try {
-      const docx = await import("docx");
-      const { buildBoqDocument } = await import("@/lib/boqDocx");
-      const doc = buildBoqDocument(docx, { meta, rows, total });
-      const blob = await docx.Packer.toBlob(doc);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = ((meta.projectName || "plan").replace(/[^a-z0-9-_]+/gi, "_")) + "_BOQ.docx";
-      a.click();
-    } catch (err) {
-      alert("Word export failed: " + err.message);
-    } finally {
-      setBusyWord(false);
-    }
-  };
+  const cell = "w-full bg-transparent outline-none rounded px-1.5 py-1 focus:bg-[#ECF8FA] focus:ring-1 focus:ring-[#3FB7C9]/40";
+
+  const MetaField = ({ label, field, strong }) => (
+    <div className="flex items-center gap-2 border-b border-slate-100 py-1.5">
+      <div className="text-[9px] uppercase tracking-wider text-slate-500 w-28 shrink-0">{label}</div>
+      <input value={boq.meta[field] || ""} onChange={(e) => setMeta(field, e.target.value)}
+        placeholder="—"
+        className={`${cell} text-[12px] ${strong ? "font-semibold text-slate-900" : "text-slate-700"}`}/>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6"
-         onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
-           className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        className="bg-white rounded-2xl ring-1 ring-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 h-14 bg-[#2C3E50] shrink-0">
           <div>
-            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Bill of Quantities</div>
-            <div className="text-base font-semibold mt-0.5 text-slate-900">
-              {meta.projectName || "Untitled Project"}
-              {meta.plot ? <span className="text-slate-400 font-normal"> · {meta.plot}</span> : null}
+            <div className="text-[9px] tracking-[0.3em] uppercase text-[#9fd8e2]">Electrical Bill of Quantities</div>
+            <div className="text-white font-semibold text-[15px] -mt-0.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              {boq.meta.development || meta.projectName || "Untitled Project"}
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md">
-            <X size={16}/>
-          </button>
+          <button onClick={onClose} className="text-slate-300 hover:text-white"><X size={18}/></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {rows.length === 0 ? (
-            <div className="text-sm text-slate-500 italic py-8 text-center">
-              No symbols placed yet. As you add items to the drawing, they'll be counted here automatically.
-            </div>
-          ) : (
-            <table className="w-full text-[12px] border-collapse">
-              <thead>
-                <tr className="text-left text-slate-500 uppercase tracking-wider text-[9px] border-b border-slate-200">
-                  <th className="py-2 pr-2 w-8">#</th>
-                  <th className="py-2 pr-2">Description</th>
-                  <th className="py-2 pr-2">Mounting Height</th>
-                  <th className="py-2 pl-2 text-right w-16">Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={r.id} className="border-b border-slate-100">
-                    <td className="py-2 pr-2 text-slate-400 tabular-nums">{i + 1}</td>
-                    <td className="py-2 pr-2 text-slate-800 font-medium">{r.description}</td>
-                    <td className="py-2 pr-2 text-slate-500">{r.height}</td>
-                    <td className="py-2 pl-2 text-right tabular-nums font-semibold text-slate-900">{r.qty}</td>
+        <div className="flex-1 overflow-y-auto px-6 py-5 text-slate-800">
+          {/* Metadata grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 mb-5">
+            <MetaField label="Development" field="development" strong/>
+            <MetaField label="Site address" field="siteAddress"/>
+            <MetaField label="Prepared by" field="preparedBy" strong/>
+            <MetaField label="Supplier" field="supplier"/>
+            <MetaField label="Drawing no." field="drawingNo"/>
+            <MetaField label="Date issued" field="dateIssued"/>
+            <MetaField label="Required on site" field="requiredOnSite"/>
+          </div>
+
+          {/* Notes to supplier */}
+          <div className="rounded-xl ring-1 ring-slate-200 bg-slate-50/60 px-4 py-3 mb-6">
+            <div className="text-[9px] uppercase tracking-wider text-[#22808F] font-semibold mb-2">Notes to supplier</div>
+            {boq.notes.map((n, i) => (
+              <div key={i} className="group flex items-start gap-2 mb-1">
+                <span className="text-slate-400 text-[11px] mt-1.5">•</span>
+                <input value={n} onChange={(e) => setNote(i, e.target.value)} className={`${cell} text-[11px] text-slate-600`}/>
+                <button onClick={() => removeNote(i)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 mt-1.5"><X size={12}/></button>
+              </div>
+            ))}
+            <button onClick={addNote} className="text-[10px] text-slate-400 hover:text-[#22808F] mt-1 ml-4">+ Add note</button>
+          </div>
+
+          {/* Sections */}
+          {boq.sections.map((sec, si) => (
+            <div key={sec.key || si} className="mb-7">
+              <div className="flex items-center justify-between mb-2">
+                <input value={sec.title} onChange={(e) => setSectionTitle(si, e.target.value)}
+                  className="text-[14px] font-bold text-slate-900 bg-transparent outline-none focus:bg-[#ECF8FA] rounded px-1"/>
+                <div className="text-right">
+                  <div className="text-[8px] uppercase tracking-wider text-slate-400">Subtotal</div>
+                  <div className="text-[14px] font-bold text-[#22808F] tabular-nums">{gbp(subtotal(sec))}</div>
+                </div>
+              </div>
+              {sec.subtitle && <div className="text-[10px] text-slate-400 -mt-1 mb-1.5 px-1">{sec.subtitle}</div>}
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="text-left text-slate-400 uppercase tracking-wider text-[8.5px] border-b border-slate-200">
+                    <th className="py-1.5 w-6">#</th>
+                    <th className="py-1.5 pr-2">Item</th>
+                    <th className="py-1.5 pr-2">Specification / Notes</th>
+                    <th className="py-1.5 pr-2 w-14 text-right">Qty</th>
+                    <th className="py-1.5 pr-2 w-24 text-right">Unit Rate</th>
+                    <th className="py-1.5 w-24 text-right">Total</th>
+                    <th className="w-6"></th>
                   </tr>
-                ))}
-                <tr className="border-t-2 border-slate-300">
-                  <td/><td className="py-2 font-semibold text-slate-900 uppercase tracking-wider text-[10px]">Total</td>
-                  <td/>
-                  <td className="py-2 pl-2 text-right tabular-nums font-bold text-[#2C97A8]">{total}</td>
-                </tr>
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {sec.items.map((it, ii) => (
+                    <tr key={it.id} className="group border-b border-slate-100">
+                      <td className="py-0.5 text-slate-400 tabular-nums text-[11px] align-middle">{ii + 1}</td>
+                      <td className="py-0.5 pr-1"><input value={it.item} onChange={(e) => setItem(si, it.id, "item", e.target.value)} className={`${cell} text-[12px] font-medium text-slate-800`} placeholder="Item"/></td>
+                      <td className="py-0.5 pr-1"><input value={it.spec} onChange={(e) => setItem(si, it.id, "spec", e.target.value)} className={`${cell} text-[11px] text-slate-500`} placeholder="Spec / notes"/></td>
+                      <td className="py-0.5 pr-1"><input value={it.qty} onChange={(e) => setItem(si, it.id, "qty", e.target.value)} inputMode="decimal" className={`${cell} text-[12px] text-right tabular-nums`} placeholder="—"/></td>
+                      <td className="py-0.5 pr-1">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <span className="text-slate-400 text-[11px]">£</span>
+                          <input value={it.rate} onChange={(e) => setItem(si, it.id, "rate", e.target.value)} inputMode="decimal" className={`${cell} text-[12px] text-right tabular-nums`} placeholder="0.00"/>
+                        </div>
+                      </td>
+                      <td className="py-0.5 text-right tabular-nums text-[12px] font-semibold text-slate-900 pr-1">{lineTotal(it) ? gbp(lineTotal(it)) : "\u2014"}</td>
+                      <td className="py-0.5 text-center">
+                        <button onClick={() => removeItem(si, it.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500"><X size={12}/></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button onClick={() => addItem(si)} className="mt-2 text-[11px] text-[#22808F] hover:text-[#08313a] font-medium flex items-center gap-1">
+                <Plus size={13}/> Add item to {sec.title}
+              </button>
+            </div>
+          ))}
+
+          {/* Totals */}
+          <div className="rounded-xl ring-1 ring-slate-200 bg-slate-50/60 px-5 py-4 mt-2">
+            <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Plot total</div>
+            {boq.sections.map((sec, i) => (
+              <div key={i} className="flex justify-between border-b border-slate-100 py-1.5 text-[12px]">
+                <span className="text-slate-600">{sec.title} subtotal</span>
+                <span className="tabular-nums font-medium">{gbp(subtotal(sec))}</span>
+              </div>
+            ))}
+            <div className="flex items-end justify-between mt-3 pt-2 border-t-2 border-slate-800">
+              <div>
+                <div className="text-[13px] font-bold text-slate-900">Project total</div>
+                <div className="text-[8px] uppercase tracking-wider text-slate-400">Excluding VAT \u00B7 Issued for pricing</div>
+              </div>
+              <div className="text-[22px] font-bold text-slate-900 tabular-nums">{gbp(projectTotal)}</div>
+            </div>
+            <div className="flex justify-between py-1 text-[12px] mt-1">
+              <span className="text-slate-600">VAT @ {boq.vatRate}%</span>
+              <span className="tabular-nums">{gbp(vat)}</span>
+            </div>
+            <div className="flex justify-between py-1 text-[12px] font-semibold">
+              <span className="text-slate-700">Total inc. VAT</span>
+              <span className="tabular-nums">{gbp(projectTotal + vat)}</span>
+            </div>
+          </div>
+          <div className="text-[10px] text-slate-400 mt-3">Unit rates and totals to be completed by supplier. This schedule is issued for pricing.</div>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-          <div className="text-[10px] text-slate-500">
-            {rows.length} item type{rows.length === 1 ? "" : "s"} · {total} total fittings
-          </div>
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 shrink-0">
+          <button onClick={refresh} title="Re-pull Second Fix quantities from the current drawing"
+            className="px-3 py-2 text-[10px] uppercase tracking-wider text-[#22808F] hover:bg-[#ECF8FA] rounded-md font-semibold flex items-center gap-1.5">
+            <RotateCw size={12}/> Refresh from drawing
+          </button>
           <div className="flex gap-2">
-            <button onClick={onClose}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">
-              Close
-            </button>
-            <button onClick={downloadCSV} disabled={rows.length === 0}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
-              <Download size={12}/> CSV
-            </button>
-            <button onClick={downloadWord} disabled={rows.length === 0 || busyWord}
-              className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
-              <Download size={12}/> {busyWord ? "Building…" : "Word (.docx)"}
-            </button>
+            <button onClick={onClose} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">Close</button>
+            <button onClick={downloadCSV} className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] flex items-center gap-1.5"><Download size={12}/> Export CSV</button>
           </div>
         </div>
       </div>

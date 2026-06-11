@@ -93,6 +93,7 @@ function freshProject() {
   return {
     meta: { ...DEFAULT_META, date: new Date().toISOString().slice(0, 10) },
     notes: DEFAULT_NOTES_TEXT,
+    boq: null,
     sheets: [sheet],
     activeSheetId: sheet.id,
   };
@@ -116,7 +117,7 @@ function normaliseProject(p) {
       annotations: s.annotations || [],
       notes: seedNotes(s.notes),
     }));
-    return { meta, notes: projNotesText, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
+    return { meta, notes: projNotesText, boq: p.boq || null, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
   // Legacy flat project → wrap its drawing into a single sheet.
   const sheet = {
@@ -129,7 +130,7 @@ function normaliseProject(p) {
     annotations: p.annotations || [],
     notes: seedNotes(null),
   };
-  return { meta, notes: projNotesText, sheets: [sheet], activeSheetId: sheet.id };
+  return { meta, notes: projNotesText, boq: p.boq || null, sheets: [sheet], activeSheetId: sheet.id };
 }
 
 // Tool definitions
@@ -168,6 +169,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   }, []);
   const updateMeta = useCallback((patch) => {
     setProject(p => ({ ...p, meta: { ...p.meta, ...patch } }));
+  }, []);
+  const updateBoq = useCallback((boq) => {
+    setProject(p => ({ ...p, boq }));
   }, []);
   // Patch arbitrary fields (name, drawingNumber, …) on the active sheet.
   const setActiveSheet = useCallback((patch) => {
@@ -1117,7 +1121,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
       {/* ==================== BILL OF QUANTITIES ==================== */}
       {showBoq && (
-        <BillOfQuantities project={project} onClose={() => setShowBoq(false)} />
+        <BillOfQuantities project={project} updateBoq={updateBoq} onClose={() => setShowBoq(false)} />
       )}
 
       {/* ==================== TITLE BLOCK TEMPLATE ==================== */}
