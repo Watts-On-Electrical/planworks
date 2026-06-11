@@ -199,7 +199,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [showMeta, setShowMeta] = useState(false);     // metadata edit modal
   const [printPreview, setPrintPreview] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
-  const [snapEnabled, setSnapEnabled] = useState(true); // snap symbols to grid
+  const [snapEnabled, setSnapEnabled] = useState(false); // grid lines + snap to grid (off by default; toggle via Grid button)
   const [showBoq, setShowBoq] = useState(false);        // bill of quantities modal
   const [showTitleBlock, setShowTitleBlock] = useState(false); // title block template editor
   const [showProjects, setShowProjects] = useState(false); // project manager modal
@@ -836,7 +836,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     try {
       const data = await getProjectData(id);
       if (!data) { alert("Could not find that project."); return; }
-      setProject(normaliseProject(data));
+      const np = normaliseProject(data);
+      // Always open on the first drawing (ground floor), regardless of which
+      // sheet was active when the project was last saved.
+      setProject({ ...np, activeSheetId: np.sheets[0].id });
       setCurrentProjectId(id);
       setShowProjects(false);
       setHistory([]); setFuture([]);
