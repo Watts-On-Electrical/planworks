@@ -95,12 +95,10 @@ export function TopBar({
         <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
         <Divider />
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
-        <ToolbarButton onClick={onShowProjects} icon={FolderOpen} label="Projects"/>
         <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onShowNotes} icon={Type} label="Notes"/>
         <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Title block"/>
-        <ToolbarButton onClick={onExportJSON} icon={Download} label="JSON"/>
-        <ToolbarButton onClick={onPrint} icon={Printer} label="Print" hint="⌘P" primary/>
+        <ToolbarButton onClick={onPrint} icon={Download} label="Save As" primary/>
         <Divider />
         <ToolbarButton
           onClick={onToggleSidebar}
@@ -1814,7 +1812,7 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
     <div id="print-root">
       <div className="pp-chrome">
         <div>
-          <div className="pp-eyebrow">Print preview</div>
+          <div className="pp-eyebrow">Save / Print</div>
           <div className="pp-title">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
         </div>
         <div className="pp-actions">
