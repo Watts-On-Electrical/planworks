@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
@@ -445,6 +445,74 @@ export function Sheet({
 }
 
 /* ----------------------------------------------------------------------------
+ * SHEET COLUMN HEADER — a bold teal title bar used at the top of the Legend
+ * and Notes columns. Bleeds to the column edges (negative margins) so it reads
+ * as a section header. Bodies below stay white.
+ * ------------------------------------------------------------------------- */
+function SheetColumnHeader({ children, padL = 14, padR = 12, padT = 12 }) {
+  return (
+    <div style={{
+      background: "#3FB7C9",
+      color: "#08313a",
+      fontSize: 11.5,
+      fontWeight: 800,
+      letterSpacing: "0.09em",
+      textTransform: "uppercase",
+      padding: "6px 12px 7px",
+      margin: `-${padT}px -${padR}px 10px -${padL}px`,
+    }}>{children}</div>
+  );
+}
+
+// Colours offered in the notes formatting toolbar.
+const NOTE_COLOURS = [
+  { label: "Black", value: "#262626" },
+  { label: "Red",   value: "#dc2626" },
+  { label: "Teal",  value: "#22808F" },
+  { label: "Navy",  value: "#2C3E50" },
+  { label: "Amber", value: "#b45309" },
+];
+
+const NOTE_FMT_BTN = {
+  minWidth: 22, height: 20, padding: "0 5px",
+  fontWeight: 700, color: "#334155",
+  background: "#fff", border: "1px solid #cbd5e1", borderRadius: 4,
+  cursor: "pointer", lineHeight: 1,
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+};
+
+// Notes are stored as light HTML. Older plain-text notes are converted on the
+// fly (escaped, newlines → <br>).
+function notesToHtml(n) {
+  if (!n) return "";
+  if (/<[a-z!/][\s\S]*>/i.test(n)) return n;
+  return n
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+}
+
+// Wrap the current selection (inside rootEl) in a span carrying inline style.
+function styleNotesSelection(rootEl, style) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+  const range = sel.getRangeAt(0);
+  if (!rootEl || !rootEl.contains(range.commonAncestorContainer)) return false;
+  const span = document.createElement("span");
+  Object.entries(style).forEach(([k, v]) => { span.style[k] = v; });
+  try {
+    range.surroundContents(span);
+  } catch {
+    const frag = range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+  sel.removeAllRanges();
+  return true;
+}
+
+/* ----------------------------------------------------------------------------
  * LEGEND COLUMN — auto-generated from placed symbols
  * ------------------------------------------------------------------------- */
 function LegendColumn({ legendItems, colourMode }) {
@@ -459,10 +527,7 @@ function LegendColumn({ legendItems, colourMode }) {
       padding: "12px 12px 12px 14px",
       overflow: "hidden",
     }}>
-      <div style={{
-        fontSize: 13, fontWeight: 700, marginBottom: 4,
-        letterSpacing: "0.05em",
-      }}>ELECTRICAL LEGEND</div>
+      <SheetColumnHeader padL={14} padR={12} padT={12}>Electrical Legend</SheetColumnHeader>
       <div style={{ fontSize: 8.5, color: "#404040", marginBottom: 10, letterSpacing: "0.06em" }}>
         UK ARCHITECTURAL · TO BE READ IN COLOUR
       </div>
@@ -511,6 +576,24 @@ function LegendColumn({ legendItems, colourMode }) {
  * NOTES COLUMN — editable MEP notes
  * ------------------------------------------------------------------------- */
 function NotesColumn({ notes, updateNotes }) {
+  const ref = useRef(null);
+  const html = notesToHtml(notes);
+
+  // Sync external changes (e.g. switching drawings) into the editor without
+  // disturbing the caret while the user is typing.
+  useEffect(() => {
+    const el = ref.current;
+    if (el && document.activeElement !== el && el.innerHTML !== html) {
+      el.innerHTML = html;
+    }
+  }, [html]);
+
+  const pushChange = () => { if (ref.current) updateNotes(ref.current.innerHTML); };
+  const apply = (style) => {
+    if (styleNotesSelection(ref.current, style)) pushChange();
+    ref.current?.focus();
+  };
+
   return (
     <div style={{
       position: "absolute",
@@ -525,25 +608,40 @@ function NotesColumn({ notes, updateNotes }) {
     }}
       className="no-print-scrollbar"
     >
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>
-        NOTES
+      <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
+
+      {/* Formatting toolbar — never printed. preventDefault keeps the text selection. */}
+      <div className="print:hidden"
+        onMouseDown={(e) => e.preventDefault()}
+        style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
+        <button onClick={() => apply({ fontWeight: "700" })} title="Bold selected text"
+          style={{ ...NOTE_FMT_BTN, fontWeight: 800 }}>B</button>
+        <button onClick={() => apply({ fontSize: "7px" })} title="Small text" style={{ ...NOTE_FMT_BTN, fontSize: 9 }}>A</button>
+        <button onClick={() => apply({ fontSize: "9px" })} title="Normal text" style={{ ...NOTE_FMT_BTN, fontSize: 11 }}>A</button>
+        <button onClick={() => apply({ fontSize: "13px" })} title="Large text" style={{ ...NOTE_FMT_BTN, fontSize: 14 }}>A</button>
+        <span style={{ width: 1, height: 16, background: "#d4d4d4", margin: "0 2px" }}/>
+        {NOTE_COLOURS.map(c => (
+          <button key={c.value} onClick={() => apply({ color: c.value })} title={`${c.label} text`}
+            style={{ width: 15, height: 15, borderRadius: "50%", background: c.value, border: "1px solid rgba(0,0,0,0.18)", cursor: "pointer", padding: 0 }}/>
+        ))}
       </div>
 
-      <textarea
-        value={notes || ""}
-        onChange={(e) => updateNotes(e.target.value)}
-        placeholder="Type notes here… press Enter for a new line"
-        className="sheet-note-body"
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={pushChange}
+        onBlur={pushChange}
+        data-placeholder="Type notes here… select text to format it"
+        className="notes-editable"
         style={{
           flex: 1, width: "100%",
           fontSize: 9, color: "#262626",
-          border: "none", background: "transparent", resize: "none",
-          padding: 0, outline: "none",
-          lineHeight: 1.5,
-          fontFamily: "inherit",
-          whiteSpace: "pre-wrap",
+          outline: "none", lineHeight: 1.5,
+          overflow: "auto",
         }}
       />
+      <style>{`.notes-editable:empty:before{content:attr(data-placeholder);color:#9ca3af}`}</style>
     </div>
   );
 }
@@ -1808,7 +1906,7 @@ function LegendColumnStatic({ legendItems, colourMode }) {
       borderRight: "1px solid #0a0a0a",
       padding: "12px 12px 12px 14px",
     }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, letterSpacing: "0.05em" }}>ELECTRICAL LEGEND</div>
+      <SheetColumnHeader padL={14} padR={12} padT={12}>Electrical Legend</SheetColumnHeader>
       <div style={{ fontSize: 8.5, color: "#404040", marginBottom: 10, letterSpacing: "0.06em" }}>
         UK ARCHITECTURAL · TO BE READ IN COLOUR
       </div>
@@ -1848,8 +1946,9 @@ function NotesColumnStatic({ notes }) {
       padding: "12px 14px",
       overflow: "hidden",
     }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>NOTES</div>
-      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{notes}</div>
+      <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
+      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5 }}
+           dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
   );
 }
