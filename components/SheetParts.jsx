@@ -845,9 +845,14 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "1.4fr 1fr 1.1fr",
+      gridTemplateColumns: "auto 1.3fr 0.9fr 1fr auto",
       fontSize: 10,
     }}>
+      {/* Watts On logo */}
+      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px" }}>
+        <img src="/logos/watts.png" alt="Watts On Electrical" style={{ height: 56, width: "auto", display: "block" }} />
+      </div>
+
       {/* Left: company / project */}
       <div style={{
         padding: "10px 14px",
@@ -914,6 +919,12 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
           <EditableField value={meta.revNote} onChange={(v) => updateMeta({ revNote: v })}
                          fontSize={9} weight={500} placeholder="First issue"/>
         </div>
+      </div>
+
+      {/* Accreditations */}
+      <div style={{ borderLeft: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "8px 12px" }}>
+        <img src="/logos/napit.png" alt="NAPIT" style={{ height: 46, width: "auto", display: "block" }} />
+        <img src="/logos/trustmark.png" alt="TrustMark — Government Endorsed Quality" style={{ height: 34, width: "auto", display: "block" }} />
       </div>
     </div>
   );
@@ -1855,9 +1866,12 @@ function TitleBlockStatic({ meta }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "1.4fr 1fr 1.1fr",
+      gridTemplateColumns: "auto 1.3fr 0.9fr 1fr auto",
       fontSize: 10,
     }}>
+      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px" }}>
+        <img src="/logos/watts.png" alt="Watts On Electrical" style={{ height: 56, width: "auto", display: "block" }} />
+      </div>
       <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>COMPANY</div>
@@ -1898,6 +1912,11 @@ function TitleBlockStatic({ meta }) {
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
           <div style={{ fontSize: 9 }}>{meta.revNote}</div>
         </div>
+      </div>
+
+      <div style={{ borderLeft: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "8px 12px" }}>
+        <img src="/logos/napit.png" alt="NAPIT" style={{ height: 46, width: "auto", display: "block" }} />
+        <img src="/logos/trustmark.png" alt="TrustMark — Government Endorsed Quality" style={{ height: 34, width: "auto", display: "block" }} />
       </div>
     </div>
   );
