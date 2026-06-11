@@ -56,7 +56,7 @@ export function TopBar({
         {onHome && (
           <>
             <button onClick={onHome} title="Back to dashboard"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-[11px] font-medium">
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#3FB7C9] hover:bg-[#52C4D5] text-[#08313a] transition-colors text-[11px] font-semibold shadow-[#3FB7C9]/30 shadow-md">
               <ChevronLeft size={14}/> Dashboard
             </button>
             <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
