@@ -511,16 +511,6 @@ function LegendColumn({ legendItems, colourMode }) {
  * NOTES COLUMN — editable MEP notes
  * ------------------------------------------------------------------------- */
 function NotesColumn({ notes, updateNotes }) {
-  const updateNote = (i, patch) => {
-    updateNotes(notes.map((n, idx) => idx === i ? { ...n, ...patch } : n));
-  };
-  const addNote = () => {
-    updateNotes([...notes, { heading: "New Section", body: "Notes…" }]);
-  };
-  const removeNote = (i) => {
-    updateNotes(notes.filter((_, idx) => idx !== i));
-  };
-
   return (
     <div style={{
       position: "absolute",
@@ -530,8 +520,8 @@ function NotesColumn({ notes, updateNotes }) {
       height: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
       borderLeft: "1px solid #0a0a0a",
       padding: "12px 14px",
-      overflow: "auto",
-      // Hide scrollbar in the editing view; print view will be at full size anyway
+      display: "flex",
+      flexDirection: "column",
     }}
       className="no-print-scrollbar"
     >
@@ -539,50 +529,21 @@ function NotesColumn({ notes, updateNotes }) {
         NOTES
       </div>
 
-      {notes.map((n, i) => (
-        <div key={i} style={{ marginBottom: 12 }}>
-          <input
-            type="text"
-            value={n.heading}
-            onChange={(e) => updateNote(i, { heading: e.target.value })}
-            className="sheet-note-heading"
-            style={{
-              fontSize: 10.5, fontWeight: 700, color: "#171717",
-              width: "100%", border: "none", background: "transparent",
-              padding: 0, marginBottom: 3, outline: "none",
-              borderBottom: "0.5px dashed transparent",
-            }}
-          />
-          <textarea
-            value={n.body}
-            onChange={(e) => updateNote(i, { body: e.target.value })}
-            className="sheet-note-body"
-            style={{
-              fontSize: 9, color: "#262626", width: "100%",
-              border: "none", background: "transparent", resize: "none",
-              padding: 0, outline: "none",
-              lineHeight: 1.4,
-              minHeight: 60,
-              fontFamily: "inherit",
-              borderBottom: "0.5px dashed transparent",
-            }}
-            rows={Math.max(3, Math.ceil(n.body.length / 35))}
-          />
-          <button
-            onClick={() => removeNote(i)}
-            className="opacity-0 hover:opacity-100 transition-opacity text-[8px] text-red-600 print:hidden"
-            style={{ marginTop: 2 }}
-          >
-            Remove section
-          </button>
-        </div>
-      ))}
-
-      <button onClick={addNote}
-        className="text-[9px] text-slate-500 hover:text-slate-900 mt-2 print:hidden"
-        style={{ letterSpacing: "0.05em", textTransform: "uppercase" }}>
-        + Add section
-      </button>
+      <textarea
+        value={notes || ""}
+        onChange={(e) => updateNotes(e.target.value)}
+        placeholder="Type notes here… press Enter for a new line"
+        className="sheet-note-body"
+        style={{
+          flex: 1, width: "100%",
+          fontSize: 9, color: "#262626",
+          border: "none", background: "transparent", resize: "none",
+          padding: 0, outline: "none",
+          lineHeight: 1.5,
+          fontFamily: "inherit",
+          whiteSpace: "pre-wrap",
+        }}
+      />
     </div>
   );
 }
@@ -1888,12 +1849,7 @@ function NotesColumnStatic({ notes }) {
       overflow: "hidden",
     }}>
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, letterSpacing: "0.05em" }}>NOTES</div>
-      {notes.map((n, i) => (
-        <div key={i} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#171717", marginBottom: 3 }}>{n.heading}</div>
-          <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{n.body}</div>
-        </div>
-      ))}
+      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{notes}</div>
     </div>
   );
 }

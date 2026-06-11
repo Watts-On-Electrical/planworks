@@ -59,38 +59,40 @@ const DEFAULT_META = {
   clientEmail: "",
 };
 
-const DEFAULT_NOTES = [
-  {
-    heading: "Fixing Heights & Location",
-    body:
-      "Refer to Building Regulations Approved Document M for equipment mounting heights in all instances.\n\nAll switches & sockets in kitchen areas to be installed minimum 300mm clear of any adjacent sink, drainer or hob.",
-  },
-  {
-    heading: "Fire & Smoke Detection",
-    body:
-      "Dwelling to be provided with a fire detection and alarm system to Grade D2 Category LD3 standard, in accordance with BS 5839-6 (alarms in hallways and landings — circulation spaces and escape routes), plus alarms in kitchen and living room (high risk areas). Heat detection in kitchens and smoke detectors in circulation spaces.",
-  },
-  {
-    heading: "Important Note",
-    body:
-      "The electrical layout provided is indicative only and to show locations of client required electrical items. Contractor to confirm all locations, runs and products with the client prior to purchase or installation of goods. All electrical works are to be carried out by a certified electrician and provide completion certificates. All works to be completed in accordance with BS 7671.",
-  },
-];
+const DEFAULT_NOTES_TEXT =
+`FIXING HEIGHTS & LOCATION
+Refer to Building Regulations Approved Document M for equipment mounting heights in all instances.
+
+All switches & sockets in kitchen areas to be installed minimum 300mm clear of any adjacent sink, drainer or hob.
+
+FIRE & SMOKE DETECTION
+Dwelling to be provided with a fire detection and alarm system to Grade D2 Category LD3 standard, in accordance with BS 5839-6 (alarms in hallways and landings — circulation spaces and escape routes), plus alarms in kitchen and living room (high risk areas). Heat detection in kitchens and smoke detectors in circulation spaces.
+
+IMPORTANT NOTE
+The electrical layout provided is indicative only and to show locations of client required electrical items. Contractor to confirm all locations, runs and products with the client prior to purchase or installation of goods. All electrical works are to be carried out by a certified electrician and provide completion certificates. All works to be completed in accordance with BS 7671.`;
+
+// Notes are a single free-text block per drawing. Convert any older saved
+// format (array of {heading, body} sections) into plain text.
+function notesToText(n) {
+  if (typeof n === "string") return n;
+  if (Array.isArray(n)) return n.map(s => [s.heading, s.body].filter(Boolean).join("\n")).join("\n\n");
+  return DEFAULT_NOTES_TEXT;
+}
 
 const sid = () => "s_" + Math.random().toString(36).slice(2, 9);
 
 // A sheet holds one drawing (one floor). bgImage = imported plan. Each sheet
-// has its OWN editable notes (seeded from the defaults).
+// has its OWN editable free-text notes.
 function freshSheet(name = "Ground floor") {
-  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [], notes: DEFAULT_NOTES.map(n => ({ ...n })) };
+  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT };
 }
 
-// A project shares meta + notes across its sheets.
+// A project holds meta + drawings (sheets); notes live on each sheet.
 function freshProject() {
   const sheet = freshSheet("Ground floor");
   return {
     meta: { ...DEFAULT_META, date: new Date().toISOString().slice(0, 10) },
-    notes: DEFAULT_NOTES.map(n => ({ ...n })),
+    notes: DEFAULT_NOTES_TEXT,
     sheets: [sheet],
     activeSheetId: sheet.id,
   };
@@ -101,8 +103,8 @@ function freshProject() {
 function normaliseProject(p) {
   if (!p) return freshProject();
   const meta = { ...DEFAULT_META, ...(p.meta || {}) };
-  const projNotes = p.notes || DEFAULT_NOTES;
-  const seedNotes = (sn) => (Array.isArray(sn) && sn.length ? sn : projNotes).map(n => ({ ...n }));
+  const projNotesText = notesToText(p.notes);
+  const seedNotes = (sn) => (sn != null && sn !== "" ? notesToText(sn) : projNotesText);
   if (Array.isArray(p.sheets) && p.sheets.length) {
     const sheets = p.sheets.map(s => ({
       id: s.id || sid(),
@@ -114,7 +116,7 @@ function normaliseProject(p) {
       annotations: s.annotations || [],
       notes: seedNotes(s.notes),
     }));
-    return { meta, notes: projNotes.map(n => ({ ...n })), sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
+    return { meta, notes: projNotesText, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
   // Legacy flat project → wrap its drawing into a single sheet.
   const sheet = {
@@ -127,7 +129,7 @@ function normaliseProject(p) {
     annotations: p.annotations || [],
     notes: seedNotes(null),
   };
-  return { meta, notes: projNotes.map(n => ({ ...n })), sheets: [sheet], activeSheetId: sheet.id };
+  return { meta, notes: projNotesText, sheets: [sheet], activeSheetId: sheet.id };
 }
 
 // Tool definitions
