@@ -319,13 +319,27 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
         // Just use first page for now (multi-page is a future feature)
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2 });
+
+        // Render at high resolution so the plan stays crisp when zoomed in and
+        // when exported. Aim for ~4400px wide (~265 DPI on A3) with caps so very
+        // large sheets don't produce an unwieldy image.
+        const base = page.getViewport({ scale: 1 });
+        const TARGET_W = 4400;
+        const MAX_DIM = 6400;
+        let renderScale = Math.max(3, Math.min(TARGET_W / base.width, 5));
+        const maxSide = Math.max(base.width, base.height) * renderScale;
+        if (maxSide > MAX_DIM) renderScale *= MAX_DIM / maxSide;
+
+        const viewport = page.getViewport({ scale: renderScale });
         const c = document.createElement("canvas");
-        c.width = viewport.width; c.height = viewport.height;
+        c.width = Math.round(viewport.width);
+        c.height = Math.round(viewport.height);
         const ctx = c.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         await page.render({ canvasContext: ctx, viewport }).promise;
         updateProject({
-          bgImage: { src: c.toDataURL("image/png"), w: viewport.width, h: viewport.height },
+          bgImage: { src: c.toDataURL("image/png"), w: c.width, h: c.height },
         });
       } catch (err) {
         alert("Could not read PDF: " + err.message);

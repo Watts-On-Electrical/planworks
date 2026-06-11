@@ -1794,8 +1794,8 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
       const W = pdf.internal.pageSize.getWidth();
       const H = pdf.internal.pageSize.getHeight();
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
-        const img = canvas.toDataURL("image/jpeg", 0.92);
+        const canvas = await html2canvas(pages[i], { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false });
+        const img = canvas.toDataURL("image/jpeg", 0.95);
         if (i > 0) pdf.addPage("a3", "landscape");
         pdf.addImage(img, "JPEG", 0, 0, W, H);
       }
