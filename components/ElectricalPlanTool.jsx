@@ -565,7 +565,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       e.target.tagName === "INPUT" ||
       e.target.tagName === "TEXTAREA" ||
       e.target.tagName === "BUTTON" ||
-      e.target.closest?.("button");
+      e.target.isContentEditable ||
+      e.target.closest?.("button") ||
+      e.target.closest?.(".notes-editable");
     if (isInteractive) return;
 
     // Pan when clicking blank workspace, sheet background, drawing background

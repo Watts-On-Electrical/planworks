@@ -1250,7 +1250,7 @@ function Stat({ label, value }) {
 export function FloatingToolbar({ tool, setTool }) {
   return (
     <div className="absolute top-4 left-4 z-20 flex flex-col bg-white dark:bg-[#16202B] rounded-2xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
-      {Object.entries(TOOLS).map(([key, info]) => {
+      {Object.entries(TOOLS).filter(([key]) => key === "select" || key === "wire").map(([key, info]) => {
         const Icon = info.icon;
         const active = tool === key;
         return (
