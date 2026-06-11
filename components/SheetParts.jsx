@@ -155,9 +155,9 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
   };
 
   return (
-    <div className="flex items-stretch gap-1.5 px-3 h-10 bg-[#E7ECF3] dark:bg-[#16202B] border-b border-slate-300 dark:border-[#263441] shrink-0 overflow-x-auto
+    <div className="flex items-stretch gap-1.5 px-3 h-11 bg-[#2C3E50] border-b border-black/25 shadow-sm shrink-0 overflow-x-auto
                     [&::-webkit-scrollbar]:h-0">
-      <div className="flex items-center pr-1 text-[9px] font-medium tracking-wider text-slate-500 dark:text-slate-400 uppercase shrink-0"
+      <div className="flex items-center pr-1 text-[9px] font-medium tracking-wider text-slate-300/75 uppercase shrink-0"
            style={{ fontFamily: "'JetBrains Mono', monospace" }}>
         Drawings
       </div>
@@ -170,10 +170,10 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
             title={active ? "Double-click to rename" : "Click to open · double-click to rename"}
             className={`group relative flex items-center gap-2 px-3 my-1.5 rounded-lg cursor-pointer transition-all shrink-0 ${
               active
-                ? "bg-white dark:bg-[#22303D] ring-1 ring-[#3FB7C9]/50 shadow-sm"
-                : "bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300"
+                ? "bg-white ring-1 ring-[#3FB7C9]/60 shadow-sm text-slate-900"
+                : "bg-white/10 hover:bg-white/20 text-slate-200"
             }`}>
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#3FB7C9]" : "bg-slate-300 dark:bg-slate-600"}`}/>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#3FB7C9]" : "bg-slate-400"}`}/>
             {editingId === s.id ? (
               <input
                 autoFocus value={draft}
@@ -181,9 +181,9 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
                 onBlur={commit}
                 onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditingId(null); }}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[12px] font-medium bg-transparent outline-none border-b border-[#3FB7C9] w-24"/>
+                className="text-[12px] font-medium bg-transparent outline-none border-b border-[#3FB7C9] w-24 text-slate-900"/>
             ) : (
-              <span className={`text-[12px] whitespace-nowrap ${active ? "font-semibold text-slate-900 dark:text-white" : "font-medium"}`}>
+              <span className={`text-[12px] whitespace-nowrap ${active ? "font-semibold text-slate-900" : "font-medium"}`}>
                 {s.name}
               </span>
             )}
@@ -201,7 +201,7 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
       <button
         onClick={onAdd}
         title="Add another drawing (e.g. First floor)"
-        className="flex items-center gap-1 px-2.5 my-1.5 rounded-lg text-[11px] font-medium text-[#22808F] dark:text-[#5fd0e0] hover:bg-white/70 dark:hover:bg-white/10 transition-colors shrink-0">
+        className="flex items-center gap-1 px-2.5 my-1.5 rounded-lg text-[11px] font-medium text-[#5fd0e0] hover:bg-white/10 transition-colors shrink-0">
         <Plus size={13}/> Add floor
       </button>
     </div>
@@ -247,9 +247,9 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
 
   return (
     <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-r border-slate-200 dark:border-[#263441] flex flex-col">
-      <div className="px-4 h-11 flex items-center justify-between border-b border-slate-200 dark:border-[#263441]">
-        <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-100" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Symbols</div>
-        <div className="text-[9px] tracking-wider text-slate-400 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>MEP LEGEND</div>
+      <div className="px-4 h-11 flex items-center justify-between bg-[#2C3E50] border-b border-black/25 shadow-sm">
+        <div className="text-[15px] font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Symbols</div>
+        <div className="text-[9px] tracking-wider text-slate-300/70 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>MEP LEGEND</div>
       </div>
 
       <div className="px-3 py-3 border-b border-slate-200 dark:border-[#263441]">
