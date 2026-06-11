@@ -70,13 +70,14 @@ export function TopBar({
         <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
         <button
           onClick={onShowMeta}
-          className="group flex items-center gap-2 px-2.5 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 transition-colors min-w-0">
-          <FileText size={12} className="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 shrink-0"/>
+          title="Project settings"
+          className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#22808F] hover:bg-[#1C6E7B] transition-colors min-w-0 shadow-sm">
+          <FileText size={12} className="text-[#9fd8e2] shrink-0"/>
           <div className="text-left min-w-0">
-            <div className="text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{projectLabel}</div>
-            <div className="text-[9px] text-slate-500 dark:text-slate-400 tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
+            <div className="text-[11px] font-semibold text-white truncate max-w-[200px]">{projectLabel}</div>
+            <div className="text-[9px] text-[#bfe6ed] tracking-wider uppercase truncate max-w-[200px]">{sheetLabel}</div>
           </div>
-          <ChevronRight size={11} className="text-slate-400 group-hover:text-slate-600 shrink-0"/>
+          <ChevronRight size={11} className="text-[#9fd8e2] shrink-0"/>
         </button>
       </div>
 
@@ -98,7 +99,7 @@ export function TopBar({
         <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
         <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onShowNotes} icon={Type} label="Notes"/>
-        <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Project" teal/>
+        <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Title block"/>
         <ToolbarButton onClick={onPrint} icon={Download} label="Save As" primary/>
         <Divider />
         <ToolbarButton
