@@ -51,13 +51,13 @@ export function TopBar({
   const projectLabel = meta.projectName || "Untitled Project";
   const sheetLabel = meta.sheetName || "Drawing";
   return (
-    <header className="relative z-30 flex items-center justify-between px-4 h-12 bg-white dark:bg-[#16202B] border-b border-slate-200 dark:border-[#263441]">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="relative z-30 flex items-center gap-2 px-3 h-12 bg-white dark:bg-[#16202B] border-b border-slate-200 dark:border-[#263441]">
+      <div className="flex items-center gap-2 min-w-0 shrink-0">
         {onHome && (
           <>
             <button onClick={onHome} title="Back to dashboard"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#3FB7C9] hover:bg-[#52C4D5] text-[#08313a] transition-colors text-[11px] font-semibold shadow-[#3FB7C9]/30 shadow-md">
-              <ChevronLeft size={14}/> Dashboard
+              <ChevronLeft size={14}/> <span className="hidden lg:inline">Dashboard</span>
             </button>
             <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
           </>
@@ -73,12 +73,12 @@ export function TopBar({
           title={`${projectLabel} — ${sheetLabel}`}
           className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#3FB7C9] hover:bg-[#52C4D5] text-[#08313a] transition-colors text-[11px] font-semibold shadow-[#3FB7C9]/30 shadow-md min-w-0">
           <FileText size={13} className="text-[#08313a]/70 shrink-0"/>
-          <span className="truncate max-w-[220px]">{projectLabel}</span>
+          <span className="truncate max-w-[110px] sm:max-w-[220px]">{projectLabel}</span>
           <ChevronRight size={12} className="text-[#08313a]/70 shrink-0"/>
         </button>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 ml-auto min-w-0 overflow-x-auto flex-nowrap [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
         <ToolbarButton onClick={onImport} icon={Upload} label="Import" primary/>
         <Divider />
         <ToolbarButton onClick={onUndo} icon={Undo2} label="Undo" hint="⌘Z"/>
@@ -109,7 +109,7 @@ export function TopBar({
             <Divider />
             <button onClick={onToggleTheme}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors">
+              className="shrink-0 p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors">
               {theme === "dark" ? <Sun size={15}/> : <Moon size={15}/>}
             </button>
           </>
@@ -123,7 +123,7 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
   return (
     <button onClick={onClick}
       title={hint ? `${label} (${hint})` : label}
-      className={`px-3 py-2 text-[11px] uppercase tracking-wide font-semibold flex items-center gap-2 rounded-lg transition-all duration-150 ${
+      className={`shrink-0 whitespace-nowrap px-3 py-2 text-[11px] uppercase tracking-wide font-semibold flex items-center gap-2 rounded-lg transition-all duration-150 ${
         primary
           ? "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5] shadow-[#3FB7C9]/30 shadow-md"
           : flash
@@ -134,12 +134,12 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
           ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45"
           : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white"
       }`}>
-      <Icon size={15} /> <span>{label}</span>
+      <Icon size={15} /> <span className="hidden lg:inline">{label}</span>
     </button>
   );
 }
 
-function Divider() { return <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-1" />; }
+function Divider() { return <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-1 shrink-0" />; }
 
 /* ============================================================================
  * SHEET TABS — switch between the drawings (floors) in a project
@@ -2157,8 +2157,14 @@ export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, 
       const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
       const W = pdf.internal.pageSize.getWidth();
       const H = pdf.internal.pageSize.getHeight();
+      // iPad/iOS Safari crashes on the very large canvas a scale-3 A3 render makes,
+      // so render at a lower scale on touch devices.
+      const isTouch = typeof navigator !== "undefined" &&
+        (navigator.maxTouchPoints > 1 ||
+         (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
+      const shotScale = isTouch ? 2 : 3;
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false });
+        const canvas = await html2canvas(pages[i], { scale: shotScale, backgroundColor: "#ffffff", useCORS: true, logging: false });
         const img = canvas.toDataURL("image/jpeg", 0.95);
         if (i > 0) pdf.addPage("a3", "landscape");
         pdf.addImage(img, "JPEG", 0, 0, W, H);

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/AppShell";
 
 const Editor = dynamic(() => import("@/components/ElectricalPlanTool"), { ssr: false });
+import EditorErrorBoundary from "@/components/EditorErrorBoundary";
 
 function Loading() {
   return (
@@ -22,6 +23,7 @@ function NewInner() {
   const mode = sp.get("import") ? "import" : "new";
 
   return (
+    <EditorErrorBoundary>
     <Editor
       initialTarget={{ mode, key: "new" }}
       onHome={() => router.push("/")}
@@ -35,6 +37,7 @@ function NewInner() {
       theme={theme}
       onToggleTheme={toggleTheme}
     />
+    </EditorErrorBoundary>
   );
 }
 

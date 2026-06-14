@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/AppShell";
 
 const Editor = dynamic(() => import("@/components/ElectricalPlanTool"), { ssr: false });
+import EditorErrorBoundary from "@/components/EditorErrorBoundary";
 
 function Loading() {
   return (
@@ -25,6 +26,7 @@ function DrawingInner() {
   if (!id) return <Loading />;
 
   return (
+    <EditorErrorBoundary>
     <Editor
       key={id}
       initialTarget={{ mode: "open", projectId: id, key: id }}
@@ -32,6 +34,7 @@ function DrawingInner() {
       theme={theme}
       onToggleTheme={toggleTheme}
     />
+    </EditorErrorBoundary>
   );
 }
 

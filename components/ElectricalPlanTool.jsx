@@ -325,15 +325,22 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         // Just use first page for now (multi-page is a future feature)
         const page = await pdf.getPage(1);
 
-        // Render at high resolution so the plan stays crisp when zoomed in and
-        // when exported. Aim for ~4400px wide (~265 DPI on A3) with caps so very
-        // large sheets don't produce an unwieldy image.
+        // Render at high resolution so the plan stays crisp. Desktop aims for
+        // ~4400px wide; touch devices (iPad/iOS Safari) are capped well under
+        // iOS's ~16.7M-pixel canvas limit and use JPEG to avoid blank renders
+        // and out-of-memory crashes.
         const base = page.getViewport({ scale: 1 });
-        const TARGET_W = 4400;
-        const MAX_DIM = 6400;
-        let renderScale = Math.max(3, Math.min(TARGET_W / base.width, 5));
-        const maxSide = Math.max(base.width, base.height) * renderScale;
-        if (maxSide > MAX_DIM) renderScale *= MAX_DIM / maxSide;
+        const isTouch = typeof navigator !== "undefined" &&
+          (navigator.maxTouchPoints > 1 ||
+           (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
+        const TARGET_W = isTouch ? 2400 : 4400;
+        const MAX_DIM = isTouch ? 3000 : 6400;
+        const MAX_AREA = isTouch ? 9_000_000 : 40_000_000;
+        let renderScale = Math.max(isTouch ? 1.5 : 3, Math.min(TARGET_W / base.width, isTouch ? 3.2 : 5));
+        let w = base.width * renderScale, h = base.height * renderScale;
+        const maxSide = Math.max(w, h);
+        if (maxSide > MAX_DIM) { const k = MAX_DIM / maxSide; renderScale *= k; w *= k; h *= k; }
+        if (w * h > MAX_AREA) { const k = Math.sqrt(MAX_AREA / (w * h)); renderScale *= k; }
 
         const viewport = page.getViewport({ scale: renderScale });
         const c = document.createElement("canvas");
@@ -343,9 +350,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         await page.render({ canvasContext: ctx, viewport }).promise;
-        updateProject({
-          bgImage: { src: c.toDataURL("image/png"), w: c.width, h: c.height },
-        });
+        const src = isTouch ? c.toDataURL("image/jpeg", 0.9) : c.toDataURL("image/png");
+        updateProject({ bgImage: { src, w: c.width, h: c.height } });
+        c.width = c.height = 0; // release the large canvas promptly
       } catch (err) {
         alert("Could not read PDF: " + err.message);
       } finally {
@@ -908,6 +915,54 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---- Crash recovery: keep a local draft so work is never lost -------------
+  const projectRef = useRef(project); projectRef.current = project;
+  const currentProjectIdRef = useRef(currentProjectId); currentProjectIdRef.current = currentProjectId;
+  const draftTimer = useRef(null);
+  const [recovery, setRecovery] = useState(null);
+  const countPlaced = (p) => (p?.sheets || []).reduce((n, s) => n + ((s.placed && s.placed.length) || 0), 0);
+
+  // Debounced local autosave — survives tab crashes / reloads (esp. on iPad).
+  useEffect(() => {
+    if (!didInit.current) return;
+    if (countPlaced(project) === 0 && !bgImage) return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      try {
+        window.localStorage.setItem("planworks:draft:v1", JSON.stringify({
+          projectId: currentProjectId || null, savedAt: Date.now(), project,
+        }));
+      } catch (e) { /* storage full / unavailable */ }
+    }, 800);
+    return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, currentProjectId, bgImage]);
+
+  // Once the initial load settles, offer to restore if the local draft holds
+  // more work than what loaded (i.e. a previous session crashed before saving).
+  useEffect(() => {
+    const id = setTimeout(() => {
+      let draft = null;
+      try { draft = JSON.parse(window.localStorage.getItem("planworks:draft:v1") || "null"); } catch (e) {}
+      if (!draft || !draft.project) return;
+      const sameProject = (draft.projectId || null) === (currentProjectIdRef.current || null);
+      if (sameProject && countPlaced(draft.project) > countPlaced(projectRef.current)) {
+        setRecovery({ project: draft.project, savedAt: draft.savedAt });
+      }
+    }, 1500);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const restoreDraft = () => {
+    if (!recovery) return;
+    setProject(recovery.project);
+    setHistory([]); setFuture([]);
+    setRecovery(null);
+    setTimeout(fitToScreen, 60);
+  };
+  const dismissDraft = () => setRecovery(null);
+
   const exportJSON = () => {
     const data = JSON.stringify(project, null, 2);
     const blob = new Blob([data], { type: "application/json" });
@@ -978,6 +1033,17 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       />
       <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden"
              onChange={(e) => handleFile(e.target.files[0])} />
+
+      {recovery && (
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 px-4 py-2 bg-[#FFF7E6] border-b border-amber-300 text-[12px] text-amber-900">
+          <span className="font-semibold">Recovered unsaved work</span>
+          <span className="text-amber-700">{countPlaced(recovery.project)} symbols · {new Date(recovery.savedAt).toLocaleString()}</span>
+          <div className="ml-auto flex gap-2">
+            <button onClick={restoreDraft} className="px-3 py-1.5 rounded-md bg-[#3FB7C9] text-[#08313a] text-[11px] font-semibold uppercase tracking-wider hover:bg-[#52C4D5]">Restore</button>
+            <button onClick={dismissDraft} className="px-3 py-1.5 rounded-md bg-white/70 text-amber-800 text-[11px] font-semibold uppercase tracking-wider hover:bg-white">Dismiss</button>
+          </div>
+        </div>
+      )}
 
       <div className="relative z-10 flex-1 flex overflow-hidden">
 
