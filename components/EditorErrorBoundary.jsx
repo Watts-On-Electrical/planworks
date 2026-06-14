@@ -14,7 +14,7 @@ export default class EditorErrorBoundary extends React.Component {
     return { error };
   }
   componentDidCatch(error, info) {
-    try { console.error("Plan.Works editor crashed:", error, info && info.componentStack); } catch (e) {}
+    try { console.error("Plotwire editor crashed:", error, info && info.componentStack); } catch (e) {}
   }
   downloadBackup = () => {
     try {
@@ -26,7 +26,7 @@ export default class EditorErrorBoundary extends React.Component {
       const blob = new Blob([data], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      const nm = ((proj.meta && proj.meta.projectName) || "planworks-recovery").replace(/[^a-z0-9-_]+/gi, "_");
+      const nm = ((proj.meta && proj.meta.projectName) || "plotwire-recovery").replace(/[^a-z0-9-_]+/gi, "_");
       a.download = nm + "_recovery.json";
       a.click();
     } catch (e) {
@@ -38,7 +38,7 @@ export default class EditorErrorBoundary extends React.Component {
       return (
         <div className="w-full h-screen flex items-center justify-center bg-[#F4F6F9] dark:bg-[#0B1117] p-6">
           <div className="max-w-md w-full bg-white dark:bg-[#16202B] rounded-2xl ring-1 ring-slate-200 dark:ring-[#263441] shadow-xl p-6 text-center">
-            <div className="text-[10px] tracking-[0.3em] uppercase text-[#22808F] mb-2">Plan.Works</div>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-[#22808F] mb-2">Plotwire</div>
             <h1 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Something went wrong</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
               The drawing hit an error, but your most recent work is saved locally on this device.

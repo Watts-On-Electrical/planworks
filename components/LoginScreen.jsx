@@ -25,7 +25,7 @@ export default function LoginScreen() {
         <div className="brandmark">
           <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 13h6l-1 9 9-11h-6l1-9z" fill="#08313a"/></svg>
         </div>
-        <div className="wordmark">Plan<b>.</b>Works</div>
+        <div className="wordmark">Plot<b>wire</b></div>
         <p className="tag">Electrical layouts, quotes &amp; bills of quantities — for Watts On Electrical.</p>
         <div className="rail-foot">Watts On Electrical · Leeds</div>
       </div>

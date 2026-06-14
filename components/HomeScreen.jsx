@@ -149,7 +149,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
       <style>{CSS}</style>
       <div className="pw-app">
         <aside className="rail">
-          <div className="brandmark" title="Plan.Works">
+          <div className="brandmark" title="Plotwire">
             <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 13h6l-1 9 9-11h-6l1-9z" fill="#08313a"/></svg>
           </div>
           <div className="navitem active" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div>
@@ -162,7 +162,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
 
         <div className="main">
           <header className="topbar">
-            <span className="wordmark">Plan<b>.</b>Works</span>
+            <span className="wordmark">Plot<b>wire</b></span>
             <div className="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>Search drawings, plots, drawing numbers…</div>
             <div className="topbar-right">
               <button className="theme-toggle" onClick={onToggleTheme} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label="Toggle theme">

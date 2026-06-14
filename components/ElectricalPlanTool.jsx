@@ -23,7 +23,7 @@ import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK } from "@/lib/titleBlock";
 
 /* ============================================================================
- * PLAN.WORKS — Drawing production tool
+ * PLOTWIRE — Drawing production tool
  *
  * Sheet-based architecture: the workspace IS an A3 landscape drawing sheet.
  * The sheet contains:

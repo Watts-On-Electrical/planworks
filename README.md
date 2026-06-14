@@ -1,4 +1,4 @@
-# Plan.Works
+# Plotwire
 
 A web app for marking up architectural drawings with UK-standard electrical symbols. Drag and drop sockets, switches, lights, detectors and fixtures onto an imported PDF or image of a floor plan.
 

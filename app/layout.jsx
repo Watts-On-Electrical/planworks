@@ -2,7 +2,7 @@ import "./globals.css";
 import AppShell from "@/components/AppShell";
 
 export const metadata = {
-  title: "Plan.Works — Electrical Layout Tool",
+  title: "Plotwire — Electrical Layout Tool",
   description: "Drag-and-drop electrical symbols onto architectural drawings",
 };
 
