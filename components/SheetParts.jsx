@@ -18,6 +18,15 @@ import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, tem
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 
+// Per-project title block. The editor publishes the *effective* title block
+// (the project's own, falling back to the account default) through this context
+// so the on-sheet and print renderers show job-specific branding instead of one
+// global block shared by every project.
+export const ProjectTitleBlockContext = React.createContext(null);
+export function useProjectTitleBlock() {
+  return React.useContext(ProjectTitleBlockContext) || DEFAULT_TITLEBLOCK;
+}
+
 /* ============================================================================
  * The sheet model
  * Re-declared here so this file is self-contained. Must match the values
@@ -956,7 +965,7 @@ function TitleDetails({ details }) {
 
 function TitleBlock({ meta, updateMeta, onSheetField }) {
   const setSheet = onSheetField || (() => {});
-  const { titleBlock } = useApp();
+  const titleBlock = useProjectTitleBlock();
   const tb = titleBlock || DEFAULT_TITLEBLOCK;
   const left = SHEET.margin;
   const width = SHEET.width - SHEET.margin * 2;
@@ -2006,13 +2015,13 @@ function MetaField({ label, value, onChange, type = "text", span = 1 }) {
  * TITLE BLOCK EDITOR  (per-account template: detail lines + logos)
  * Set once here, applied to every drawing and synced via the account.
  * ========================================================================= */
-export function TitleBlockEditor({ onClose }) {
-  const { titleBlock, saveTitleBlock } = useApp();
-  const start = titleBlock || DEFAULT_TITLEBLOCK;
+export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDefault, onResetToDefault, onClose }) {
+  const base = start || DEFAULT_TITLEBLOCK;
   const [details, setDetails] = React.useState(() =>
-    (start.details && start.details.length ? start.details : DEFAULT_TITLEBLOCK.details).map(d => ({ ...d }))
+    (base.details && base.details.length ? base.details : DEFAULT_TITLEBLOCK.details).map(d => ({ ...d }))
   );
-  const [logos, setLogos] = React.useState(() => [...(start.logos || [])]);
+  const [logos, setLogos] = React.useState(() => [...(base.logos || [])]);
+  const [alsoDefault, setAlsoDefault] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState("");
   const fileRef = React.useRef(null);
@@ -2034,13 +2043,20 @@ export function TitleBlockEditor({ onClose }) {
   const save = async () => {
     setSaving(true); setError("");
     try {
-      await saveTitleBlock({ details: details.filter(d => d.label || d.value), logos });
+      const tb = { details: details.filter(d => d.label || d.value), logos };
+      onSaveProject?.(tb);                 // applies to THIS job only
+      if (alsoDefault) await onSaveDefault?.(tb); // optional account default for new jobs
       onClose();
     } catch (err) {
-      setError(err.message || "Couldn't save. If this is the first time, make sure the user_settings table exists.");
+      setError(err.message || "Couldn't save the default. Make sure the user_settings table exists.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const resetToDefault = () => {
+    onResetToDefault?.();
+    onClose();
   };
 
   return (
@@ -2050,13 +2066,13 @@ export function TitleBlockEditor({ onClose }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <div className="text-[10px] tracking-[0.3em] uppercase text-slate-500">Title block</div>
-            <div className="text-base font-semibold mt-0.5 text-slate-900">Your company template</div>
+            <div className="text-base font-semibold mt-0.5 text-slate-900">This job&rsquo;s title block</div>
           </div>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md"><X size={16}/></button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          <p className="text-[12px] text-slate-500 -mt-1">Set once — these details and logos appear on the bottom of every drawing and in the PDF. Project, sheet, scale, date, drawing number and revision stay editable per drawing.</p>
+          <p className="text-[12px] text-slate-500 -mt-1">These details and logos appear on this drawing and its PDF. They apply to <span className="font-semibold text-slate-700">this job only</span> — other projects keep their own. Project, sheet, scale, date, drawing number and revision stay editable per drawing.</p>
 
           {/* Logos */}
           <div>
@@ -2115,11 +2131,22 @@ export function TitleBlockEditor({ onClose }) {
           {error && <div className="text-[12px] text-red-600 bg-red-50 ring-1 ring-red-200 rounded-lg px-3 py-2">{error}</div>}
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-slate-200 flex items-center gap-3">
+          <label className="flex items-center gap-2 text-[12px] text-slate-600 cursor-pointer select-none mr-auto">
+            <input type="checkbox" checked={alsoDefault} onChange={(e) => setAlsoDefault(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#3FB7C9]"/>
+            Also save as my default for new jobs
+          </label>
+          {isCustomised && onResetToDefault && (
+            <button onClick={resetToDefault}
+              className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">
+              Reset to default
+            </button>
+          )}
           <button onClick={onClose} className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">Cancel</button>
           <button onClick={save} disabled={saving}
             className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-60">
-            {saving ? "Saving…" : "Save template"}
+            {saving ? "Saving…" : "Apply to this job"}
           </button>
         </div>
       </div>
@@ -2501,7 +2528,7 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
 }
 
 function TitleBlockStatic({ meta }) {
-  const { titleBlock } = useApp();
+  const titleBlock = useProjectTitleBlock();
   const tb = titleBlock || DEFAULT_TITLEBLOCK;
   return (
     <div style={{

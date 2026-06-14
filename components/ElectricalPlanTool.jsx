@@ -17,7 +17,10 @@ import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
   FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
   ProjectManager, SheetTabs, TitleBlockEditor, NotesEditor,
+  ProjectTitleBlockContext,
 } from "@/components/SheetParts";
+import { useApp } from "@/components/AppShell";
+import { DEFAULT_TITLEBLOCK } from "@/lib/titleBlock";
 
 /* ============================================================================
  * PLAN.WORKS — Drawing production tool
@@ -95,6 +98,7 @@ function freshProject() {
     meta: { ...DEFAULT_META, date: new Date().toISOString().slice(0, 10) },
     notes: DEFAULT_NOTES_TEXT,
     boq: null,
+    titleBlock: null, // null = use the account default; set = job-specific
     sheets: [sheet],
     activeSheetId: sheet.id,
   };
@@ -118,7 +122,7 @@ function normaliseProject(p) {
       annotations: s.annotations || [],
       notes: seedNotes(s.notes),
     }));
-    return { meta, notes: projNotesText, boq: p.boq || null, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
+    return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
   // Legacy flat project → wrap its drawing into a single sheet.
   const sheet = {
@@ -131,7 +135,7 @@ function normaliseProject(p) {
     annotations: p.annotations || [],
     notes: seedNotes(null),
   };
-  return { meta, notes: projNotesText, boq: p.boq || null, sheets: [sheet], activeSheetId: sheet.id };
+  return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, sheets: [sheet], activeSheetId: sheet.id };
 }
 
 // ---- Plan-image storage helpers --------------------------------------------
@@ -237,6 +241,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   activeSheetIdRef.current = project.activeSheetId;
   const sheetsRef = useRef(project.sheets);
   sheetsRef.current = project.sheets;
+
+  // Title block: per-project, falling back to the account default for new jobs.
+  const { titleBlock: accountTitleBlock, saveTitleBlock } = useApp();
+  const effectiveTitleBlock = project.titleBlock || accountTitleBlock || DEFAULT_TITLEBLOCK;
 
   // Drawing-level fields live on the active sheet; everything else on the project.
   const DRAW_FIELDS = ["bgImage", "placed", "wires", "annotations", "notes"];
@@ -1208,6 +1216,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   );
 
   return (
+    <ProjectTitleBlockContext.Provider value={effectiveTitleBlock}>
     <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 dark:bg-[#0E141B] dark:text-slate-100 overflow-hidden select-none"
          style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
 
@@ -1411,7 +1420,14 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
       {/* ==================== TITLE BLOCK TEMPLATE ==================== */}
       {showTitleBlock && (
-        <TitleBlockEditor onClose={() => setShowTitleBlock(false)} />
+        <TitleBlockEditor
+          start={effectiveTitleBlock}
+          isCustomised={!!project.titleBlock}
+          onSaveProject={(tb) => updateProject({ titleBlock: tb })}
+          onSaveDefault={(tb) => saveTitleBlock(tb)}
+          onResetToDefault={() => updateProject({ titleBlock: null })}
+          onClose={() => setShowTitleBlock(false)}
+        />
       )}
 
       {showNotes && (
@@ -1436,5 +1452,6 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         />
       )}
     </div>
+    </ProjectTitleBlockContext.Provider>
   );
 }
