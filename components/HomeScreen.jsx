@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { listProjects, localProjectsPending, migrateLocalProjects } from "@/lib/db";
+import { signPlanImages } from "@/lib/planImages";
 
 /* Sheet geometry — must match ElectricalPlanTool */
 const SHEET = { width: 1587, height: 1123, margin: 18, legendWidth: 230, notesWidth: 280, titleHeight: 110 };
@@ -79,8 +80,20 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
   const load = async () => {
     try {
       const rows = await listProjects();
+      // Sign the first-sheet plan image of each project so the preview thumbnail
+      // renders (post-migration these images live in Storage, not in the JSON).
+      const firstPath = (data) => {
+        const s = data?.sheets?.[0]?.bgImage || data?.bgImage;
+        return s?.path || null;
+      };
+      const urls = await signPlanImages(rows.map(r => firstPath(r.data)));
       const full = rows.map((r) => {
         const project = r.data || null;
+        // Inject the signed URL into the first sheet's bgImage for the preview.
+        if (project) {
+          const bg = project.sheets?.[0]?.bgImage || project.bgImage;
+          if (bg && bg.path && urls.get(bg.path)) bg.src = urls.get(bg.path);
+        }
         const sheets = project?.sheets || null;
         const firstNumber = sheets ? (sheets[0]?.drawingNumber || "") : (project?.meta?.drawingNumber || "");
         const itemCount = sheets

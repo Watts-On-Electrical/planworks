@@ -8,6 +8,7 @@ import {
   ChevronRight, X, FileText, Eye, EyeOff, Layers,
 } from "lucide-react";
 import { listProjects, getProjectData, insertProject, updateProjectRow, deleteProjectRow } from "@/lib/db";
+import { uploadPlanImage, signPlanImages, deletePlanImages, dataUrlToBlob, blobToDataUrl } from "@/lib/planImages";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
@@ -133,6 +134,88 @@ function normaliseProject(p) {
   return { meta, notes: projNotesText, boq: p.boq || null, sheets: [sheet], activeSheetId: sheet.id };
 }
 
+// ---- Plan-image storage helpers --------------------------------------------
+// The render source for a plan is always `bgImage.src`. Post-migration that src
+// is a TRANSIENT signed/object URL; the durable reference is `bgImage.path`.
+// These helpers keep base64 out of anything we persist (DB rows + local draft).
+
+// All Storage paths referenced by a project (one per sheet that has an image).
+function collectImagePaths(p) {
+  return (p?.sheets || []).map(s => s?.bgImage?.path).filter(Boolean);
+}
+
+// JSON-safe copy for persistence: drop the transient `src` whenever the image
+// lives in Storage (has a path). Legacy/offline base64 (no path) is kept so the
+// plan is never lost — it migrates to Storage on the next successful save.
+function stripTransientImages(p) {
+  if (!p) return p;
+  return {
+    ...p,
+    sheets: (p.sheets || []).map(s => {
+      const bg = s.bgImage;
+      if (bg && bg.path) { const { src, ...rest } = bg; return { ...s, bgImage: rest }; }
+      return s;
+    }),
+  };
+}
+
+// Mint signed URLs for every stored image and attach them as `src` for render.
+async function hydrateImages(p) {
+  const paths = collectImagePaths(p);
+  if (!paths.length) return p;
+  let urls;
+  try { urls = await signPlanImages(paths); } catch { return p; }
+  return {
+    ...p,
+    sheets: (p.sheets || []).map(s => {
+      const bg = s.bgImage;
+      if (bg && bg.path && urls.get(bg.path)) return { ...s, bgImage: { ...bg, src: urls.get(bg.path) } };
+      return s;
+    }),
+  };
+}
+
+// Make a project safe to persist: migrate any legacy base64 image into Storage,
+// then drop transient src. Returns the persist-ready project.
+async function prepareProjectForSave(p) {
+  const sheets = await Promise.all((p?.sheets || []).map(async (s) => {
+    const bg = s.bgImage;
+    if (!bg) return s;
+    if (bg.path) { const { src, ...rest } = bg; return { ...s, bgImage: rest }; }
+    if (typeof bg.src === "string" && bg.src.startsWith("data:")) {
+      try {
+        const { path } = await uploadPlanImage(dataUrlToBlob(bg.src));
+        return { ...s, bgImage: { path, w: bg.w, h: bg.h } };
+      } catch (err) {
+        console.warn("image migrate-on-save failed; keeping inline:", err?.message);
+        return s; // keep base64 rather than lose the plan
+      }
+    }
+    // A blob: URL with no path can't be persisted — drop it (shouldn't occur).
+    if (typeof bg.src === "string" && bg.src.startsWith("blob:")) {
+      const { src, ...rest } = bg; return { ...s, bgImage: rest };
+    }
+    return s;
+  }));
+  return { ...p, sheets };
+}
+
+// After a save, copy any newly-minted paths back onto in-memory sheets while
+// keeping their working display `src`, so subsequent saves/drafts stay tiny.
+function mergeSavedPaths(current, safe) {
+  const byId = new Map((safe?.sheets || []).map(s => [s.id, s.bgImage]));
+  return {
+    ...current,
+    sheets: (current?.sheets || []).map(s => {
+      const safeBg = byId.get(s.id);
+      if (safeBg && safeBg.path && s.bgImage && !s.bgImage.path) {
+        return { ...s, bgImage: { ...s.bgImage, path: safeBg.path } };
+      }
+      return s;
+    }),
+  };
+}
+
 // Tool definitions
 const TOOLS = {
   select: { icon: MousePointer2, label: "Select", hint: "V" },
@@ -148,6 +231,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const { meta, sheets, activeSheetId } = project;
   const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
   const { bgImage, placed, wires, annotations, notes } = activeSheet;
+  // Refs so async image uploads target the right sheet even if the user has
+  // since switched floors.
+  const activeSheetIdRef = useRef(project.activeSheetId);
+  activeSheetIdRef.current = project.activeSheetId;
+  const sheetsRef = useRef(project.sheets);
+  sheetsRef.current = project.sheets;
 
   // Drawing-level fields live on the active sheet; everything else on the project.
   const DRAW_FIELDS = ["bgImage", "placed", "wires", "annotations", "notes"];
@@ -169,6 +258,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   }, []);
   const updateMeta = useCallback((patch) => {
     setProject(p => ({ ...p, meta: { ...p.meta, ...patch } }));
+  }, []);
+  // Patch a specific sheet by id (used by async image uploads that must land on
+  // the sheet they started on, not whichever is active when they finish).
+  const patchSheetById = useCallback((id, patch) => {
+    setProject(p => ({ ...p, sheets: p.sheets.map(s => s.id === id ? { ...s, ...patch } : s) }));
   }, []);
   const updateBoq = useCallback((boq) => {
     setProject(p => ({ ...p, boq }));
@@ -303,6 +397,31 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   }, []);
 
   // ---------- File import (PDF or image) ----------
+  // Show an imported plan immediately via a local object URL, then upload the
+  // bytes to Supabase Storage in the background and attach the durable `path`.
+  // Falls back to inline base64 only if the upload can't happen (offline / not
+  // configured) so the plan is never lost.
+  const setPlanImageFromBlob = (blob, w, h, existingObjectUrl = null) => {
+    const targetId = activeSheetIdRef.current;
+    const prevPath = sheetsRef.current.find(s => s.id === targetId)?.bgImage?.path || null;
+    const displayUrl = existingObjectUrl || URL.createObjectURL(blob);
+    patchSheetById(targetId, { bgImage: { src: displayUrl, w, h } });
+    setTimeout(fitToScreen, 60);
+    (async () => {
+      try {
+        const { path } = await uploadPlanImage(blob);
+        patchSheetById(targetId, { bgImage: { src: displayUrl, w, h, path } });
+        if (prevPath && prevPath !== path) deletePlanImages([prevPath]);
+      } catch (err) {
+        console.warn("plan image upload failed; using inline fallback:", err?.message);
+        try {
+          const dataUrl = await blobToDataUrl(blob);
+          patchSheetById(targetId, { bgImage: { src: dataUrl, w, h } });
+        } catch { /* keep the object URL for this session at least */ }
+      }
+    })();
+  };
+
   const handleFile = async (file) => {
     if (!file) return;
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -350,26 +469,26 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         await page.render({ canvasContext: ctx, viewport }).promise;
-        const src = isTouch ? c.toDataURL("image/jpeg", 0.9) : c.toDataURL("image/png");
-        updateProject({ bgImage: { src, w: c.width, h: c.height } });
+        const mime = isTouch ? "image/jpeg" : "image/png";
+        const quality = isTouch ? 0.9 : undefined;
+        const iw = c.width, ih = c.height;
+        const blob = await new Promise((res, rej) =>
+          c.toBlob(b => b ? res(b) : rej(new Error("Could not render the plan image.")), mime, quality));
         c.width = c.height = 0; // release the large canvas promptly
+        setPlanImageFromBlob(blob, iw, ih);
       } catch (err) {
         alert("Could not read PDF: " + err.message);
       } finally {
         setPdfLoading(false);
       }
     } else {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          updateProject({
-            bgImage: { src: e.target.result, w: img.width, h: img.height },
-          });
-        };
-        img.src = e.target.result;
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        setPlanImageFromBlob(file, img.width, img.height, objectUrl);
       };
-      reader.readAsDataURL(file);
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); alert("Could not read image."); };
+      img.src = objectUrl;
     }
     setTimeout(fitToScreen, 100);
   };
@@ -901,7 +1020,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const saveProject = async () => {
     try {
       if (currentProjectId) {
-        await updateProjectRow(currentProjectId, meta.projectName || "Untitled drawing", project);
+        const safe = await prepareProjectForSave(project);
+        await updateProjectRow(currentProjectId, meta.projectName || "Untitled drawing", safe);
+        setProject(prev => mergeSavedPaths(prev, safe));
         await refreshProjectList();
       } else {
         await saveProjectAs(meta.projectName || "Untitled drawing");
@@ -917,10 +1038,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   // Save As: store the current canvas as a new named project (new cloud row)
   const saveProjectAs = async (name) => {
     try {
-      const projectToSave = { ...project, meta: { ...project.meta, projectName: name || project.meta.projectName } };
-      const id = await insertProject(name || projectToSave.meta.projectName || "Untitled drawing", projectToSave);
+      const named = { ...project, meta: { ...project.meta, projectName: name || project.meta.projectName } };
+      const safe = await prepareProjectForSave(named);
+      const id = await insertProject(name || named.meta.projectName || "Untitled drawing", safe);
       setCurrentProjectId(id);
-      setProject(projectToSave);
+      setProject(mergeSavedPaths(named, safe));
       await refreshProjectList();
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
@@ -934,9 +1056,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       const data = await getProjectData(id);
       if (!data) { alert("Could not find that project."); return; }
       const np = normaliseProject(data);
+      // Mint signed URLs for any Storage-backed plan images before showing.
+      const hydrated = await hydrateImages(np);
       // Always open on the first drawing (ground floor), regardless of which
       // sheet was active when the project was last saved.
-      setProject({ ...np, activeSheetId: np.sheets[0].id });
+      setProject({ ...hydrated, activeSheetId: hydrated.sheets[0].id });
       setCurrentProjectId(id);
       setShowProjects(false);
       setHistory([]); setFuture([]);
@@ -948,7 +1072,14 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   const deleteProjectById = async (id) => {
     try {
+      // Best-effort: clear the project's Storage images before dropping the row.
+      let paths = [];
+      try {
+        const data = await getProjectData(id);
+        if (data) paths = collectImagePaths(normaliseProject(data));
+      } catch { /* still delete the row even if we can't read it */ }
       await deleteProjectRow(id);
+      if (paths.length) deletePlanImages(paths);
       await refreshProjectList();
       if (currentProjectId === id) setCurrentProjectId(null);
     } catch (err) {
@@ -997,8 +1128,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     if (draftTimer.current) clearTimeout(draftTimer.current);
     draftTimer.current = setTimeout(() => {
       try {
+        // Strip transient image src (keep only the Storage path) so the draft
+        // is a few KB, not several MB — the large draft was itself part of the
+        // iPad memory pressure.
         window.localStorage.setItem("planworks:draft:v1", JSON.stringify({
-          projectId: currentProjectId || null, savedAt: Date.now(), project,
+          projectId: currentProjectId || null, savedAt: Date.now(),
+          project: stripTransientImages(project),
         }));
       } catch (e) { /* storage full / unavailable */ }
     }, 800);
@@ -1022,9 +1157,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const restoreDraft = () => {
+  const restoreDraft = async () => {
     if (!recovery) return;
-    setProject(recovery.project);
+    // The draft stores only Storage paths, so re-mint signed URLs to render.
+    const hydrated = await hydrateImages(recovery.project);
+    setProject(hydrated);
     setHistory([]); setFuture([]);
     setRecovery(null);
     setTimeout(fitToScreen, 60);
