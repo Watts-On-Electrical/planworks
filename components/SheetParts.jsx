@@ -956,7 +956,10 @@ function TitleDetails({ details }) {
           {d.label ? (
             <span style={{ fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", whiteSpace: "nowrap", flexShrink: 0 }}>{d.label}</span>
           ) : null}
-          <span style={{ fontSize: i === 0 ? 13 : 9, fontWeight: i === 0 ? 700 : 500, color: "#0a0a0a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.value}</span>
+          {/* minWidth:0 lets the value shrink to the cell; wrapping (incl. long
+              emails with no spaces) keeps the full value visible instead of the
+              end being clipped off the page. */}
+          <span style={{ fontSize: i === 0 ? 13 : 9, fontWeight: i === 0 ? 700 : 500, color: "#0a0a0a", minWidth: 0, flex: "1 1 auto", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word" }}>{d.value}</span>
         </div>
       ))}
     </div>
@@ -977,7 +980,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "auto 1.5fr 0.9fr 1fr",
+      gridTemplateColumns: "auto 1.7fr 0.85fr 1fr",
       fontSize: 10,
     }}>
       {/* Logos (account template) */}
@@ -2539,7 +2542,7 @@ function TitleBlockStatic({ meta }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "auto 1.5fr 0.9fr 1fr",
+      gridTemplateColumns: "auto 1.7fr 0.85fr 1fr",
       fontSize: 10,
     }}>
       <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
