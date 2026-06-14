@@ -504,44 +504,61 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   // ---------- Drag from palette ----------
   // ---- Palette → canvas placement -------------------------------------------
   // Pointer-based (not HTML5 drag-and-drop) so it's instant on touch — iOS gates
-  // native drag behind a long-press, which is the "click and hold" lag on iPad.
+  // native drag behind a long-press. We attach window listeners on press so the
+  // drag keeps tracking once the pointer leaves the tile (no pointer-capture,
+  // which is unreliable with React's pooled events).
   const paletteDragState = useRef(null);
   const [paletteGhost, setPaletteGhost] = useState(null);
 
   const onPalettePointerDown = (e, symbolId) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    paletteDragState.current = { symbolId, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, active: false, el: e.currentTarget };
-  };
-  const onPalettePointerMove = (e) => {
-    const st = paletteDragState.current;
-    if (!st || e.pointerId !== st.pointerId) return;
-    if (!st.active) {
-      if (Math.hypot(e.clientX - st.startX, e.clientY - st.startY) < 6) return;
-      st.active = true;                                   // crossed the threshold → it's a drag
-      try { st.el.setPointerCapture(st.pointerId); } catch (err) {}
+    if (paletteDragState.current) return;
+    const pointerId = e.pointerId;
+    const startX = e.clientX, startY = e.clientY;
+    const startPlaced = placed;
+    const state = { active: false };
+    paletteDragState.current = state;
+
+    function cleanup() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      paletteDragState.current = null;
+      setPaletteGhost(null);
     }
-    e.preventDefault();
-    setPaletteGhost({ symbolId: st.symbolId, x: e.clientX, y: e.clientY });
-  };
-  const finishPaletteDrag = (e, place) => {
-    const st = paletteDragState.current;
-    if (!st || e.pointerId !== st.pointerId) return;
-    paletteDragState.current = null;
-    setPaletteGhost(null);
-    if (!place || !st.active || !findSymbol(st.symbolId)) return;
-    const { x, y } = clientToDrawing(e.clientX, e.clientY);
-    if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return;  // released off the sheet → ignore
-    snapshot();
-    const newItem = {
-      id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      symbolId: st.symbolId, x: snap(x), y: snap(y), rotation: 0, scale: 1, label: "",
+    const move = (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if (!state.active) {
+        if (Math.hypot(dx, dy) < 7) return;
+        if (Math.abs(dy) > Math.abs(dx) * 1.3) { cleanup(); return; } // vertical = let the palette scroll
+        state.active = true;
+      }
+      if (ev.cancelable) ev.preventDefault();
+      setPaletteGhost({ symbolId, x: ev.clientX, y: ev.clientY });
     };
-    updateProject({ placed: [...placed, newItem] });
-    setSelectedId(newItem.id);
-    setSelectedAnnoId(null);
+    const finish = (ev, place) => {
+      if (ev.pointerId !== pointerId) return;
+      const wasActive = state.active;
+      cleanup();
+      if (!place || !wasActive || !findSymbol(symbolId)) return;
+      const { x, y } = clientToDrawing(ev.clientX, ev.clientY);
+      if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return; // released off the sheet → ignore
+      snapshot();
+      const newItem = {
+        id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        symbolId, x: snap(x), y: snap(y), rotation: 0, scale: 1, label: "",
+      };
+      updateProject({ placed: [...startPlaced, newItem] });
+      setSelectedId(newItem.id);
+      setSelectedAnnoId(null);
+    };
+    const up = (ev) => finish(ev, true);
+    const cancel = (ev) => finish(ev, false);
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
   };
-  const onPalettePointerUp = (e) => finishPaletteDrag(e, true);
-  const onPalettePointerCancel = (e) => finishPaletteDrag(e, false);
 
   // Drop onto the drawing area
   const onDrawingDrop = (e) => {
@@ -1100,9 +1117,6 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         {!sidebarHidden && (
           <PalettePanel
             onPalettePointerDown={onPalettePointerDown}
-            onPalettePointerMove={onPalettePointerMove}
-            onPalettePointerUp={onPalettePointerUp}
-            onPalettePointerCancel={onPalettePointerCancel}
             symbolScale={symbolScale}
             setSymbolScale={setSymbolScale}
             colourMode={colourMode}

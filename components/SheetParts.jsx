@@ -211,7 +211,7 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
 /* ============================================================================
  * PALETTE (left sidebar)
  * ========================================================================= */
-export function Palette({ onPalettePointerDown, onPalettePointerMove, onPalettePointerUp, onPalettePointerCancel, symbolScale, setSymbolScale, colourMode }) {
+export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, colourMode }) {
   const [query, setQuery] = useState("");
   const groups = useMemo(() => getPaletteGroups(), []);
   const all = useMemo(() => getPaletteSymbols(), []);
@@ -227,9 +227,6 @@ export function Palette({ onPalettePointerDown, onPalettePointerMove, onPaletteP
     return (
       <div
         onPointerDown={(e) => onPalettePointerDown(e, sym.id)}
-        onPointerMove={onPalettePointerMove}
-        onPointerUp={onPalettePointerUp}
-        onPointerCancel={onPalettePointerCancel}
         style={{ touchAction: "pan-y" }}
         title={label + (meta?.height ? ` · ${meta.height}` : "")}
         className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
