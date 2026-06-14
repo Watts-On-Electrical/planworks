@@ -227,10 +227,10 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
     return (
       <div
         onPointerDown={(e) => onPalettePointerDown(e, sym.id)}
-        style={{ touchAction: "pan-y" }}
+        style={{ touchAction: "none" }}
         title={label + (meta?.height ? ` · ${meta.height}` : "")}
         className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
-                   cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2 select-none
+                   cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2 select-none [&>*]:pointer-events-none
                    transition-all duration-200 hover:-translate-y-0.5">
         <svg viewBox={VIEWBOX} width="46" height="46"
              style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 5px ${cols.body}30)`, pointerEvents: "none" }}
@@ -268,7 +268,7 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3
+      <div data-palette-scroll className="flex-1 overflow-y-auto px-3 py-3
                       [&::-webkit-scrollbar]:w-1.5
                       [&::-webkit-scrollbar-track]:bg-transparent
                       [&::-webkit-scrollbar-thumb]:bg-slate-300/60

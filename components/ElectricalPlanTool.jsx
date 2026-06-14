@@ -503,10 +503,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   // ---------- Drag from palette ----------
   // ---- Palette → canvas placement -------------------------------------------
-  // Pointer-based (not HTML5 drag-and-drop) so it's instant on touch — iOS gates
-  // native drag behind a long-press. We attach window listeners on press so the
-  // drag keeps tracking once the pointer leaves the tile (no pointer-capture,
-  // which is unreliable with React's pooled events).
+  // Pointer-based (not HTML5 drag-and-drop) so it's instant on touch. The tiles
+  // use touch-action:none so iOS doesn't claim the gesture for scrolling and
+  // cancel the drag; in return we scroll the palette ourselves on a vertical
+  // swipe. Horizontal swipe (toward the canvas) picks the symbol up.
   const paletteDragState = useRef(null);
   const [paletteGhost, setPaletteGhost] = useState(null);
 
@@ -516,7 +516,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const pointerId = e.pointerId;
     const startX = e.clientX, startY = e.clientY;
     const startPlaced = placed;
-    const state = { active: false };
+    const isTouch = e.pointerType !== "mouse";
+    const scroller = (e.currentTarget && e.currentTarget.closest)
+      ? e.currentTarget.closest("[data-palette-scroll]") : null;
+    const startScrollTop = scroller ? scroller.scrollTop : 0;
+    const state = { mode: "idle" };  // idle | drag | scroll
     paletteDragState.current = state;
 
     function cleanup() {
@@ -529,19 +533,30 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const move = (ev) => {
       if (ev.pointerId !== pointerId) return;
       const dx = ev.clientX - startX, dy = ev.clientY - startY;
-      if (!state.active) {
-        if (Math.hypot(dx, dy) < 7) return;
-        if (Math.abs(dy) > Math.abs(dx) * 1.3) { cleanup(); return; } // vertical = let the palette scroll
-        state.active = true;
+      if (state.mode === "idle") {
+        if (!isTouch) {
+          if (Math.hypot(dx, dy) < 6) return;
+          state.mode = "drag";
+        } else if (dx > 10) {
+          state.mode = "drag";            // moving toward the canvas (to the right) → pick up
+        } else if (Math.abs(dy) > 12) {
+          state.mode = "scroll";          // a clear vertical swipe → scroll the list
+        } else {
+          return;                         // ambiguous so far — wait for more movement
+        }
       }
       if (ev.cancelable) ev.preventDefault();
+      if (state.mode === "scroll") {
+        if (scroller) scroller.scrollTop = startScrollTop - dy;
+        return;
+      }
       setPaletteGhost({ symbolId, x: ev.clientX, y: ev.clientY });
     };
     const finish = (ev, place) => {
       if (ev.pointerId !== pointerId) return;
-      const wasActive = state.active;
+      const mode = state.mode;
       cleanup();
-      if (!place || !wasActive || !findSymbol(symbolId)) return;
+      if (!place || mode !== "drag" || !findSymbol(symbolId)) return;
       const { x, y } = clientToDrawing(ev.clientX, ev.clientY);
       if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return; // released off the sheet → ignore
       snapshot();
