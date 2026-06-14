@@ -502,10 +502,46 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   };
 
   // ---------- Drag from palette ----------
-  const onPaletteDragStart = (e, symbolId) => {
-    e.dataTransfer.effectAllowed = "copy";
-    e.dataTransfer.setData("text/plain", symbolId);
+  // ---- Palette → canvas placement -------------------------------------------
+  // Pointer-based (not HTML5 drag-and-drop) so it's instant on touch — iOS gates
+  // native drag behind a long-press, which is the "click and hold" lag on iPad.
+  const paletteDragState = useRef(null);
+  const [paletteGhost, setPaletteGhost] = useState(null);
+
+  const onPalettePointerDown = (e, symbolId) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    paletteDragState.current = { symbolId, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, active: false, el: e.currentTarget };
   };
+  const onPalettePointerMove = (e) => {
+    const st = paletteDragState.current;
+    if (!st || e.pointerId !== st.pointerId) return;
+    if (!st.active) {
+      if (Math.hypot(e.clientX - st.startX, e.clientY - st.startY) < 6) return;
+      st.active = true;                                   // crossed the threshold → it's a drag
+      try { st.el.setPointerCapture(st.pointerId); } catch (err) {}
+    }
+    e.preventDefault();
+    setPaletteGhost({ symbolId: st.symbolId, x: e.clientX, y: e.clientY });
+  };
+  const finishPaletteDrag = (e, place) => {
+    const st = paletteDragState.current;
+    if (!st || e.pointerId !== st.pointerId) return;
+    paletteDragState.current = null;
+    setPaletteGhost(null);
+    if (!place || !st.active || !findSymbol(st.symbolId)) return;
+    const { x, y } = clientToDrawing(e.clientX, e.clientY);
+    if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return;  // released off the sheet → ignore
+    snapshot();
+    const newItem = {
+      id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      symbolId: st.symbolId, x: snap(x), y: snap(y), rotation: 0, scale: 1, label: "",
+    };
+    updateProject({ placed: [...placed, newItem] });
+    setSelectedId(newItem.id);
+    setSelectedAnnoId(null);
+  };
+  const onPalettePointerUp = (e) => finishPaletteDrag(e, true);
+  const onPalettePointerCancel = (e) => finishPaletteDrag(e, false);
 
   // Drop onto the drawing area
   const onDrawingDrop = (e) => {
@@ -1034,6 +1070,19 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden"
              onChange={(e) => handleFile(e.target.files[0])} />
 
+      {paletteGhost && (() => {
+        const cols = resolveColours(paletteGhost.symbolId, colourMode || "colour");
+        const sym = findSymbol(paletteGhost.symbolId);
+        return (
+          <div style={{ position: "fixed", left: paletteGhost.x, top: paletteGhost.y, transform: "translate(-50%,-50%)", pointerEvents: "none", zIndex: 2000 }}>
+            <svg viewBox={VIEWBOX} width="50" height="50"
+                 style={{ color: cols.body, "--feeder": cols.feeder, filter: "drop-shadow(0 3px 8px rgba(0,0,0,.35))", opacity: 0.95 }}>
+              {sym?.svg}
+            </svg>
+          </div>
+        );
+      })()}
+
       {recovery && (
         <div className="flex items-center flex-wrap gap-x-3 gap-y-1 px-4 py-2 bg-[#FFF7E6] border-b border-amber-300 text-[12px] text-amber-900">
           <span className="font-semibold">Recovered unsaved work</span>
@@ -1050,7 +1099,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         {/* ==================== LEFT PALETTE ==================== */}
         {!sidebarHidden && (
           <PalettePanel
-            onPaletteDragStart={onPaletteDragStart}
+            onPalettePointerDown={onPalettePointerDown}
+            onPalettePointerMove={onPalettePointerMove}
+            onPalettePointerUp={onPalettePointerUp}
+            onPalettePointerCancel={onPalettePointerCancel}
             symbolScale={symbolScale}
             setSymbolScale={setSymbolScale}
             colourMode={colourMode}

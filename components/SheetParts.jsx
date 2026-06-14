@@ -211,7 +211,7 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
 /* ============================================================================
  * PALETTE (left sidebar)
  * ========================================================================= */
-export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colourMode }) {
+export function Palette({ onPalettePointerDown, onPalettePointerMove, onPalettePointerUp, onPalettePointerCancel, symbolScale, setSymbolScale, colourMode }) {
   const [query, setQuery] = useState("");
   const groups = useMemo(() => getPaletteGroups(), []);
   const all = useMemo(() => getPaletteSymbols(), []);
@@ -226,14 +226,17 @@ export function Palette({ onPaletteDragStart, symbolScale, setSymbolScale, colou
     const label = meta?.description || sym.name;
     return (
       <div
-        draggable
-        onDragStart={(e) => onPaletteDragStart(e, sym.id)}
+        onPointerDown={(e) => onPalettePointerDown(e, sym.id)}
+        onPointerMove={onPalettePointerMove}
+        onPointerUp={onPalettePointerUp}
+        onPointerCancel={onPalettePointerCancel}
+        style={{ touchAction: "pan-y" }}
         title={label + (meta?.height ? ` · ${meta.height}` : "")}
         className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
-                   cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2
+                   cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2 select-none
                    transition-all duration-200 hover:-translate-y-0.5">
         <svg viewBox={VIEWBOX} width="46" height="46"
-             style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 5px ${cols.body}30)` }}
+             style={{ color: cols.body, "--feeder": cols.feeder, filter: `drop-shadow(0 0 5px ${cols.body}30)`, pointerEvents: "none" }}
              className="relative z-10 transition-transform duration-200 group-hover:scale-110">
           {sym.svg}
         </svg>
