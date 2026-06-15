@@ -2163,7 +2163,7 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
  * Renders a clean copy of the sheet at 1:1, full-screen,
  * with the rest of the app hidden via the print stylesheet.
  * ========================================================================= */
-export function PrintPreview({ project, legendItems, colourMode, DRAW, onClose, onPrint }) {
+export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1, DRAW, onClose, onPrint }) {
   const { meta, notes } = project;
   const sheets = project.sheets && project.sheets.length
     ? project.sheets
@@ -2471,7 +2471,7 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
           const sym = findSymbol(item.symbolId);
           if (!sym) return null;
           const itemScale = item.scale ?? 1;
-          const itemSize = 48 * itemScale;
+          const itemSize = 48 * symbolScale * itemScale;
           const half = itemSize / 2;
           const cols = resolveColours(item.symbolId, colourMode);
           return (

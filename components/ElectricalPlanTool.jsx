@@ -1407,6 +1407,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           project={project}
           legendItems={legendItems}
           colourMode={colourMode}
+          symbolScale={symbolScale}
           DRAW={DRAW}
           onClose={() => setPrintPreview(false)}
           onPrint={printSheet}
