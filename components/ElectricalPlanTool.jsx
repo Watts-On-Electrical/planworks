@@ -311,6 +311,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [rotatingId, setRotatingId] = useState(null);
   const [rotatingFurnId, setRotatingFurnId] = useState(null);
+  const [resizingFurnId, setResizingFurnId] = useState(null);
   const [activeCategory, setActiveCategory] = useState("sockets");
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
@@ -597,7 +598,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         };
         pinchActiveRef.current = true;
         // Cancel any pan/drag the first finger may have begun.
-        setIsPanning(false); setDraggingPlacedId(null); setDraggingFurnId(null); setDraggingAnno(null); setRotatingId(null); setRotatingFurnId(null);
+        setIsPanning(false); setDraggingPlacedId(null); setDraggingFurnId(null); setDraggingAnno(null); setRotatingId(null); setRotatingFurnId(null); setResizingFurnId(null);
         try { el.setPointerCapture(e.pointerId); } catch {}
       }
     };
@@ -796,6 +797,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
   };
   const startFurnRotating = (id) => setRotatingFurnId(id);
+  const startFurnResizing = (id) => setResizingFurnId(id);
 
   // Drop a furniture piece from the Floor Plan palette onto the sheet.
   // Mirrors onPalettePointerDown exactly, but targets the furniture array.
@@ -988,6 +990,24 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       });
       return;
     }
+    if (resizingFurnId) {
+      const item = furniture.find(p => p.id === resizingFurnId);
+      if (!item) return;
+      const { x, y } = clientToDrawing(e.clientX, e.clientY);
+      // Distance from the piece centre to the pointer. The corner sits at
+      // half*√2 from centre, so newSize = pointerDistance * √2. Rotation-
+      // invariant, so it works at any angle.
+      const d = Math.hypot(x - item.x, y - item.y);
+      const base = 48 * symbolScale;
+      let nextScale = (d * Math.SQRT2) / base;
+      nextScale = Math.max(0.8, Math.min(30, nextScale));
+      updateProject({
+        furniture: furniture.map(it =>
+          it.id === resizingFurnId ? { ...it, scale: nextScale } : it
+        ),
+      });
+      return;
+    }
     if (draggingFurnId) {
       const { x, y } = clientToDrawing(e.clientX, e.clientY);
       updateProject({
@@ -1029,6 +1049,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     setDraggingAnno(null);
     setRotatingId(null);
     setRotatingFurnId(null);
+    setResizingFurnId(null);
     setIsPanning(false);
     try { if (e?.pointerId != null) viewportRef.current?.releasePointerCapture?.(e.pointerId); } catch {}
   };
@@ -1483,6 +1504,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             onItemMouseDown={onItemMouseDown}
             onFurnitureMouseDown={onFurnitureMouseDown}
             startFurnRotating={startFurnRotating}
+            startFurnResizing={startFurnResizing}
             onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
             onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
             startRotating={setRotatingId}

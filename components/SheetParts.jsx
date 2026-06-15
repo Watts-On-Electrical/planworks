@@ -382,7 +382,7 @@ export function Workspace({
   onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
-  onFurnitureMouseDown, startFurnRotating,
+  onFurnitureMouseDown, startFurnRotating, startFurnResizing,
   startRotating,
 }) {
   return (
@@ -426,6 +426,7 @@ export function Workspace({
           onItemMouseDown={onItemMouseDown}
           onFurnitureMouseDown={onFurnitureMouseDown}
           startFurnRotating={startFurnRotating}
+          startFurnResizing={startFurnResizing}
           onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
           onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
           startRotating={startRotating}
@@ -456,7 +457,7 @@ export function Sheet({
   spacePressed, DRAW, showGrid, gridSize, zoom,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
-  onFurnitureMouseDown, startFurnRotating,
+  onFurnitureMouseDown, startFurnRotating, startFurnResizing,
   startRotating,
 }) {
   return (
@@ -505,6 +506,7 @@ export function Sheet({
         onItemMouseDown={onItemMouseDown}
         onFurnitureMouseDown={onFurnitureMouseDown}
         startFurnRotating={startFurnRotating}
+        startFurnResizing={startFurnResizing}
         onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
         onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
         startRotating={startRotating}
@@ -741,7 +743,7 @@ function DrawingArea({
   zoom, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
-  onFurnitureMouseDown, startFurnRotating,
+  onFurnitureMouseDown, startFurnRotating, startFurnResizing,
   startRotating,
 }) {
   // tool + selection come straight from the store now — no longer threaded
@@ -936,6 +938,15 @@ function DrawingArea({
                         stroke="#2C97A8" strokeWidth={1} strokeDasharray="3 2"/>
                   <circle cx={half} cy={-handleOffset} r={4}
                           fill="#3FB7C9" stroke="#fff" strokeWidth={1}/>
+                </g>
+              )}
+              {isSel && tool === "select" && !spacePressed && (
+                <g style={{ pointerEvents: "all", cursor: "nwse-resize" }}
+                   onPointerDown={(e) => { e.stopPropagation(); startFurnResizing(item.id); }}>
+                  <rect x={itemSize-5} y={itemSize-5} width={10} height={10} rx={2}
+                        fill="#3FB7C9" stroke="#fff" strokeWidth={1}/>
+                  <path d={`M${itemSize-2} ${itemSize+1} L${itemSize+1} ${itemSize-2}`}
+                        stroke="#fff" strokeWidth={1} fill="none"/>
                 </g>
               )}
             </g>
