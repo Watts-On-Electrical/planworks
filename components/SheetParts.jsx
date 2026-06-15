@@ -96,8 +96,8 @@ export function TopBar({
         <Divider />
         <ToolbarButton
           onClick={onToggleColour} icon={PaletteIcon}
-          label={colourMode === "red" ? "PB Red" : colourMode === "colour" ? "Colour" : "Mono"}
-          active={colourMode === "red"}/>
+          label={colourMode === "navy" ? "Navy" : colourMode === "red" ? "PB Red" : colourMode === "colour" ? "Colour" : "Mono"}
+          active={colourMode === "navy"}/>
         <ToolbarButton onClick={onNormalise} icon={Ruler}
           label={normaliseFlash ? "Reset ✓" : "Reset sizes"} flash={normaliseFlash}
           hint="Make all symbols the same size"/>

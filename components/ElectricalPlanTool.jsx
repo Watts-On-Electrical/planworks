@@ -309,7 +309,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [pdfLoading, setPdfLoading] = useState(false);
   const symbolScale = activeSheet.symbolScale ?? 1;
   const setSymbolScale = (v) => setActiveSheet({ symbolScale: v });
-  const [colourMode, setColourMode] = useState("red");
+  const [colourMode, setColourMode] = useState("navy");
   const [isPanning, setIsPanning] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
@@ -1260,7 +1260,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         onExportJSON={exportJSON}
         onPrint={() => setPrintPreview(true)}
         colourMode={colourMode}
-        onToggleColour={() => setColourMode(m => m === "red" ? "colour" : m === "colour" ? "mono" : "red")}
+        onToggleColour={() => setColourMode(m => m === "navy" ? "colour" : m === "colour" ? "red" : m === "red" ? "mono" : "navy")}
         onNormalise={normaliseSizes}
         normaliseFlash={normaliseFlash}
         snapEnabled={snapEnabled}
