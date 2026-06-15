@@ -90,7 +90,7 @@ const sid = () => "s_" + Math.random().toString(36).slice(2, 9);
 // A sheet holds one drawing (one floor). bgImage = imported plan. Each sheet
 // has its OWN editable free-text notes.
 function freshSheet(name = "Ground floor") {
-  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], furniture: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT, symbolScale: 1 };
+  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], furniture: [], walls: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT, symbolScale: 1 };
 }
 
 // A project holds meta + drawings (sheets); notes live on each sheet.
@@ -121,6 +121,7 @@ function normaliseProject(p) {
       bgImage: s.bgImage || null,
       placed: s.placed || [],
       furniture: s.furniture || [],
+      walls: s.walls || [],
       wires: s.wires || [],
       annotations: s.annotations || [],
       notes: seedNotes(s.notes),
@@ -136,6 +137,7 @@ function normaliseProject(p) {
     bgImage: p.bgImage || null,
     placed: p.placed || [],
     furniture: p.furniture || [],
+    walls: p.walls || [],
     wires: p.wires || [],
     annotations: p.annotations || [],
     notes: seedNotes(null),
@@ -243,6 +245,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
   const { bgImage, placed, wires, annotations, notes } = activeSheet;
   const furniture = activeSheet.furniture || [];
+  const walls = activeSheet.walls || [];
   // Refs so async image uploads target the right sheet even if the user has
   // since switched floors.
   const activeSheetIdRef = useRef(project.activeSheetId);
@@ -255,7 +258,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const effectiveTitleBlock = project.titleBlock || accountTitleBlock || DEFAULT_TITLEBLOCK;
 
   // Drawing-level fields live on the active sheet; everything else on the project.
-  const DRAW_FIELDS = ["bgImage", "placed", "furniture", "wires", "annotations", "notes"];
+  const DRAW_FIELDS = ["bgImage", "placed", "furniture", "walls", "wires", "annotations", "notes"];
   // Patch the project. Any drawing fields in the patch are routed into the
   // currently active sheet, so all existing handlers keep working unchanged.
   const updateProject = useCallback((patch) => {
@@ -292,10 +295,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const selection = useEditor(s => s.selection);
   const selectedId = selection?.kind === "symbol" ? selection.id : null;
   const selectedFurnId = selection?.kind === "furniture" ? selection.id : null;
+  const selectedWallId = selection?.kind === "wall" ? selection.id : null;
   const selectedAnnoId = selection?.kind === "annotation" ? selection.id : null;
   const selectedWireId = selection?.kind === "wire" ? selection.id : null;
   const setSelectedId = useEditor(s => s.setSelectedId);
   const setSelectedFurnId = useEditor(s => s.setSelectedFurnId);
+  const setSelectedWallId = useEditor(s => s.setSelectedWallId);
   const setSelectedAnnoId = useEditor(s => s.setSelectedAnnoId);
   const setSelectedWireId = useEditor(s => s.setSelectedWireId);
   const tool = useEditor(s => s.tool);
@@ -312,6 +317,12 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [rotatingId, setRotatingId] = useState(null);
   const [rotatingFurnId, setRotatingFurnId] = useState(null);
   const [resizingFurnId, setResizingFurnId] = useState(null);
+  // Wall tool state. wallDraft = the in-progress polyline; wallCursor = the
+  // snapped pointer position for the rubber-band preview.
+  const WALL_THICKNESS = { external: 16, internal: 10 };
+  const [wallType, setWallType] = useState("external");
+  const [wallDraft, setWallDraft] = useState(null);   // { points:[{x,y}], type }
+  const [wallCursor, setWallCursor] = useState(null); // { x, y }
   const [activeCategory, setActiveCategory] = useState("sockets");
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
@@ -368,15 +379,15 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   // ---------- Undo / Redo ----------
   const snapshot = useCallback(() => {
-    setHistory(h => [...h.slice(-49), { placed, wires, annotations }]);
+    setHistory(h => [...h.slice(-49), { placed, wires, annotations, furniture, walls }]);
     setFuture([]);
-  }, [placed, wires, annotations]);
+  }, [placed, wires, annotations, furniture, walls]);
 
   const undo = () => {
     setHistory(h => {
       if (!h.length) return h;
       const prev = h[h.length - 1];
-      setFuture(f => [{ placed, wires, annotations }, ...f].slice(0, 50));
+      setFuture(f => [{ placed, wires, annotations, furniture, walls }, ...f].slice(0, 50));
       updateProject(prev);
       return h.slice(0, -1);
     });
@@ -385,7 +396,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     setFuture(f => {
       if (!f.length) return f;
       const next = f[0];
-      setHistory(h => [...h, { placed, wires, annotations }].slice(-50));
+      setHistory(h => [...h, { placed, wires, annotations, furniture, walls }].slice(-50));
       updateProject(next);
       return f.slice(1);
     });
@@ -799,6 +810,50 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const startFurnRotating = (id) => setRotatingFurnId(id);
   const startFurnResizing = (id) => setResizingFurnId(id);
 
+  // ---------- Wall tool (floor-plan layer) ----------
+  // Snap a pointer position: clamp to the sheet, lock to horizontal/vertical
+  // relative to the previous point (unless Shift), then snap to the grid.
+  const snapWallPoint = (clientX, clientY, shiftKey) => {
+    let { x, y } = clientToDrawing(clientX, clientY);
+    x = Math.max(0, Math.min(DRAW.w, x));
+    y = Math.max(0, Math.min(DRAW.h, y));
+    const pts = wallDraft?.points || [];
+    if (pts.length > 0 && !shiftKey) {
+      const prev = pts[pts.length - 1];
+      if (Math.abs(x - prev.x) >= Math.abs(y - prev.y)) y = prev.y; else x = prev.x;
+    }
+    return { x: snap(x), y: snap(y) };
+  };
+  const addWallPoint = (clientX, clientY, shiftKey) => {
+    const pt = snapWallPoint(clientX, clientY, shiftKey);
+    setWallDraft(d => {
+      const pts = d?.points || [];
+      const last = pts[pts.length - 1];
+      if (last && last.x === pt.x && last.y === pt.y) return d; // ignore duplicate clicks
+      return { points: [...pts, pt], type: wallType };
+    });
+  };
+  const commitWall = () => {
+    if (wallDraft && wallDraft.points.length >= 2) {
+      snapshot();
+      const newWall = {
+        id: "wl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        points: wallDraft.points,
+        type: wallDraft.type || wallType,
+      };
+      updateProject({ walls: [...walls, newWall] });
+    }
+    setWallDraft(null);
+    setWallCursor(null);
+  };
+  const cancelWall = () => { setWallDraft(null); setWallCursor(null); };
+  const onWallMouseDown = (e, wall) => {
+    if (tool !== "select" || spacePressed) return;
+    e.stopPropagation();
+    setSelectedWallId(wall.id);
+    setSelectedId(null); setSelectedFurnId(null); setSelectedAnnoId(null); setSelectedWireId(null);
+  };
+
   // Drop a furniture piece from the Floor Plan palette onto the sheet.
   // Mirrors onPalettePointerDown exactly, but targets the furniture array.
   const onFurniturePointerDown = (e, furnitureId) => {
@@ -901,12 +956,21 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       e.target.closest?.(".notes-editable");
     if (isInteractive) return;
 
+    // Wall tool: a left-click in the drawing area lays the next wall point.
+    // Sits before the pan logic so wall clicks never pan (Space/middle still pan).
+    const explicitPanWall = e.button === 1 || spacePressed || tool === "pan";
+    if (tool === "wall" && !explicitPanWall && e.button === 0 && e.target.closest?.("[data-drawing-bg]")) {
+      e.preventDefault();
+      addWallPoint(e.clientX, e.clientY, e.shiftKey);
+      return;
+    }
+
     // Pan when clicking blank workspace, sheet background, drawing background
     // (anywhere that isn't a symbol/annotation/text field)
     const onPannableBg =
       e.target === viewportRef.current ||
       e.target.closest?.("[data-sheet-bg]") ||
-      e.target.closest?.("[data-drawing-bg]") && tool !== "note";
+      e.target.closest?.("[data-drawing-bg]") && tool !== "note" && tool !== "wall";
 
     const wantPan = explicitPan || (e.button === 0 && onPannableBg);
 
@@ -949,6 +1013,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         x: panStart.current.panX + (e.clientX - panStart.current.x),
         y: panStart.current.panY + (e.clientY - panStart.current.y),
       });
+      return;
+    }
+    if (tool === "wall") {
+      setWallCursor(snapWallPoint(e.clientX, e.clientY, e.shiftKey));
       return;
     }
     if (rotatingId) {
@@ -1053,6 +1121,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     setIsPanning(false);
     try { if (e?.pointerId != null) viewportRef.current?.releasePointerCapture?.(e.pointerId); } catch {}
   };
+  const onViewportDoubleClick = (e) => {
+    if (tool === "wall" && wallDraft) { e.preventDefault(); commitWall(); }
+  };
 
   // ---------- Symbol actions ----------
   const rotateSelected = () => {
@@ -1106,6 +1177,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       snapshot();
       updateProject({ furniture: furniture.filter(it => it.id !== selectedFurnId) });
       setSelectedFurnId(null);
+    } else if (selectedWallId) {
+      snapshot();
+      updateProject({ walls: walls.filter(w => w.id !== selectedWallId) });
+      setSelectedWallId(null);
     } else if (selectedAnnoId) {
       snapshot();
       updateProject({ annotations: annotations.filter(a => a.id !== selectedAnnoId) });
@@ -1140,9 +1215,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         setSpacePressed(true);
       }
       if (isInput) return;
+      if (wallDraft && e.key === "Enter") { e.preventDefault(); commitWall(); return; }
+      if (wallDraft && e.key === "Escape") { e.preventDefault(); cancelWall(); return; }
       if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
       else if (e.key === "r" || e.key === "R") rotateSelected();
-      else if (e.key === "Escape") { setSelectedId(null); setSelectedFurnId(null); setSelectedAnnoId(null); setSelectedWireId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
+      else if (e.key === "Escape") { setSelectedId(null); setSelectedFurnId(null); setSelectedWallId(null); setSelectedAnnoId(null); setSelectedWireId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
       else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); redo(); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveProject(); }
@@ -1364,6 +1441,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     isPanning ? "grabbing" :
     (tool === "pan" || spacePressed) ? "grab" :
     tool === "wire" ? "crosshair" :
+    tool === "wall" ? "crosshair" :
     tool === "note" ? "text" :
     "default";
 
@@ -1486,6 +1564,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             bgImage={bgImage}
             placed={placed} wires={wires} annotations={annotations}
             furniture={furniture}
+            walls={walls}
+            wallDraft={wallDraft} wallCursor={wallCursor}
+            wallThickness={WALL_THICKNESS}
             legendItems={legendItems}
             colourMode={colourMode}
             symbolSize={48 * symbolScale}
@@ -1498,6 +1579,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             onViewportMouseDown={onViewportMouseDown}
             onViewportMouseMove={onViewportMouseMove}
             onViewportMouseUp={onViewportMouseUp}
+            onViewportDoubleClick={onViewportDoubleClick}
             onDrawingDrop={onDrawingDrop}
             onDrawingDragOver={onDrawingDragOver}
             onDrawingDragLeave={onDrawingDragLeave}
@@ -1505,13 +1587,30 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             onFurnitureMouseDown={onFurnitureMouseDown}
             startFurnRotating={startFurnRotating}
             startFurnResizing={startFurnResizing}
+            onWallMouseDown={onWallMouseDown}
             onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
             onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
             startRotating={setRotatingId}
           />
 
           {/* Floating tool toolbar */}
-          <FloatingToolbar tool={tool} setTool={(t) => { setTool(t); setWireStart(null); }} />
+          <FloatingToolbar tool={tool} setTool={(t) => { setTool(t); setWireStart(null); if (t !== "wall") cancelWall(); }} />
+
+          {/* Wall-type chooser — only while the wall tool is active */}
+          {tool === "wall" && (
+            <div className="absolute top-4 left-16 z-20 flex items-center gap-1 bg-white dark:bg-[#16202B] rounded-xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] p-1">
+              {["external", "internal"].map((t) => (
+                <button key={t} onClick={() => setWallType(t)}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition-colors ${
+                    wallType === t ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+                  }`}>
+                  {t === "external" ? "External" : "Internal"}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-0.5"/>
+              <span className="px-1.5 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">click to lay · double-click to finish</span>
+            </div>
+          )}
 
           {/* Floating zoom toolbar */}
           <ZoomControls
@@ -1553,6 +1652,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
               <span>TOOL <span className="text-[#22808F] ml-1">{tool.toUpperCase()}</span></span>
               {tool === "wire" && wireStart && <span className="text-[#22808F] animate-pulse">→ click target</span>}
               {tool === "note" && <span className="text-[#22808F]">click drawing area to add</span>}
+              {tool === "wall" && <span className="text-[#22808F]">{wallDraft ? `laying ${wallDraft.type} wall · double-click to finish` : "click to start a wall"}</span>}
               {spacePressed && <span className="text-[#22808F]">PAN</span>}
             </div>
             <div className="text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>

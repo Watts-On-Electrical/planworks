@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Upload, Trash2, Save, FolderOpen, Download, Undo2, Redo2,
-  MousePointer2, Cable, RotateCw, ZoomIn, ZoomOut, Maximize2,
+  MousePointer2, Cable, BrickWall, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon, Mail,
   ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
   Grid3x3, ClipboardList, Plus, Clock, LayoutPanelTop, ImagePlus, SlidersHorizontal,
@@ -47,6 +47,7 @@ const TOOLS = {
   select: { icon: MousePointer2, label: "Select", hint: "V" },
   pan:    { icon: Hand,          label: "Pan",    hint: "H" },
   wire:   { icon: Cable,         label: "Wire",   hint: "W" },
+  wall:   { icon: BrickWall,     label: "Wall",   hint: "" },
   note:   { icon: Type,          label: "Note",   hint: "N" },
 };
 
@@ -381,13 +382,15 @@ export function Workspace({
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations,
   furniture,
+  walls, wallDraft, wallCursor, wallThickness,
   legendItems, colourMode, symbolSize,
   wireStart, onWireSelect,
   spacePressed, DRAW, showGrid, gridSize,
-  onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
+  onViewportMouseDown, onViewportMouseMove, onViewportMouseUp, onViewportDoubleClick,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   onFurnitureMouseDown, startFurnRotating, startFurnResizing,
+  onWallMouseDown,
   startRotating,
 }) {
   return (
@@ -402,6 +405,7 @@ export function Workspace({
       onPointerMove={onViewportMouseMove}
       onPointerUp={onViewportMouseUp}
       onPointerCancel={onViewportMouseUp}
+      onDoubleClick={onViewportDoubleClick}
     >
       {/* Sheet, transformed by pan + zoom */}
       <div style={{
@@ -417,6 +421,7 @@ export function Workspace({
           bgImage={bgImage}
           placed={placed} wires={wires} annotations={annotations}
           furniture={furniture}
+          walls={walls} wallDraft={wallDraft} wallCursor={wallCursor} wallThickness={wallThickness}
           legendItems={legendItems}
           colourMode={colourMode}
           symbolSize={symbolSize}
@@ -432,6 +437,7 @@ export function Workspace({
           onFurnitureMouseDown={onFurnitureMouseDown}
           startFurnRotating={startFurnRotating}
           startFurnResizing={startFurnResizing}
+          onWallMouseDown={onWallMouseDown}
           onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
           onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
           startRotating={startRotating}
@@ -458,11 +464,13 @@ export function Sheet({
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations, legendItems,
   furniture,
+  walls, wallDraft, wallCursor, wallThickness,
   colourMode, symbolSize, wireStart, onWireSelect,
   spacePressed, DRAW, showGrid, gridSize, zoom,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   onFurnitureMouseDown, startFurnRotating, startFurnResizing,
+  onWallMouseDown,
   startRotating,
 }) {
   return (
@@ -501,6 +509,7 @@ export function Sheet({
         bgImage={bgImage}
         placed={placed} wires={wires} annotations={annotations}
         furniture={furniture}
+        walls={walls} wallDraft={wallDraft} wallCursor={wallCursor} wallThickness={wallThickness}
         colourMode={colourMode} symbolSize={symbolSize}
         wireStart={wireStart} onWireSelect={onWireSelect}
         spacePressed={spacePressed} zoom={zoom}
@@ -512,6 +521,7 @@ export function Sheet({
         onFurnitureMouseDown={onFurnitureMouseDown}
         startFurnRotating={startFurnRotating}
         startFurnResizing={startFurnResizing}
+        onWallMouseDown={onWallMouseDown}
         onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
         onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
         startRotating={startRotating}
@@ -744,11 +754,13 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
 function DrawingArea({
   drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
   furniture,
+  walls, wallDraft, wallCursor, wallThickness,
   colourMode, symbolSize, wireStart, onWireSelect, spacePressed,
   zoom, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   onFurnitureMouseDown, startFurnRotating, startFurnResizing,
+  onWallMouseDown,
   startRotating,
 }) {
   // tool + selection come straight from the store now — no longer threaded
@@ -757,6 +769,7 @@ function DrawingArea({
   const selection = useEditor(s => s.selection);
   const selectedId = selection?.kind === "symbol" ? selection.id : null;
   const selectedFurnId = selection?.kind === "furniture" ? selection.id : null;
+  const selectedWallId = selection?.kind === "wall" ? selection.id : null;
   const selectedAnnoId = selection?.kind === "annotation" ? selection.id : null;
   const selectedWireId = selection?.kind === "wire" ? selection.id : null;
   // Fit the bgImage into the drawing area
@@ -901,6 +914,31 @@ function DrawingArea({
                         style={{ pointerEvents: "all", cursor: "grab" }}
                         onPointerDown={(e) => onAnnotationAnchorMouseDown(e, a)}/>
               )}
+            </g>
+          );
+        })}
+
+        {/* Walls (floor-plan layer) — the structural shell, drawn beneath
+            everything else. Thick navy polylines with mitred corners. */}
+        {(walls || []).map(wall => {
+          if (!wall.points || wall.points.length < 2) return null;
+          const th = (wallThickness && wallThickness[wall.type]) || 12;
+          const ptsStr = wall.points.map(p => `${p.x},${p.y}`).join(" ");
+          const isSel = wall.id === selectedWallId;
+          return (
+            <g key={wall.id}>
+              {isSel && (
+                <polyline points={ptsStr} fill="none" stroke="#3FB7C9" strokeWidth={th + 8}
+                          strokeLinejoin="round" strokeLinecap="round" opacity="0.35"
+                          style={{ pointerEvents: "none" }}/>
+              )}
+              <polyline points={ptsStr} fill="none" stroke="#2C3E50" strokeWidth={th}
+                        strokeLinejoin="miter" strokeLinecap="square"
+                        style={{ pointerEvents: "none" }}/>
+              <polyline points={ptsStr} fill="none" stroke="transparent" strokeWidth={Math.max(th, 14)}
+                        strokeLinejoin="round" strokeLinecap="round"
+                        style={{ pointerEvents: tool === "select" ? "stroke" : "none", cursor: "pointer" }}
+                        onPointerDown={(e) => onWallMouseDown(e, wall)}/>
             </g>
           );
         })}
@@ -1058,6 +1096,33 @@ function DrawingArea({
             </g>
           );
         })}
+        {/* Wall draft — the in-progress polyline + rubber-band to the cursor.
+            Rendered last so it sits on top while drawing. */}
+        {wallDraft && wallDraft.points && wallDraft.points.length > 0 && (() => {
+          const pts = wallDraft.points;
+          const last = pts[pts.length - 1];
+          const th = (wallThickness && wallThickness[wallDraft.type]) || 12;
+          const ptsStr = pts.map(p => `${p.x},${p.y}`).join(" ");
+          return (
+            <g style={{ pointerEvents: "none" }}>
+              {pts.length >= 2 && (
+                <polyline points={ptsStr} fill="none" stroke="#2C3E50" strokeWidth={th}
+                          strokeLinejoin="miter" strokeLinecap="square" opacity="0.45"/>
+              )}
+              {wallCursor && (
+                <line x1={last.x} y1={last.y} x2={wallCursor.x} y2={wallCursor.y}
+                      stroke="#3FB7C9" strokeWidth={th} strokeLinecap="square"
+                      opacity="0.5" strokeDasharray="7 6"/>
+              )}
+              {pts.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r={4.5} fill="#fff" stroke="#3FB7C9" strokeWidth={1.5}/>
+              ))}
+              {wallCursor && (
+                <circle cx={wallCursor.x} cy={wallCursor.y} r={4.5} fill="#3FB7C9" stroke="#fff" strokeWidth={1.5}/>
+              )}
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );
@@ -1444,7 +1509,7 @@ function Stat({ label, value }) {
 export function FloatingToolbar({ tool, setTool }) {
   return (
     <div className="absolute top-4 left-4 z-20 flex flex-col bg-white dark:bg-[#16202B] rounded-2xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
-      {Object.entries(TOOLS).filter(([key]) => key === "select" || key === "wire").map(([key, info]) => {
+      {Object.entries(TOOLS).filter(([key]) => key === "select" || key === "wire" || key === "wall").map(([key, info]) => {
         const Icon = info.icon;
         const active = tool === key;
         return (

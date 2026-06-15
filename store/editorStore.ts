@@ -47,6 +47,7 @@ interface EditorState {
   // is the current selection (so clearing one kind never wipes another).
   setSelectedId(id: ID | null): void;
   setSelectedFurnId(id: ID | null): void;
+  setSelectedWallId(id: ID | null): void;
   setSelectedAnnoId(id: ID | null): void;
   setSelectedWireId(id: ID | null): void;
   setTool(tool: Tool): void;
@@ -156,6 +157,8 @@ export const useEditor = create<EditorState>((set, get) => ({
     set(s => ({ selection: id ? { kind: 'symbol', id } : (s.selection?.kind === 'symbol' ? null : s.selection) })),
   setSelectedFurnId: (id) =>
     set(s => ({ selection: id ? { kind: 'furniture', id } : (s.selection?.kind === 'furniture' ? null : s.selection) })),
+  setSelectedWallId: (id) =>
+    set(s => ({ selection: id ? { kind: 'wall', id } : (s.selection?.kind === 'wall' ? null : s.selection) })),
   setSelectedAnnoId: (id) =>
     set(s => ({ selection: id ? { kind: 'annotation', id } : (s.selection?.kind === 'annotation' ? null : s.selection) })),
   setSelectedWireId: (id) =>

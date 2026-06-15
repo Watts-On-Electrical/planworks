@@ -28,6 +28,13 @@ export interface FurnitureItem {
   scale: number;
 }
 
+/** A wall on the floor-plan layer: a polyline drawn at a given thickness. */
+export interface WallSegment {
+  id: ID;
+  points: { x: number; y: number }[];
+  type: 'external' | 'internal';
+}
+
 /** A wire connecting two placed items. */
 export interface Wire {
   id: ID;
@@ -65,6 +72,7 @@ export interface Sheet {
   bgImage: ImageRef | null;
   placed: PlacedItem[];
   furniture: FurnitureItem[];   // floor-plan layer — separate from electrical
+  walls: WallSegment[];         // floor-plan layer — separate from electrical
   wires: Wire[];
   annotations: Annotation[];
   notes: string;                // free-text drawing notes for this sheet
@@ -105,12 +113,13 @@ export interface Project {
   activeSheetId: ID;
 }
 
-export type Tool = 'select' | 'pan' | 'wire' | 'note';
+export type Tool = 'select' | 'pan' | 'wire' | 'note' | 'wall';
 
 /** What's currently selected (runtime UI state, never persisted). */
 export type Selection =
   | { kind: 'symbol'; id: ID }
   | { kind: 'furniture'; id: ID }
+  | { kind: 'wall'; id: ID }
   | { kind: 'wire'; id: ID }
   | { kind: 'annotation'; id: ID }
   | null;
