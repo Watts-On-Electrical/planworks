@@ -74,7 +74,7 @@ export function TopBar({
         )}
         <div className="flex items-center gap-2">
           <span className="font-semibold text-[15px] tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Plan<span className="text-[#2C97A8]">.</span>Works
+            Plot<span className="text-[#3FB7C9]">wire</span>
           </span>
         </div>
         <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
