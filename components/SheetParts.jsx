@@ -2275,6 +2275,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
               placed={s.placed} wires={s.wires} annotations={s.annotations}
               legendItems={legendFor(s.placed)}
               colourMode={colourMode}
+              symbolScale={symbolScale}
               DRAW={DRAW}
             />
           </div>
@@ -2322,7 +2323,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 }
 
 // A non-interactive version of the Sheet used by Print Preview.
-function PrintSheet({ meta, notes, bgImage, placed, wires, annotations, legendItems, colourMode, DRAW }) {
+function PrintSheet({ meta, notes, bgImage, placed, wires, annotations, legendItems, colourMode, symbolScale = 1, DRAW }) {
   return (
     <div style={{
       width: SHEET.width, height: SHEET.height,
@@ -2344,6 +2345,7 @@ function PrintSheet({ meta, notes, bgImage, placed, wires, annotations, legendIt
         bgImage={bgImage}
         placed={placed} wires={wires} annotations={annotations}
         colourMode={colourMode}
+        symbolScale={symbolScale}
       />
       <TitleBlockStatic meta={meta} />
     </div>
@@ -2407,7 +2409,7 @@ function NotesColumnStatic({ notes }) {
   );
 }
 
-function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMode }) {
+function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMode, symbolScale = 1 }) {
   const imageDisplay = useMemo(() => {
     if (!bgImage) return null;
     const scale = Math.min(DRAW.w / bgImage.w, DRAW.h / bgImage.h);
