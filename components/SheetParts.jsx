@@ -90,26 +90,31 @@ export function TopBar({
       </div>
 
       <div className="flex items-center gap-1 ml-auto min-w-0 overflow-x-auto flex-nowrap [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
-        <ToolbarButton onClick={onImport} icon={Upload} label="Import" primary/>
-        <Divider />
+        {/* History */}
         <ToolbarButton onClick={onUndo} icon={Undo2} label="Undo" hint="⌘Z"/>
         <ToolbarButton onClick={onRedo} icon={Redo2} label="Redo" hint="⌘⇧Z"/>
         <Divider />
+        {/* File */}
+        <ToolbarButton onClick={onImport} icon={Upload} label="Import"/>
+        <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
+        <ToolbarButton onClick={onPrint} icon={Download} label="Save As"/>
+        <Divider />
+        {/* View */}
+        <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
+        <ToolbarButton onClick={onNormalise} icon={Ruler}
+          label={normaliseFlash ? "Reset ✓" : "Reset sizes"} flash={normaliseFlash}
+          hint="Make all symbols the same size"/>
         <ToolbarButton
           onClick={onToggleColour} icon={PaletteIcon}
           label={colourMode === "navy" ? "Navy" : colourMode === "red" ? "PB Red" : colourMode === "colour" ? "Colour" : "Mono"}
           active={colourMode === "navy"}/>
-        <ToolbarButton onClick={onNormalise} icon={Ruler}
-          label={normaliseFlash ? "Reset ✓" : "Reset sizes"} flash={normaliseFlash}
-          hint="Make all symbols the same size"/>
-        <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
         <Divider />
-        <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
-        <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
+        {/* Panels */}
         <ToolbarButton onClick={onShowNotes} icon={Type} label="Notes"/>
+        <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Title block"/>
-        <ToolbarButton onClick={onPrint} icon={Download} label="Save As" primary/>
         <Divider />
+        {/* On their own */}
         <ToolbarButton
           onClick={onToggleSidebar}
           icon={sidebarHidden ? PanelLeftOpen : PanelLeftClose}
