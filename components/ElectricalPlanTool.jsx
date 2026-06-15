@@ -826,23 +826,22 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   };
   const addWallPoint = (clientX, clientY, shiftKey) => {
     const pt = snapWallPoint(clientX, clientY, shiftKey);
-    setWallDraft(d => {
-      const pts = d?.points || [];
-      const last = pts[pts.length - 1];
-      if (last && last.x === pt.x && last.y === pt.y) return d; // ignore duplicate clicks
-      return { points: [...pts, pt], type: wallType };
-    });
-  };
-  const commitWall = () => {
-    if (wallDraft && wallDraft.points.length >= 2) {
-      snapshot();
-      const newWall = {
-        id: "wl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-        points: wallDraft.points,
-        type: wallDraft.type || wallType,
-      };
-      updateProject({ walls: [...walls, newWall] });
+    // One line at a time: first click drops the start, second click finishes
+    // that segment and commits it. No double-click needed.
+    if (!wallDraft || !wallDraft.points || wallDraft.points.length === 0) {
+      setWallDraft({ points: [pt], type: wallType });
+      setWallCursor(pt);
+      return;
     }
+    const a = wallDraft.points[0];
+    if (a.x === pt.x && a.y === pt.y) return; // ignore a zero-length click
+    snapshot();
+    const newWall = {
+      id: "wl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      points: [a, pt],
+      type: wallDraft.type || wallType,
+    };
+    updateProject({ walls: [...walls, newWall] });
     setWallDraft(null);
     setWallCursor(null);
   };
@@ -1122,7 +1121,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     try { if (e?.pointerId != null) viewportRef.current?.releasePointerCapture?.(e.pointerId); } catch {}
   };
   const onViewportDoubleClick = (e) => {
-    if (tool === "wall" && wallDraft) { e.preventDefault(); commitWall(); }
+    // Walls finish on the second click now, so nothing to do here.
   };
 
   // ---------- Symbol actions ----------
@@ -1215,7 +1214,6 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         setSpacePressed(true);
       }
       if (isInput) return;
-      if (wallDraft && e.key === "Enter") { e.preventDefault(); commitWall(); return; }
       if (wallDraft && e.key === "Escape") { e.preventDefault(); cancelWall(); return; }
       if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
       else if (e.key === "r" || e.key === "R") rotateSelected();
@@ -1608,7 +1606,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
                 </button>
               ))}
               <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-0.5"/>
-              <span className="px-1.5 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">click to lay · double-click to finish</span>
+              <span className="px-1.5 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">click start · click end</span>
             </div>
           )}
 
@@ -1652,7 +1650,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
               <span>TOOL <span className="text-[#22808F] ml-1">{tool.toUpperCase()}</span></span>
               {tool === "wire" && wireStart && <span className="text-[#22808F] animate-pulse">→ click target</span>}
               {tool === "note" && <span className="text-[#22808F]">click drawing area to add</span>}
-              {tool === "wall" && <span className="text-[#22808F]">{wallDraft ? `laying ${wallDraft.type} wall · double-click to finish` : "click to start a wall"}</span>}
+              {tool === "wall" && <span className="text-[#22808F]">{wallDraft ? "click to set the end point" : "click to start a wall"}</span>}
               {spacePressed && <span className="text-[#22808F]">PAN</span>}
             </div>
             <div className="text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>

@@ -329,11 +329,20 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
         {floor ? (
           <>
             <div className="px-0.5 mb-2 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
-              Drag furniture onto the plan to sketch a layout. Not counted as electrical.
+              Drag onto the plan to sketch a layout. Not counted as electrical.
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              {FURNITURE.map((item) => <FurnTile key={item.id} item={item} />)}
-            </div>
+            {["Furniture", "Openings"].map((grp) => {
+              const items = FURNITURE.filter((it) => (it.group || "Furniture") === grp);
+              if (!items.length) return null;
+              return (
+                <section key={grp} className="mb-4 last:mb-1">
+                  <div className="px-0.5 mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{grp}</div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {items.map((item) => <FurnTile key={item.id} item={item} />)}
+                  </div>
+                </section>
+              );
+            })}
           </>
         ) : searchResults ? (
           searchResults.length ? (
@@ -801,7 +810,7 @@ function DrawingArea({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
     >
-      {!bgImage && (
+      {!bgImage && !(walls && walls.length) && !(furniture && furniture.length) && tool !== "wall" && (
         <div style={{
           position: "absolute", inset: 0,
           display: "flex", alignItems: "center", justifyContent: "center",

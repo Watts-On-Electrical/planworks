@@ -110,6 +110,23 @@ export const FURNITURE = [
     <path d="M16 25V7" />
     <path d="M13.5 10l2.5-3 2.5 3" />
   </>) },
+  // ---- Openings (doors & windows) ----
+  { id: "door", name: "Door", group: "Openings", scale: 3.5, svg: g(<>
+    <path d="M8 26V8" />
+    <path d="M8 8a18 18 0 0 1 18 18" />
+    <circle cx="8" cy="26" r="1.3" fill="currentColor" stroke="none" />
+  </>) },
+  { id: "door_double", name: "Double door", group: "Openings", scale: 4.5, svg: g(<>
+    <path d="M16 26 4 26V14" />
+    <path d="M4 14a12 12 0 0 1 12 12" />
+    <path d="M16 26 28 26V14" />
+    <path d="M28 14a12 12 0 0 0-12 12" />
+  </>) },
+  { id: "window", name: "Window", group: "Openings", scale: 3.5, svg: g(<>
+    <path d="M4 13h24M4 19h24" />
+    <path d="M4 13v6M28 13v6" />
+    <path d="M4 16h24" />
+  </>) },
 ];
 
 const FURNITURE_BY_ID = Object.fromEntries(FURNITURE.map(f => [f.id, f]));
