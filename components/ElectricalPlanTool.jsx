@@ -88,7 +88,7 @@ const sid = () => "s_" + Math.random().toString(36).slice(2, 9);
 // A sheet holds one drawing (one floor). bgImage = imported plan. Each sheet
 // has its OWN editable free-text notes.
 function freshSheet(name = "Ground floor") {
-  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT };
+  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT, symbolScale: 1 };
 }
 
 // A project holds meta + drawings (sheets); notes live on each sheet.
@@ -121,6 +121,7 @@ function normaliseProject(p) {
       wires: s.wires || [],
       annotations: s.annotations || [],
       notes: seedNotes(s.notes),
+      symbolScale: typeof s.symbolScale === "number" ? s.symbolScale : 1,
     }));
     return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
@@ -134,6 +135,7 @@ function normaliseProject(p) {
     wires: p.wires || [],
     annotations: p.annotations || [],
     notes: seedNotes(null),
+    symbolScale: typeof p.symbolScale === "number" ? p.symbolScale : 1,
   };
   return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, sheets: [sheet], activeSheetId: sheet.id };
 }
@@ -296,7 +298,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [symbolScale, setSymbolScale] = useState(1.0);
+  const symbolScale = activeSheet.symbolScale ?? 1;
+  const setSymbolScale = (v) => setActiveSheet({ symbolScale: v });
   const [colourMode, setColourMode] = useState("red");
   const [isPanning, setIsPanning] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);

@@ -2316,7 +2316,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
               placed={s.placed} wires={s.wires} annotations={s.annotations}
               legendItems={legendFor(s.placed)}
               colourMode={colourMode}
-              symbolScale={symbolScale}
+              symbolScale={typeof s.symbolScale === "number" ? s.symbolScale : symbolScale}
               DRAW={DRAW}
             />
           </div>
