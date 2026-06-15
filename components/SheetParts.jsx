@@ -17,6 +17,7 @@ import {
 import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
+import { useEditor } from "@/store/editorStore";
 
 // Per-project title block. The editor publishes the *effective* title block
 // (the project's own, falling back to the account default) through this context
@@ -323,8 +324,8 @@ export function Workspace({
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations,
   legendItems, colourMode, symbolSize,
-  selectedId, selectedAnnoId, wireStart, selectedWireId, onWireSelect,
-  tool, spacePressed, DRAW, showGrid, gridSize,
+  wireStart, onWireSelect,
+  spacePressed, DRAW, showGrid, gridSize,
   onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
@@ -359,9 +360,8 @@ export function Workspace({
           legendItems={legendItems}
           colourMode={colourMode}
           symbolSize={symbolSize}
-          selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
-          selectedWireId={selectedWireId} onWireSelect={onWireSelect}
-          tool={tool} spacePressed={spacePressed}
+          wireStart={wireStart} onWireSelect={onWireSelect}
+          spacePressed={spacePressed}
           DRAW={DRAW}
           showGrid={showGrid} gridSize={gridSize}
           zoom={zoom}
@@ -394,8 +394,8 @@ export function Sheet({
   drawingAreaRef,
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations, legendItems,
-  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, selectedWireId, onWireSelect,
-  tool, spacePressed, DRAW, showGrid, gridSize, zoom,
+  colourMode, symbolSize, wireStart, onWireSelect,
+  spacePressed, DRAW, showGrid, gridSize, zoom,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   startRotating,
@@ -436,9 +436,8 @@ export function Sheet({
         bgImage={bgImage}
         placed={placed} wires={wires} annotations={annotations}
         colourMode={colourMode} symbolSize={symbolSize}
-        selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
-        selectedWireId={selectedWireId} onWireSelect={onWireSelect}
-        tool={tool} spacePressed={spacePressed} zoom={zoom}
+        wireStart={wireStart} onWireSelect={onWireSelect}
+        spacePressed={spacePressed} zoom={zoom}
         showGrid={showGrid} gridSize={gridSize}
         onDrop={onDrawingDrop}
         onDragOver={onDrawingDragOver}
@@ -675,12 +674,19 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
  * ------------------------------------------------------------------------- */
 function DrawingArea({
   drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
-  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, selectedWireId, onWireSelect, tool, spacePressed,
+  colourMode, symbolSize, wireStart, onWireSelect, spacePressed,
   zoom, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   startRotating,
 }) {
+  // tool + selection come straight from the store now — no longer threaded
+  // down through Workspace → Sheet → DrawingArea.
+  const tool = useEditor(s => s.tool);
+  const selection = useEditor(s => s.selection);
+  const selectedId = selection?.kind === "symbol" ? selection.id : null;
+  const selectedAnnoId = selection?.kind === "annotation" ? selection.id : null;
+  const selectedWireId = selection?.kind === "wire" ? selection.id : null;
   // Fit the bgImage into the drawing area
   const imageDisplay = useMemo(() => {
     if (!bgImage) return null;
@@ -2213,7 +2219,43 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 
   const [mounted, setMounted] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const [zoom, setZoom] = useState(1);
+  const pointers = useRef(new Map());
+  const pinch = useRef(null);
+
+  // Fit the large A3 page to the screen width — essential on iPad, where the
+  // page is far wider than the viewport. Also reused by the "Fit" button.
+  const fitWidth = () => {
+    const avail = (typeof window !== "undefined" ? window.innerWidth : SHEET.width) - 28;
+    setZoom(Math.min(1, Math.max(0.18, avail / SHEET.width)));
+  };
+  const adjustZoom = (f) => setZoom(z => Math.min(2, Math.max(0.18, +(z * f).toFixed(3))));
+
+  // Two-finger pinch to zoom the preview (one finger still scrolls).
+  const onPagesPointerDown = (e) => {
+    if (e.pointerType === "mouse") return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const p = [...pointers.current.values()];
+      pinch.current = { dist: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), zoom };
+    }
+  };
+  const onPagesPointerMove = (e) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2 && pinch.current && pinch.current.dist > 0) {
+      const p = [...pointers.current.values()];
+      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+      setZoom(Math.min(2, Math.max(0.18, pinch.current.zoom * (d / pinch.current.dist))));
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+  const onPagesPointerUp = (e) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+  };
+
+  useEffect(() => { setMounted(true); fitWidth(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fileBase = () => (meta.projectName || meta.plot || "drawing").replace(/[^a-z0-9-_]+/gi, "_");
 
@@ -2295,6 +2337,11 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
           <div className="pp-title">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
         </div>
         <div className="pp-actions">
+          <div className="pp-zoom">
+            <button onClick={() => adjustZoom(1/1.2)} aria-label="Zoom out">−</button>
+            <button onClick={fitWidth} aria-label="Fit to screen">Fit</button>
+            <button onClick={() => adjustZoom(1.2)} aria-label="Zoom in">+</button>
+          </div>
           <span className="pp-hint">Download the PDF, then attach it to your client email.</span>
           <button onClick={onClose} className="pp-btn pp-btn-ghost">Close</button>
           <button onClick={downloadBackup} className="pp-btn pp-btn-ghost" title="Download a re-importable backup of the whole project (.json)">Backup</button>
@@ -2306,21 +2353,28 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
         </div>
       </div>
 
-      <div className="pp-pages">
-        {sheets.map((s) => (
-          <div key={s.id} className="print-page">
-            <PrintSheet
-              meta={{ ...meta, sheetName: s.name, drawingNumber: s.drawingNumber || meta.drawingNumber }}
-              notes={s.notes || notes}
-              bgImage={s.bgImage}
-              placed={s.placed} wires={s.wires} annotations={s.annotations}
-              legendItems={legendFor(s.placed)}
-              colourMode={colourMode}
-              symbolScale={typeof s.symbolScale === "number" ? s.symbolScale : symbolScale}
-              DRAW={DRAW}
-            />
-          </div>
-        ))}
+      <div className="pp-pages"
+           onPointerDown={onPagesPointerDown}
+           onPointerMove={onPagesPointerMove}
+           onPointerUp={onPagesPointerUp}
+           onPointerCancel={onPagesPointerUp}
+           style={{ touchAction: "pan-x pan-y" }}>
+        <div className="pp-scale" style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}>
+          {sheets.map((s) => (
+            <div key={s.id} className="print-page">
+              <PrintSheet
+                meta={{ ...meta, sheetName: s.name, drawingNumber: s.drawingNumber || meta.drawingNumber }}
+                notes={s.notes || notes}
+                bgImage={s.bgImage}
+                placed={s.placed} wires={s.wires} annotations={s.annotations}
+                legendItems={legendFor(s.placed)}
+                colourMode={colourMode}
+                symbolScale={typeof s.symbolScale === "number" ? s.symbolScale : symbolScale}
+                DRAW={DRAW}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <style>{`
@@ -2338,7 +2392,11 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
         #print-root .pp-btn-primary:hover{background:#52C4D5}
         #print-root .pp-btn-email{background:#fff; color:#22808F; box-shadow:inset 0 0 0 1px #3FB7C9}
         #print-root .pp-btn-email:hover{background:#ECF8FA}
-        #print-root .pp-pages{display:flex; flex-direction:column; align-items:center; gap:32px; padding:32px}
+        #print-root .pp-pages{display:flex; flex-direction:column; align-items:center; padding:32px}
+        #print-root .pp-scale{display:flex; flex-direction:column; align-items:center; gap:32px; will-change:transform}
+        #print-root .pp-zoom{display:flex; align-items:center; gap:2px; background:#f1f5f9; border-radius:7px; padding:2px}
+        #print-root .pp-zoom button{min-width:30px; height:28px; border:none; background:transparent; color:#1e293b; font-size:14px; font-weight:700; border-radius:5px; cursor:pointer; padding:0 6px}
+        #print-root .pp-zoom button:hover{background:#e2e8f0}
         #print-root .print-page{width:${SHEET.width}px; height:${SHEET.height}px; background:#fff; box-shadow:0 20px 50px -10px rgba(0,0,0,.5); flex:none}
 
         @media print {
@@ -2348,6 +2406,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
           #print-root{ position:static !important; inset:auto !important; background:#fff !important; overflow:visible !important; }
           #print-root .pp-chrome{ display:none !important; }
           #print-root .pp-pages{ display:block !important; padding:0 !important; gap:0 !important; }
+          #print-root .pp-scale{ transform:none !important; display:block !important; gap:0 !important; }
           #print-root .print-page{
             box-shadow:none !important;
             width:${SHEET.width}px !important; height:${SHEET.height}px !important;

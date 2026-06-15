@@ -1331,12 +1331,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             legendItems={legendItems}
             colourMode={colourMode}
             symbolSize={48 * symbolScale}
-            selectedId={selectedId}
-            selectedAnnoId={selectedAnnoId}
             wireStart={wireStart}
-            selectedWireId={selectedWireId}
             onWireSelect={onWireSelect}
-            tool={tool}
             spacePressed={spacePressed}
             DRAW={DRAW}
             showGrid={snapEnabled}
