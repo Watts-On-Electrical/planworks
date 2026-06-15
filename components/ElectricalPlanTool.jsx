@@ -234,7 +234,8 @@ const TOOLS = {
 // ============================================================================
 export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null, onProjectId = null }) {
   // Project state
-  const [project, setProject] = useState(() => freshProject());
+  const project = useEditor(s => s.project);
+  const setProject = useEditor(s => s.setProject);
   const { meta, sheets, activeSheetId } = project;
   const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
   const { bgImage, placed, wires, annotations, notes } = activeSheet;

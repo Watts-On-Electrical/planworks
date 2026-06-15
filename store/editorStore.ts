@@ -26,7 +26,7 @@ interface EditorState {
   activeSheet(): Sheet;
 
   // ---------- project / sheet ----------
-  setProject(project: Project): void;
+  setProject(p: Project | ((prev: Project) => Project)): void;
   patchActiveSheet(patch: Partial<Sheet>): void;
   switchSheet(id: ID): void;
   setSymbolScale(scale: number): void;
@@ -68,9 +68,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     return project.sheets.find(s => s.id === activeSheetId) ?? project.sheets[0];
   },
 
-  setProject(project) {
-    set({ project, activeSheetId: project.activeSheetId, selection: null });
-  },
+  setProject: (p) => set(s => ({ project: typeof p === 'function' ? p(s.project) : p })),
 
   // Every sheet edit goes through here, so it ALWAYS preserves the other fields
   // (e.g. symbolScale) — that's the bug that kept dropping the per-floor size.
