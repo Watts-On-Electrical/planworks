@@ -13,6 +13,7 @@ import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
 } from "@/lib/symbols.jsx";
+import { findFurniture, furnitureScale, FURNITURE_VIEWBOX, FURNITURE_COLOUR } from "@/lib/furniture.jsx";
 import {
   TopBar, Palette as PalettePanel, Workspace, Inspector,
   FloatingToolbar, ZoomControls, MetaEditor, PrintPreview, BillOfQuantities,
@@ -89,7 +90,7 @@ const sid = () => "s_" + Math.random().toString(36).slice(2, 9);
 // A sheet holds one drawing (one floor). bgImage = imported plan. Each sheet
 // has its OWN editable free-text notes.
 function freshSheet(name = "Ground floor") {
-  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT, symbolScale: 1 };
+  return { id: sid(), name, drawingNumber: "", bgImage: null, placed: [], furniture: [], wires: [], annotations: [], notes: DEFAULT_NOTES_TEXT, symbolScale: 1 };
 }
 
 // A project holds meta + drawings (sheets); notes live on each sheet.
@@ -119,6 +120,7 @@ function normaliseProject(p) {
       drawingNumber: s.drawingNumber || "",
       bgImage: s.bgImage || null,
       placed: s.placed || [],
+      furniture: s.furniture || [],
       wires: s.wires || [],
       annotations: s.annotations || [],
       notes: seedNotes(s.notes),
@@ -133,6 +135,7 @@ function normaliseProject(p) {
     drawingNumber: meta.drawingNumber || "",
     bgImage: p.bgImage || null,
     placed: p.placed || [],
+    furniture: p.furniture || [],
     wires: p.wires || [],
     annotations: p.annotations || [],
     notes: seedNotes(null),
@@ -239,6 +242,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const { meta, sheets, activeSheetId } = project;
   const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
   const { bgImage, placed, wires, annotations, notes } = activeSheet;
+  const furniture = activeSheet.furniture || [];
   // Refs so async image uploads target the right sheet even if the user has
   // since switched floors.
   const activeSheetIdRef = useRef(project.activeSheetId);
@@ -251,7 +255,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const effectiveTitleBlock = project.titleBlock || accountTitleBlock || DEFAULT_TITLEBLOCK;
 
   // Drawing-level fields live on the active sheet; everything else on the project.
-  const DRAW_FIELDS = ["bgImage", "placed", "wires", "annotations", "notes"];
+  const DRAW_FIELDS = ["bgImage", "placed", "furniture", "wires", "annotations", "notes"];
   // Patch the project. Any drawing fields in the patch are routed into the
   // currently active sheet, so all existing handlers keep working unchanged.
   const updateProject = useCallback((patch) => {
@@ -287,9 +291,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   // UI state
   const selection = useEditor(s => s.selection);
   const selectedId = selection?.kind === "symbol" ? selection.id : null;
+  const selectedFurnId = selection?.kind === "furniture" ? selection.id : null;
   const selectedAnnoId = selection?.kind === "annotation" ? selection.id : null;
   const selectedWireId = selection?.kind === "wire" ? selection.id : null;
   const setSelectedId = useEditor(s => s.setSelectedId);
+  const setSelectedFurnId = useEditor(s => s.setSelectedFurnId);
   const setSelectedAnnoId = useEditor(s => s.setSelectedAnnoId);
   const setSelectedWireId = useEditor(s => s.setSelectedWireId);
   const tool = useEditor(s => s.tool);
@@ -300,9 +306,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const pan = useEditor(s => s.pan);
   const setPan = useEditor(s => s.setPan);
   const [draggingPlacedId, setDraggingPlacedId] = useState(null);
+  const [draggingFurnId, setDraggingFurnId] = useState(null);
   const [draggingAnno, setDraggingAnno] = useState(null); // { id, mode: 'body' | 'anchor' }
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [rotatingId, setRotatingId] = useState(null);
+  const [rotatingFurnId, setRotatingFurnId] = useState(null);
   const [activeCategory, setActiveCategory] = useState("sockets");
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
@@ -589,7 +597,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         };
         pinchActiveRef.current = true;
         // Cancel any pan/drag the first finger may have begun.
-        setIsPanning(false); setDraggingPlacedId(null); setDraggingAnno(null); setRotatingId(null);
+        setIsPanning(false); setDraggingPlacedId(null); setDraggingFurnId(null); setDraggingAnno(null); setRotatingId(null); setRotatingFurnId(null);
         try { el.setPointerCapture(e.pointerId); } catch {}
       }
     };
@@ -772,6 +780,89 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
   };
 
+  // ---------- Furniture (floor-plan layer) interactions ----------
+  // Kept deliberately separate from the electrical handlers above. Furniture
+  // is never wireable and never touches the placed/wires/annotation arrays.
+  const onFurnitureMouseDown = (e, item) => {
+    if (tool === "pan" || spacePressed || tool === "wire") return;
+    e.stopPropagation();
+    setSelectedFurnId(item.id);
+    setSelectedId(null);
+    setSelectedAnnoId(null);
+    setSelectedWireId(null);
+    const { x, y } = clientToDrawing(e.clientX, e.clientY);
+    setDragOffset({ x: x - item.x, y: y - item.y });
+    setDraggingFurnId(item.id);
+    try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
+  };
+  const startFurnRotating = (id) => setRotatingFurnId(id);
+
+  // Drop a furniture piece from the Floor Plan palette onto the sheet.
+  // Mirrors onPalettePointerDown exactly, but targets the furniture array.
+  const onFurniturePointerDown = (e, furnitureId) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (paletteDragState.current) return;
+    const pointerId = e.pointerId;
+    const startX = e.clientX, startY = e.clientY;
+    const startFurniture = furniture;
+    const isTouch = e.pointerType !== "mouse";
+    const scroller = (e.currentTarget && e.currentTarget.closest)
+      ? e.currentTarget.closest("[data-palette-scroll]") : null;
+    const startScrollTop = scroller ? scroller.scrollTop : 0;
+    const state = { mode: "idle" };
+    paletteDragState.current = state;
+
+    function cleanup() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      paletteDragState.current = null;
+      setPaletteGhost(null);
+    }
+    const move = (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if (state.mode === "idle") {
+        if (!isTouch) {
+          if (Math.hypot(dx, dy) < 6) return;
+          state.mode = "drag";
+        } else if (dx > 10) {
+          state.mode = "drag";
+        } else if (Math.abs(dy) > 12) {
+          state.mode = "scroll";
+        } else {
+          return;
+        }
+      }
+      if (ev.cancelable) ev.preventDefault();
+      if (state.mode === "scroll") {
+        if (scroller) scroller.scrollTop = startScrollTop - dy;
+        return;
+      }
+      setPaletteGhost({ furnitureId, x: ev.clientX, y: ev.clientY });
+    };
+    const finish = (ev, place) => {
+      if (ev.pointerId !== pointerId) return;
+      const mode = state.mode;
+      cleanup();
+      if (!place || mode !== "drag" || !findFurniture(furnitureId)) return;
+      const { x, y } = clientToDrawing(ev.clientX, ev.clientY);
+      if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return;
+      snapshot();
+      const newItem = {
+        id: "f_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        furnitureId, x: snap(x), y: snap(y), rotation: 0, scale: furnitureScale(furnitureId),
+      };
+      updateProject({ furniture: [...startFurniture, newItem] });
+      setSelectedFurnId(newItem.id);
+    };
+    const up = (ev) => finish(ev, true);
+    const cancel = (ev) => finish(ev, false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+  };
+
   // ---------- Annotation interactions ----------
   const onAnnotationBodyMouseDown = (e, anno) => {
     if (tool === "pan" || spacePressed) return;
@@ -884,6 +975,30 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       });
       return;
     }
+    if (rotatingFurnId) {
+      const item = furniture.find(p => p.id === rotatingFurnId);
+      if (!item) return;
+      const { x, y } = clientToDrawing(e.clientX, e.clientY);
+      const angle = (Math.atan2(y - item.y, x - item.x) * 180) / Math.PI + 90;
+      const rounded = e.shiftKey ? Math.round(angle / 15) * 15 : Math.round(angle);
+      updateProject({
+        furniture: furniture.map(it =>
+          it.id === rotatingFurnId ? { ...it, rotation: ((rounded % 360) + 360) % 360 } : it
+        ),
+      });
+      return;
+    }
+    if (draggingFurnId) {
+      const { x, y } = clientToDrawing(e.clientX, e.clientY);
+      updateProject({
+        furniture: furniture.map(it =>
+          it.id === draggingFurnId
+            ? { ...it, x: snap(x - dragOffset.x), y: snap(y - dragOffset.y) }
+            : it
+        ),
+      });
+      return;
+    }
     if (draggingAnno) {
       const { x, y } = clientToDrawing(e.clientX, e.clientY);
       if (draggingAnno.mode === "body") {
@@ -910,8 +1025,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
   const onViewportMouseUp = (e) => {
     setDraggingPlacedId(null);
+    setDraggingFurnId(null);
     setDraggingAnno(null);
     setRotatingId(null);
+    setRotatingFurnId(null);
     setIsPanning(false);
     try { if (e?.pointerId != null) viewportRef.current?.releasePointerCapture?.(e.pointerId); } catch {}
   };
@@ -964,6 +1081,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         wires: wires.filter(w => w.fromId !== selectedId && w.toId !== selectedId),
       });
       setSelectedId(null);
+    } else if (selectedFurnId) {
+      snapshot();
+      updateProject({ furniture: furniture.filter(it => it.id !== selectedFurnId) });
+      setSelectedFurnId(null);
     } else if (selectedAnnoId) {
       snapshot();
       updateProject({ annotations: annotations.filter(a => a.id !== selectedAnnoId) });
@@ -1000,7 +1121,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       if (isInput) return;
       if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
       else if (e.key === "r" || e.key === "R") rotateSelected();
-      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setSelectedWireId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
+      else if (e.key === "Escape") { setSelectedId(null); setSelectedFurnId(null); setSelectedAnnoId(null); setSelectedWireId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
       else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); redo(); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveProject(); }
@@ -1275,6 +1396,17 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
              onChange={(e) => handleFile(e.target.files[0])} />
 
       {paletteGhost && (() => {
+        if (paletteGhost.furnitureId) {
+          const fsym = findFurniture(paletteGhost.furnitureId);
+          return (
+            <div style={{ position: "fixed", left: paletteGhost.x, top: paletteGhost.y, transform: "translate(-50%,-50%)", pointerEvents: "none", zIndex: 2000 }}>
+              <svg viewBox={FURNITURE_VIEWBOX} width="60" height="60"
+                   style={{ color: FURNITURE_COLOUR, filter: "drop-shadow(0 3px 8px rgba(0,0,0,.35))", opacity: 0.95 }}>
+                {fsym?.svg}
+              </svg>
+            </div>
+          );
+        }
         const cols = resolveColours(paletteGhost.symbolId, colourMode || "colour");
         const sym = findSymbol(paletteGhost.symbolId);
         return (
@@ -1304,6 +1436,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         {!sidebarHidden && (
           <PalettePanel
             onPalettePointerDown={onPalettePointerDown}
+            onFurniturePointerDown={onFurniturePointerDown}
             symbolScale={symbolScale}
             setSymbolScale={setSymbolScale}
             colourMode={colourMode}
@@ -1331,6 +1464,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             onSheetField={setActiveSheet}
             bgImage={bgImage}
             placed={placed} wires={wires} annotations={annotations}
+            furniture={furniture}
             legendItems={legendItems}
             colourMode={colourMode}
             symbolSize={48 * symbolScale}
@@ -1347,6 +1481,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             onDrawingDragOver={onDrawingDragOver}
             onDrawingDragLeave={onDrawingDragLeave}
             onItemMouseDown={onItemMouseDown}
+            onFurnitureMouseDown={onFurnitureMouseDown}
+            startFurnRotating={startFurnRotating}
             onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
             onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
             startRotating={setRotatingId}

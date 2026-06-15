@@ -14,6 +14,7 @@ import {
   findSymbol, findCategory, resolveColours,
   getPaletteSymbols, getPaletteGroups,
 } from "@/lib/symbols.jsx";
+import { findFurniture, FURNITURE, FURNITURE_VIEWBOX, FURNITURE_COLOUR } from "@/lib/furniture.jsx";
 import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
@@ -221,8 +222,9 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
 /* ============================================================================
  * PALETTE (left sidebar)
  * ========================================================================= */
-export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, colourMode }) {
+export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolScale, setSymbolScale, colourMode }) {
   const [query, setQuery] = useState("");
+  const [mode, setMode] = useState("electrical"); // "electrical" | "floor"
   const groups = useMemo(() => getPaletteGroups(), []);
   const all = useMemo(() => getPaletteSymbols(), []);
   const q = query.trim().toLowerCase();
@@ -255,13 +257,47 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
     );
   };
 
+  // Furniture tile (Floor Plan mode). Always navy, no colour modes.
+  const FurnTile = ({ item }) => (
+    <div
+      onPointerDown={(e) => onFurniturePointerDown(e, item.id)}
+      style={{ touchAction: "none" }}
+      title={item.name}
+      className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
+                 cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2 select-none [&>*]:pointer-events-none
+                 transition-all duration-200 hover:-translate-y-0.5">
+      <svg viewBox={FURNITURE_VIEWBOX} width="46" height="46"
+           style={{ color: FURNITURE_COLOUR, pointerEvents: "none" }}
+           className="relative z-10 transition-transform duration-200 group-hover:scale-110 dark:invert">
+        {item.svg}
+      </svg>
+      <div className="relative z-10 text-[9px] text-center text-slate-700 dark:text-slate-200 leading-tight font-medium line-clamp-3">{item.name}</div>
+    </div>
+  );
+
+  const floor = mode === "floor";
   return (
     <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-r border-slate-200 dark:border-[#263441] flex flex-col">
       <div className="px-4 h-11 flex items-center justify-between bg-[#2C3E50] border-b border-black/25 shadow-sm">
-        <div className="text-[15px] font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Symbols</div>
-        <div className="text-[9px] tracking-wider text-slate-300/70 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>MEP LEGEND</div>
+        <div className="text-[15px] font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{floor ? "Floor Plan" : "Symbols"}</div>
+        <div className="text-[9px] tracking-wider text-slate-300/70 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{floor ? "LAYOUT" : "MEP LEGEND"}</div>
       </div>
 
+      {/* Mode toggle: Electrical symbols ⇄ Floor Plan furniture */}
+      <div className="px-3 pt-3 pb-1">
+        <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-[#DCE3EE] dark:bg-[#0E141B] ring-1 ring-slate-200 dark:ring-[#2A3947]">
+          <button onClick={() => setMode("electrical")}
+            className={`py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors ${!floor ? "bg-white dark:bg-[#22303D] text-[#22808F] shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
+            Electrical
+          </button>
+          <button onClick={() => setMode("floor")}
+            className={`py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors ${floor ? "bg-white dark:bg-[#22303D] text-[#22808F] shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
+            Floor Plan
+          </button>
+        </div>
+      </div>
+
+      {!floor && (
       <div className="px-3 py-3 border-b border-slate-200 dark:border-[#263441]">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
@@ -277,13 +313,23 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
           )}
         </div>
       </div>
+      )}
 
       <div data-palette-scroll className="flex-1 overflow-y-auto px-3 py-3
                       [&::-webkit-scrollbar]:w-1.5
                       [&::-webkit-scrollbar-track]:bg-transparent
                       [&::-webkit-scrollbar-thumb]:bg-slate-300/60
                       [&::-webkit-scrollbar-thumb]:rounded-full">
-        {searchResults ? (
+        {floor ? (
+          <>
+            <div className="px-0.5 mb-2 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+              Drag furniture onto the plan to sketch a layout. Not counted as electrical.
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {FURNITURE.map((item) => <FurnTile key={item.id} item={item} />)}
+            </div>
+          </>
+        ) : searchResults ? (
           searchResults.length ? (
             <div className="grid grid-cols-2 gap-2.5">
               {searchResults.map(({ sym, meta }) => <Tile key={sym.id} sym={sym} meta={meta} />)}
@@ -303,6 +349,7 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
         )}
       </div>
 
+      {!floor ? (
       <div className="border-t border-slate-200 dark:border-[#263441] px-4 py-3 bg-[#E3EAF3] dark:bg-[#141C24]">
         <div className="flex items-center justify-between mb-1.5">
           <span className="uppercase tracking-wider text-[9px] text-slate-500">Symbol Size</span>
@@ -312,6 +359,11 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
                onChange={(e) => setSymbolScale(parseFloat(e.target.value))}
                className="w-full accent-[#3FB7C9]"/>
       </div>
+      ) : (
+      <div className="border-t border-slate-200 dark:border-[#263441] px-4 py-3 bg-[#E3EAF3] dark:bg-[#141C24] text-[9px] text-slate-500 leading-relaxed">
+        Select a piece on the plan to move, rotate or delete it.
+      </div>
+      )}
     </aside>
   );
 }
@@ -323,12 +375,14 @@ export function Workspace({
   viewportRef, drawingAreaRef, pan, zoom,
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations,
+  furniture,
   legendItems, colourMode, symbolSize,
   wireStart, onWireSelect,
   spacePressed, DRAW, showGrid, gridSize,
   onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
+  onFurnitureMouseDown, startFurnRotating,
   startRotating,
 }) {
   return (
@@ -357,6 +411,7 @@ export function Workspace({
           updateMeta={updateMeta} updateNotes={updateNotes} onSheetField={onSheetField}
           bgImage={bgImage}
           placed={placed} wires={wires} annotations={annotations}
+          furniture={furniture}
           legendItems={legendItems}
           colourMode={colourMode}
           symbolSize={symbolSize}
@@ -369,6 +424,8 @@ export function Workspace({
           onDrawingDragOver={onDrawingDragOver}
           onDrawingDragLeave={onDrawingDragLeave}
           onItemMouseDown={onItemMouseDown}
+          onFurnitureMouseDown={onFurnitureMouseDown}
+          startFurnRotating={startFurnRotating}
           onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
           onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
           startRotating={startRotating}
@@ -394,10 +451,12 @@ export function Sheet({
   drawingAreaRef,
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations, legendItems,
+  furniture,
   colourMode, symbolSize, wireStart, onWireSelect,
   spacePressed, DRAW, showGrid, gridSize, zoom,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
+  onFurnitureMouseDown, startFurnRotating,
   startRotating,
 }) {
   return (
@@ -435,6 +494,7 @@ export function Sheet({
         DRAW={DRAW}
         bgImage={bgImage}
         placed={placed} wires={wires} annotations={annotations}
+        furniture={furniture}
         colourMode={colourMode} symbolSize={symbolSize}
         wireStart={wireStart} onWireSelect={onWireSelect}
         spacePressed={spacePressed} zoom={zoom}
@@ -443,6 +503,8 @@ export function Sheet({
         onDragOver={onDrawingDragOver}
         onDragLeave={onDrawingDragLeave}
         onItemMouseDown={onItemMouseDown}
+        onFurnitureMouseDown={onFurnitureMouseDown}
+        startFurnRotating={startFurnRotating}
         onAnnotationBodyMouseDown={onAnnotationBodyMouseDown}
         onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
         startRotating={startRotating}
@@ -674,10 +736,12 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
  * ------------------------------------------------------------------------- */
 function DrawingArea({
   drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
+  furniture,
   colourMode, symbolSize, wireStart, onWireSelect, spacePressed,
   zoom, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
+  onFurnitureMouseDown, startFurnRotating,
   startRotating,
 }) {
   // tool + selection come straight from the store now — no longer threaded
@@ -685,6 +749,7 @@ function DrawingArea({
   const tool = useEditor(s => s.tool);
   const selection = useEditor(s => s.selection);
   const selectedId = selection?.kind === "symbol" ? selection.id : null;
+  const selectedFurnId = selection?.kind === "furniture" ? selection.id : null;
   const selectedAnnoId = selection?.kind === "annotation" ? selection.id : null;
   const selectedWireId = selection?.kind === "wire" ? selection.id : null;
   // Fit the bgImage into the drawing area
@@ -828,6 +893,50 @@ function DrawingArea({
                         fill="rgba(251,191,36,0.4)" stroke="#d97706" strokeWidth={1}
                         style={{ pointerEvents: "all", cursor: "grab" }}
                         onPointerDown={(e) => onAnnotationAnchorMouseDown(e, a)}/>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Furniture (floor-plan layer) — rendered BENEATH the electrical
+            symbols so the symbols always sit on top. Never billed/legended. */}
+        {(furniture || []).map(item => {
+          const fsym = findFurniture(item.furnitureId);
+          if (!fsym) return null;
+          const isSel = item.id === selectedFurnId;
+          const itemScale = item.scale ?? 4;
+          const itemSize = symbolSize * itemScale;
+          const half = itemSize / 2;
+          const handleOffset = half + 18;
+          return (
+            <g key={item.id}
+               transform={`translate(${item.x - half} ${item.y - half}) rotate(${item.rotation} ${half} ${half})`}>
+              {isSel && (
+                <>
+                  <rect x={-6} y={-6} width={itemSize+12} height={itemSize+12} rx={8}
+                        fill="rgba(63,183,201,0.10)"/>
+                  <rect x={-3} y={-3} width={itemSize+6} height={itemSize+6} rx={6}
+                        fill="none" stroke="#2C97A8" strokeWidth={1.2}/>
+                </>
+              )}
+              <rect x={0} y={0} width={itemSize} height={itemSize} fill="transparent"
+                    style={{
+                      pointerEvents: "all",
+                      cursor: (tool === "pan" || spacePressed) ? "grab" : "move",
+                    }}
+                    onPointerDown={(e) => onFurnitureMouseDown(e, item)}/>
+              <svg x={0} y={0} width={itemSize} height={itemSize} viewBox={FURNITURE_VIEWBOX}
+                   style={{ color: FURNITURE_COLOUR, overflow: "visible", pointerEvents: "none" }}>
+                {fsym.svg}
+              </svg>
+              {isSel && tool === "select" && !spacePressed && (
+                <g style={{ pointerEvents: "all", cursor: "grab" }}
+                   onPointerDown={(e) => { e.stopPropagation(); try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {} startFurnRotating(item.id); }}>
+                  <line x1={half} y1={-3} x2={half} y2={-handleOffset+5}
+                        stroke="#2C97A8" strokeWidth={1} strokeDasharray="3 2"/>
+                  <circle cx={half} cy={-handleOffset} r={4}
+                          fill="#3FB7C9" stroke="#fff" strokeWidth={1}/>
+                </g>
               )}
             </g>
           );

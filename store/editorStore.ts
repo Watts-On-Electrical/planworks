@@ -46,6 +46,7 @@ interface EditorState {
   // Setting an id selects that kind; passing null only clears if that kind
   // is the current selection (so clearing one kind never wipes another).
   setSelectedId(id: ID | null): void;
+  setSelectedFurnId(id: ID | null): void;
   setSelectedAnnoId(id: ID | null): void;
   setSelectedWireId(id: ID | null): void;
   setTool(tool: Tool): void;
@@ -153,6 +154,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   clearSelection() { set({ selection: null }); },
   setSelectedId: (id) =>
     set(s => ({ selection: id ? { kind: 'symbol', id } : (s.selection?.kind === 'symbol' ? null : s.selection) })),
+  setSelectedFurnId: (id) =>
+    set(s => ({ selection: id ? { kind: 'furniture', id } : (s.selection?.kind === 'furniture' ? null : s.selection) })),
   setSelectedAnnoId: (id) =>
     set(s => ({ selection: id ? { kind: 'annotation', id } : (s.selection?.kind === 'annotation' ? null : s.selection) })),
   setSelectedWireId: (id) =>

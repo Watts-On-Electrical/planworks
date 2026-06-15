@@ -45,6 +45,7 @@ export function freshSheet(name = 'Ground floor'): Sheet {
     symbolScale: 1,
     bgImage: null,
     placed: [],
+    furniture: [],
     wires: [],
     annotations: [],
     notes: DEFAULT_NOTES,

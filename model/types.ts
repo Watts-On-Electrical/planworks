@@ -18,6 +18,16 @@ export interface PlacedItem {
   label: string;
 }
 
+/** A furniture piece on the floor-plan layer (NOT an electrical item). */
+export interface FurnitureItem {
+  id: ID;
+  furnitureId: string;   // references the furniture library
+  x: number;
+  y: number;
+  rotation: number;
+  scale: number;
+}
+
 /** A wire connecting two placed items. */
 export interface Wire {
   id: ID;
@@ -54,6 +64,7 @@ export interface Sheet {
   symbolScale: number;          // per-sheet symbol size (1 = 100%)
   bgImage: ImageRef | null;
   placed: PlacedItem[];
+  furniture: FurnitureItem[];   // floor-plan layer — separate from electrical
   wires: Wire[];
   annotations: Annotation[];
   notes: string;                // free-text drawing notes for this sheet
@@ -99,6 +110,7 @@ export type Tool = 'select' | 'pan' | 'wire' | 'note';
 /** What's currently selected (runtime UI state, never persisted). */
 export type Selection =
   | { kind: 'symbol'; id: ID }
+  | { kind: 'furniture'; id: ID }
   | { kind: 'wire'; id: ID }
   | { kind: 'annotation'; id: ID }
   | null;
