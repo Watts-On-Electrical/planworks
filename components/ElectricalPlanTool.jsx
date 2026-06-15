@@ -21,6 +21,7 @@ import {
 } from "@/components/SheetParts";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK } from "@/lib/titleBlock";
+import { useEditor } from "@/store/editorStore";
 
 /* ============================================================================
  * PLOTWIRE — Drawing production tool
@@ -286,7 +287,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [selectedId, setSelectedId] = useState(null);
   const [selectedAnnoId, setSelectedAnnoId] = useState(null);
   const [selectedWireId, setSelectedWireId] = useState(null);
-  const [tool, setTool] = useState("select");
+  const tool = useEditor(s => s.tool);
+  const setTool = useEditor(s => s.setTool);
   const [wireStart, setWireStart] = useState(null);
   const [zoom, setZoom] = useState(0.5);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -1235,7 +1237,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   return (
     <ProjectTitleBlockContext.Provider value={effectiveTitleBlock}>
     <div className="w-full h-screen flex flex-col bg-slate-100 text-slate-900 dark:bg-[#0E141B] dark:text-slate-100 overflow-hidden select-none"
-         style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
+         style={{ height: "100dvh", fontFamily: "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
 
       {/* ==================== TOP BAR ==================== */}
       <TopBar
