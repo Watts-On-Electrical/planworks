@@ -283,6 +283,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   // UI state
   const [selectedId, setSelectedId] = useState(null);
   const [selectedAnnoId, setSelectedAnnoId] = useState(null);
+  const [selectedWireId, setSelectedWireId] = useState(null);
   const [tool, setTool] = useState("select");
   const [wireStart, setWireStart] = useState(null);
   const [zoom, setZoom] = useState(0.5);
@@ -752,6 +753,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     }
     setSelectedId(item.id);
     setSelectedAnnoId(null);
+    setSelectedWireId(null);
     const { x, y } = clientToDrawing(e.clientX, e.clientY);
     setDragOffset({ x: x - item.x, y: y - item.y });
     setDraggingPlacedId(item.id);
@@ -764,6 +766,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     e.stopPropagation();
     setSelectedAnnoId(anno.id);
     setSelectedId(null);
+    setSelectedWireId(null);
     const { x, y } = clientToDrawing(e.clientX, e.clientY);
     setDragOffset({ x: x - anno.x, y: y - anno.y });
     setDraggingAnno({ id: anno.id, mode: "body" });
@@ -774,6 +777,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     e.stopPropagation();
     setSelectedAnnoId(anno.id);
     setSelectedId(null);
+    setSelectedWireId(null);
     setDraggingAnno({ id: anno.id, mode: "anchor" });
     try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {}
   };
@@ -809,6 +813,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       if (e.button === 0 && onPannableBg) {
         setSelectedId(null);
         setSelectedAnnoId(null);
+        setSelectedWireId(null);
         setWireStart(null);
       }
       return;
@@ -934,6 +939,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     setNormaliseFlash(true);
     setTimeout(() => setNormaliseFlash(false), 1300);
   };
+  const onWireSelect = (id) => {
+    setSelectedWireId(id);
+    setSelectedId(null);
+    setSelectedAnnoId(null);
+  };
   const deleteSelected = () => {
     if (selectedId) {
       snapshot();
@@ -946,6 +956,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       snapshot();
       updateProject({ annotations: annotations.filter(a => a.id !== selectedAnnoId) });
       setSelectedAnnoId(null);
+    } else if (selectedWireId) {
+      snapshot();
+      updateProject({ wires: wires.filter(w => w.id !== selectedWireId) });
+      setSelectedWireId(null);
     }
   };
   const updateLabel = (val) => {
@@ -974,7 +988,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       if (isInput) return;
       if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
       else if (e.key === "r" || e.key === "R") rotateSelected();
-      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
+      else if (e.key === "Escape") { setSelectedId(null); setSelectedAnnoId(null); setSelectedWireId(null); setWireStart(null); setTool("select"); setPrintPreview(false); setShowMeta(false); setShowBoq(false); setShowProjects(false); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
       else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); redo(); }
       else if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveProject(); }
@@ -1311,6 +1325,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             selectedId={selectedId}
             selectedAnnoId={selectedAnnoId}
             wireStart={wireStart}
+            selectedWireId={selectedWireId}
+            onWireSelect={onWireSelect}
             tool={tool}
             spacePressed={spacePressed}
             DRAW={DRAW}
@@ -1385,6 +1401,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           <Inspector
             selectedItem={selectedItem}
             selectedAnno={selectedAnno}
+            wireSelected={!!selectedWireId}
             updateLabel={updateLabel}
             updateAnnoText={updateAnnoText}
             setRotation={setRotation}

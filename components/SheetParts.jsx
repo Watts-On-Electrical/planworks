@@ -323,7 +323,7 @@ export function Workspace({
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations,
   legendItems, colourMode, symbolSize,
-  selectedId, selectedAnnoId, wireStart,
+  selectedId, selectedAnnoId, wireStart, selectedWireId, onWireSelect,
   tool, spacePressed, DRAW, showGrid, gridSize,
   onViewportMouseDown, onViewportMouseMove, onViewportMouseUp,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
@@ -360,6 +360,7 @@ export function Workspace({
           colourMode={colourMode}
           symbolSize={symbolSize}
           selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
+          selectedWireId={selectedWireId} onWireSelect={onWireSelect}
           tool={tool} spacePressed={spacePressed}
           DRAW={DRAW}
           showGrid={showGrid} gridSize={gridSize}
@@ -393,7 +394,7 @@ export function Sheet({
   drawingAreaRef,
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations, legendItems,
-  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart,
+  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, selectedWireId, onWireSelect,
   tool, spacePressed, DRAW, showGrid, gridSize, zoom,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
@@ -436,6 +437,7 @@ export function Sheet({
         placed={placed} wires={wires} annotations={annotations}
         colourMode={colourMode} symbolSize={symbolSize}
         selectedId={selectedId} selectedAnnoId={selectedAnnoId} wireStart={wireStart}
+        selectedWireId={selectedWireId} onWireSelect={onWireSelect}
         tool={tool} spacePressed={spacePressed} zoom={zoom}
         showGrid={showGrid} gridSize={gridSize}
         onDrop={onDrawingDrop}
@@ -673,7 +675,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
  * ------------------------------------------------------------------------- */
 function DrawingArea({
   drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
-  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, tool, spacePressed,
+  colourMode, symbolSize, selectedId, selectedAnnoId, wireStart, selectedWireId, onWireSelect, tool, spacePressed,
   zoom, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
@@ -759,14 +761,34 @@ function DrawingArea({
           const a = placed.find(p => p.id === w.fromId);
           const b = placed.find(p => p.id === w.toId);
           if (!a || !b) return null;
+          const isSel = w.id === selectedWireId;
+          const baseStroke = colourMode === "mono" ? "#0a0a0a" : "#dc2626";
+          const selectable = tool === "select";
           return (
-            <line key={w.id}
-              x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-              stroke={colourMode === "mono" ? "#0a0a0a" : "#dc2626"}
-              strokeWidth={1.2}
-              strokeDasharray="6 4"
-              strokeLinecap="round"
-            />
+            <g key={w.id}>
+              {/* Wide invisible hit area so the thin line is easy to click/tap */}
+              <line
+                x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                stroke="transparent" strokeWidth={14} strokeLinecap="round"
+                style={{ cursor: selectable ? "pointer" : "default", pointerEvents: selectable ? "stroke" : "none" }}
+                onPointerDown={(e) => { if (selectable) { e.stopPropagation(); onWireSelect?.(w.id); } }}
+              />
+              {isSel && (
+                <line
+                  x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                  stroke="#3FB7C9" strokeWidth={5} strokeLinecap="round"
+                  opacity={0.55} style={{ pointerEvents: "none" }}
+                />
+              )}
+              <line
+                x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                stroke={isSel ? "#22808F" : baseStroke}
+                strokeWidth={isSel ? 1.8 : 1.2}
+                strokeDasharray="6 4"
+                strokeLinecap="round"
+                style={{ pointerEvents: "none" }}
+              />
+            </g>
           );
         })}
 
@@ -1074,7 +1096,7 @@ function EditableField({ value, onChange, fontSize = 10, weight = 500, placehold
  * INSPECTOR (right sidebar)
  * ========================================================================= */
 export function Inspector({
-  selectedItem, selectedAnno,
+  selectedItem, selectedAnno, wireSelected,
   updateLabel, updateAnnoText, setRotation, setItemScale,
   rotateSelected, deleteSelected, placed,
 }) {
@@ -1099,6 +1121,8 @@ export function Inspector({
           updateAnnoText={updateAnnoText}
           deleteSelected={deleteSelected}
         />
+      ) : wireSelected ? (
+        <WireInspector deleteSelected={deleteSelected} />
       ) : (
         <EmptyInspector placed={placed} />
       )}
@@ -1219,6 +1243,23 @@ function AnnoInspector({ anno, updateAnnoText, deleteSelected }) {
       <button onClick={deleteSelected}
         className="w-full px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
         <Trash2 size={12}/> Delete Annotation
+      </button>
+    </div>
+  );
+}
+
+function WireInspector({ deleteSelected }) {
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div>
+        <div className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400 mb-2">Wire</div>
+        <div className="text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+          This line connects two symbols. Remove it below, or press Delete / Backspace.
+        </div>
+      </div>
+      <button onClick={deleteSelected}
+        className="w-full px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
+        <Trash2 size={12}/> Delete Wire
       </button>
     </div>
   );
