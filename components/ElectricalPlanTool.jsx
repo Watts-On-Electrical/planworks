@@ -294,8 +294,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const tool = useEditor(s => s.tool);
   const setTool = useEditor(s => s.setTool);
   const [wireStart, setWireStart] = useState(null);
-  const [zoom, setZoom] = useState(0.5);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoom = useEditor(s => s.zoom);
+  const setZoom = useEditor(s => s.setZoom);
+  const pan = useEditor(s => s.pan);
+  const setPan = useEditor(s => s.setPan);
   const [draggingPlacedId, setDraggingPlacedId] = useState(null);
   const [draggingAnno, setDraggingAnno] = useState(null); // { id, mode: 'body' | 'anchor' }
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });

@@ -50,6 +50,9 @@ interface EditorState {
   setSelectedWireId(id: ID | null): void;
   setTool(tool: Tool): void;
   setView(pan: { x: number; y: number }, zoom: number): void;
+  // useState-style setters: accept a direct value OR an updater function.
+  setPan(p: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })): void;
+  setZoom(z: number | ((prev: number) => number)): void;
 }
 
 export const useEditor = create<EditorState>((set, get) => ({
@@ -58,7 +61,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   selection: null,
   tool: 'select',
   pan: { x: 0, y: 0 },
-  zoom: 1,
+  zoom: 0.5,
 
   activeSheet() {
     const { project, activeSheetId } = get();
@@ -158,4 +161,6 @@ export const useEditor = create<EditorState>((set, get) => ({
     set(s => ({ selection: id ? { kind: 'wire', id } : (s.selection?.kind === 'wire' ? null : s.selection) })),
   setTool(tool) { set({ tool }); },
   setView(pan, zoom) { set({ pan, zoom }); },
+  setPan: (p) => set(s => ({ pan: typeof p === 'function' ? p(s.pan) : p })),
+  setZoom: (z) => set(s => ({ zoom: typeof z === 'function' ? z(s.zoom) : z })),
 }));
