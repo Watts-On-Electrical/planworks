@@ -284,9 +284,13 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   }, []);
 
   // UI state
-  const [selectedId, setSelectedId] = useState(null);
-  const [selectedAnnoId, setSelectedAnnoId] = useState(null);
-  const [selectedWireId, setSelectedWireId] = useState(null);
+  const selection = useEditor(s => s.selection);
+  const selectedId = selection?.kind === "symbol" ? selection.id : null;
+  const selectedAnnoId = selection?.kind === "annotation" ? selection.id : null;
+  const selectedWireId = selection?.kind === "wire" ? selection.id : null;
+  const setSelectedId = useEditor(s => s.setSelectedId);
+  const setSelectedAnnoId = useEditor(s => s.setSelectedAnnoId);
+  const setSelectedWireId = useEditor(s => s.setSelectedWireId);
   const tool = useEditor(s => s.tool);
   const setTool = useEditor(s => s.setTool);
   const [wireStart, setWireStart] = useState(null);

@@ -42,6 +42,12 @@ interface EditorState {
   // ---------- selection / tool / view ----------
   select(sel: Selection): void;
   clearSelection(): void;
+  // Compatibility setters mirroring the old per-kind selection state.
+  // Setting an id selects that kind; passing null only clears if that kind
+  // is the current selection (so clearing one kind never wipes another).
+  setSelectedId(id: ID | null): void;
+  setSelectedAnnoId(id: ID | null): void;
+  setSelectedWireId(id: ID | null): void;
   setTool(tool: Tool): void;
   setView(pan: { x: number; y: number }, zoom: number): void;
 }
@@ -144,6 +150,12 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   select(sel) { set({ selection: sel }); },
   clearSelection() { set({ selection: null }); },
+  setSelectedId: (id) =>
+    set(s => ({ selection: id ? { kind: 'symbol', id } : (s.selection?.kind === 'symbol' ? null : s.selection) })),
+  setSelectedAnnoId: (id) =>
+    set(s => ({ selection: id ? { kind: 'annotation', id } : (s.selection?.kind === 'annotation' ? null : s.selection) })),
+  setSelectedWireId: (id) =>
+    set(s => ({ selection: id ? { kind: 'wire', id } : (s.selection?.kind === 'wire' ? null : s.selection) })),
   setTool(tool) { set({ tool }); },
   setView(pan, zoom) { set({ pan, zoom }); },
 }));
