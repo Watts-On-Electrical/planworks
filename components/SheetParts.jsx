@@ -307,7 +307,7 @@ export function Palette({ onPalettePointerDown, symbolScale, setSymbolScale, col
           <span className="uppercase tracking-wider text-[9px] text-slate-500">Symbol Size</span>
           <span className="tabular-nums text-slate-700 text-[10px]">{Math.round(symbolScale*100)}%</span>
         </div>
-        <input type="range" min="0.6" max="2.5" step="0.1" value={symbolScale}
+        <input type="range" min="0.3" max="2.5" step="0.1" value={symbolScale}
                onChange={(e) => setSymbolScale(parseFloat(e.target.value))}
                className="w-full accent-[#3FB7C9]"/>
       </div>
