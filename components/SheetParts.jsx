@@ -709,7 +709,32 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
   }, []);
 
   const push = () => { if (ref.current) updateNotes(ref.current.innerHTML); };
-  const apply = (style) => { if (styleNotesSelection(ref.current, style)) push(); ref.current?.focus(); };
+  // Format the current selection with the browser's rich-text engine. The toolbar
+  // buttons preventDefault on mousedown, so the highlight survives — you can chain
+  // Bold → Colour on the same selection without re-highlighting.
+  const exec = (fn) => {
+    if (!ref.current) return;
+    ref.current.focus();
+    document.execCommand("styleWithCSS", false, true);
+    fn();
+    push();
+  };
+  const setBold   = () => exec(() => document.execCommand("bold"));
+  const setItalic = () => exec(() => document.execCommand("italic"));
+  const setColour = (v) => exec(() => document.execCommand("foreColor", false, v));
+  const setSize   = (n) => exec(() => document.execCommand("fontSize", false, n));
+  // Start each new line fresh — normal weight, default black — so a colour or bold
+  // used above doesn't carry onto everything you type next.
+  const onEditorKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      setTimeout(() => {
+        if (!ref.current) return;
+        document.execCommand("styleWithCSS", false, true);
+        document.execCommand("removeFormat");
+        document.execCommand("foreColor", false, "#262626");
+      }, 0);
+    }
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -725,14 +750,15 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
         {/* Formatting toolbar — preventDefault keeps the text selection */}
         <div className="px-5 py-3 border-b border-slate-200 dark:border-[#263441] flex items-center gap-2 flex-wrap shrink-0"
           onMouseDown={(e) => e.preventDefault()}>
-          <button onClick={() => apply({ fontWeight: "700" })} title="Bold selected text" style={{ ...NOTE_FMT_BTN, fontWeight: 800 }}>B</button>
-          <button onClick={() => apply({ fontSize: "0.8em" })} title="Small text" style={{ ...NOTE_FMT_BTN, fontSize: 11 }}>A</button>
-          <button onClick={() => apply({ fontSize: "1em" })} title="Normal text" style={{ ...NOTE_FMT_BTN, fontSize: 13 }}>A</button>
-          <button onClick={() => apply({ fontSize: "1.45em" })} title="Large text" style={{ ...NOTE_FMT_BTN, fontSize: 16 }}>A</button>
+          <button onClick={setBold} title="Bold selected text" style={{ ...NOTE_FMT_BTN, fontWeight: 800 }}>B</button>
+          <button onClick={setItalic} title="Italic selected text" style={{ ...NOTE_FMT_BTN, fontStyle: "italic", fontWeight: 600 }}>I</button>
+          <button onClick={() => setSize(2)} title="Small text" style={{ ...NOTE_FMT_BTN, fontSize: 11 }}>A</button>
+          <button onClick={() => setSize(3)} title="Normal text" style={{ ...NOTE_FMT_BTN, fontSize: 13 }}>A</button>
+          <button onClick={() => setSize(5)} title="Large text" style={{ ...NOTE_FMT_BTN, fontSize: 16 }}>A</button>
           <span style={{ width: 1, height: 18, background: "#d4d4d4", margin: "0 3px" }}/>
           <span className="text-[10px] uppercase tracking-wider text-slate-400 mr-0.5">Colour</span>
           {NOTE_COLOURS.map(c => (
-            <button key={c.value} onClick={() => apply({ color: c.value })} title={`${c.label} text`}
+            <button key={c.value} onClick={() => setColour(c.value)} title={`${c.label} text`}
               style={{ width: 18, height: 18, borderRadius: "50%", background: c.value, border: "1px solid rgba(0,0,0,0.18)", cursor: "pointer", padding: 0 }}/>
           ))}
         </div>
@@ -742,6 +768,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
           contentEditable
           suppressContentEditableWarning
           onInput={push}
+          onKeyDown={onEditorKeyDown}
           data-placeholder="Type notes here… select text to format it"
           className="notes-editable flex-1 overflow-auto px-5 py-4"
           style={{ background: "#fff", color: "#262626", fontSize: 14, lineHeight: 1.6, outline: "none", minHeight: 260, whiteSpace: "pre-wrap" }}

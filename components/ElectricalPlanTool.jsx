@@ -101,6 +101,7 @@ function freshProject() {
     notes: DEFAULT_NOTES_TEXT,
     boq: null,
     titleBlock: null, // null = use the account default; set = job-specific
+    colourMode: "colour",
     sheets: [sheet],
     activeSheetId: sheet.id,
   };
@@ -127,7 +128,7 @@ function normaliseProject(p) {
       notes: seedNotes(s.notes),
       symbolScale: typeof s.symbolScale === "number" ? s.symbolScale : 1,
     }));
-    return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
+    return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, colourMode: p.colourMode || "colour", sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
   // Legacy flat project → wrap its drawing into a single sheet.
   const sheet = {
@@ -143,7 +144,7 @@ function normaliseProject(p) {
     notes: seedNotes(null),
     symbolScale: typeof p.symbolScale === "number" ? p.symbolScale : 1,
   };
-  return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, sheets: [sheet], activeSheetId: sheet.id };
+  return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, colourMode: p.colourMode || "colour", sheets: [sheet], activeSheetId: sheet.id };
 }
 
 // ---- Plan-image storage helpers --------------------------------------------
@@ -329,7 +330,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [pdfLoading, setPdfLoading] = useState(false);
   const symbolScale = activeSheet.symbolScale ?? 1;
   const setSymbolScale = (v) => setActiveSheet({ symbolScale: v });
-  const [colourMode, setColourMode] = useState("navy");
+  const colourMode = project.colourMode || "colour";
   const [isPanning, setIsPanning] = useState(false);
   const [spacePressed, setSpacePressed] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
@@ -1496,7 +1497,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         onExportJSON={exportJSON}
         onPrint={() => setPrintPreview(true)}
         colourMode={colourMode}
-        onToggleColour={() => setColourMode(m => m === "navy" ? "colour" : m === "colour" ? "red" : m === "red" ? "mono" : "navy")}
+        onToggleColour={() => setProject(p => ({ ...p, colourMode: ({ navy: "colour", colour: "red", red: "mono", mono: "navy" })[p.colourMode || "colour"] }))}
         onNormalise={normaliseSizes}
         normaliseFlash={normaliseFlash}
         snapEnabled={snapEnabled}
