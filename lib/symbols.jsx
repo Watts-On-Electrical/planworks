@@ -42,50 +42,42 @@ export const SYMBOLS = {
     items: [
       { id: "sock_sso_ll", name: "Single Socket (LL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M6 23H26"/><path d="M10 23a6 6 0 0 1 12 0"/><path d="M16 23V12"/>
+          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" stroke="none"/><path d="M6 23H26"/><path d="M16 17V9"/>
         </g>
       )},
       { id: "sock_dso_ll", name: "Double Socket (LL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13M19 23V13"/>
+          <path d="M6 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M16 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M5 23H27"/><path d="M11 18V11M21 18V11"/>
         </g>
       )},
       { id: "sock_dso_usb_ll", name: "Double Socket USB-C (LL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13"/><path d="M19 23v-9"/><path d="M19 14l-1.8 1.8M19 14l1.8 1.8"/>
+          <path d="M6 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M16 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M5 23H27"/><path d="M11 18V11"/><path d="M21 18V10"/><path d="M21 10l-1.6 1.6M21 10l1.6 1.6"/>
         </g>
       )},
       { id: "sock_sso_hl", name: "Single Socket (HL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M6 23H26"/><path d="M10 23a6 6 0 0 1 12 0"/><path d="M16 23V12"/>
+          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" stroke="none"/><path d="M6 23H26"/><path d="M16 17V9"/>
         </g>
       )},
       { id: "sock_dso_hl", name: "Double Socket (HL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13M19 23V13"/>
+          <path d="M6 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M16 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M5 23H27"/><path d="M11 18V11M21 18V11"/>
         </g>
       )},
       { id: "sock_dso_usb_hl", name: "Double Socket USB-C (HL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13"/><path d="M19 23v-9"/><path d="M19 14l-1.8 1.8M19 14l1.8 1.8"/>
+          <path d="M6 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M16 23a5 5 0 0 1 10 0Z" fill="currentColor" stroke="none"/><path d="M5 23H27"/><path d="M11 18V11"/><path d="M21 18V10"/><path d="M21 10l-1.6 1.6M21 10l1.6 1.6"/>
         </g>
       )},
       { id: "sock_2a", name: "2A Socket", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 21a4 4 0 0 1 8 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M9 21H23"/><path d="M12 21a4 4 0 0 1 8 0"/><path d="M16 21V14"/>
+          <path d="M12 21a4 4 0 0 1 8 0Z" fill="currentColor" stroke="none"/><path d="M9 21H23"/><path d="M16 17V10"/>
         </g>
       )},
       { id: "sock_cooker", name: "Cooker Outlet", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 24a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <path d="M5 24H27"/><path d="M9 24a7 7 0 0 1 14 0"/><path d="M16 24V12"/><path d="M11 9h10"/>
+          <path d="M9 24a7 7 0 0 1 14 0Z" fill="currentColor" stroke="none"/><path d="M5 24H27"/><path d="M16 17V11"/><path d="M11 9h10"/>
         </g>
       )},
       { id: "sock_shaver", name: "Shaver Socket", svg: (
