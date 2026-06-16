@@ -689,7 +689,7 @@ function NotesColumn({ notes }) {
       pointerEvents: "none",   // display only — drags pass through to the sheet
     }}>
       <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
-      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5 }}
+      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
            dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
   );
@@ -744,7 +744,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
           onInput={push}
           data-placeholder="Type notes here… select text to format it"
           className="notes-editable flex-1 overflow-auto px-5 py-4"
-          style={{ background: "#fff", color: "#262626", fontSize: 14, lineHeight: 1.6, outline: "none", minHeight: 260 }}
+          style={{ background: "#fff", color: "#262626", fontSize: 14, lineHeight: 1.6, outline: "none", minHeight: 260, whiteSpace: "pre-wrap" }}
         />
 
         <div className="px-5 py-3 border-t border-slate-200 dark:border-[#263441] flex items-center justify-between shrink-0">
@@ -2716,7 +2716,7 @@ function NotesColumnStatic({ notes }) {
       overflow: "hidden",
     }}>
       <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
-      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5 }}
+      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
            dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
   );

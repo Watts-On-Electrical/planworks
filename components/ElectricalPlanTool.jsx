@@ -366,6 +366,8 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const pinchActiveRef = useRef(false);
   const zoomRef = useRef(zoom); zoomRef.current = zoom;
   const panRef = useRef(pan); panRef.current = pan;
+  const sheetTransformRef = useRef(null);  // the pan/zoom <div>, driven imperatively during pinch
+  const livePinchRef = useRef(null);       // latest pinch {zoom,panX,panY}; committed to state on release
 
   // ---------- Drawing area geometry ----------
   // The drawing area occupies the centre of the sheet, bounded by margins,
@@ -624,15 +626,31 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, startZoom * (dist / startDist)));
         const midX = (a.x + b.x) / 2 - rectLeft;
         const midY = (a.y + b.y) / 2 - rectTop;
-        setZoom(newZoom);
-        setPan({ x: midX - worldX * newZoom, y: midY - worldY * newZoom });
+        const panX = midX - worldX * newZoom;
+        const panY = midY - worldY * newZoom;
+        // Drive the transform straight on the DOM node so the whole sheet
+        // (every symbol/wall) isn't re-rendered on each of the ~120 move events
+        // an iPad fires — that re-render is what made the pinch feel slow.
+        livePinchRef.current = { zoom: newZoom, panX, panY };
+        const node = sheetTransformRef.current;
+        if (node) node.style.transform = `translate(${panX}px, ${panY}px) scale(${newZoom})`;
         e.preventDefault();
       }
     };
 
     const onUp = (e) => {
       pts.delete(e.pointerId);
-      if (pts.size < 2) { pinchRef.current = null; pinchActiveRef.current = false; }
+      if (pts.size < 2) {
+        // Pinch finished — commit the final zoom/pan to React state once.
+        if (livePinchRef.current) {
+          const { zoom: z, panX, panY } = livePinchRef.current;
+          livePinchRef.current = null;
+          setZoom(z);
+          setPan({ x: panX, y: panY });
+        }
+        pinchRef.current = null;
+        pinchActiveRef.current = false;
+      }
     };
 
     el.addEventListener("pointerdown", onDown, { capture: true });
@@ -1208,7 +1226,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   // ---------- Keyboard ----------
   useEffect(() => {
     const onKey = (e) => {
-      const isInput = e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA";
+      const isInput = e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable;
       if (e.code === "Space" && !isInput) {
         e.preventDefault();
         setSpacePressed(true);
@@ -1554,6 +1572,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           <Workspace
             viewportRef={viewportRef}
             drawingAreaRef={drawingAreaRef}
+            sheetTransformRef={sheetTransformRef}
             pan={pan} zoom={zoom}
             meta={displayMeta} notes={notes}
             updateMeta={updateMeta}
