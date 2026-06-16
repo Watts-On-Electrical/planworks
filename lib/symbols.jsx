@@ -42,72 +42,72 @@ export const SYMBOLS = {
     items: [
       { id: "sock_sso_ll", name: "Single Socket (LL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M6 23H26"/><path d="M10 23a6 6 0 0 1 12 0"/><path d="M16 23V12"/>
         </g>
       )},
       { id: "sock_dso_ll", name: "Double Socket (LL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13M19 23V13"/>
         </g>
       )},
       { id: "sock_dso_usb_ll", name: "Double Socket USB-C (LL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13"/><path d="M19 23v-9"/><path d="M19 14l-1.8 1.8M19 14l1.8 1.8"/>
         </g>
       )},
       { id: "sock_sso_hl", name: "Single Socket (HL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M10 23a6 6 0 0 1 12 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M6 23H26"/><path d="M10 23a6 6 0 0 1 12 0"/><path d="M16 23V12"/>
         </g>
       )},
       { id: "sock_dso_hl", name: "Double Socket (HL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13M19 23V13"/>
         </g>
       )},
       { id: "sock_dso_usb_hl", name: "Double Socket USB-C (HL)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M9 23a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M5 23H27"/><path d="M9 23a7 7 0 0 1 14 0"/><path d="M13 23V13"/><path d="M19 23v-9"/><path d="M19 14l-1.8 1.8M19 14l1.8 1.8"/>
         </g>
       )},
       { id: "sock_2a", name: "2A Socket", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 21a4 4 0 0 1 8 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M12 21a4 4 0 0 1 8 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M9 21H23"/><path d="M12 21a4 4 0 0 1 8 0"/><path d="M16 21V14"/>
         </g>
       )},
       { id: "sock_cooker", name: "Cooker Outlet", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 24a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M9 24a7 7 0 0 1 14 0Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M5 24H27"/><path d="M9 24a7 7 0 0 1 14 0"/><path d="M16 24V12"/><path d="M11 9h10"/>
         </g>
       )},
       { id: "sock_shaver", name: "Shaver Socket", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><path d="M12.5 12.5v7M19.5 12.5v7"/>
         </g>
       )},
       { id: "sock_tv", name: "TV Point", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="11" width="14" height="9.5" rx="1.6" fill="currentColor" fillOpacity="0.16"/><text x="16" y="18.4" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="6.4" fontWeight="600" fill="currentColor" stroke="none">TV</text><path d="M16 20.5v3"/>
+          <rect x="9" y="11" width="14" height="9.5" rx="1.6" fill="currentColor" fillOpacity="0.32"/><text x="16" y="18.4" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="6.4" fontWeight="600" fill="currentColor" stroke="none">TV</text><path d="M16 20.5v3"/>
         </g>
       )},
       { id: "sock_fcu", name: "Switched Fused Spur", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="10" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="10" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="10" y="13" width="12" height="6" rx="1.6"/><path d="M16 13V7M16 19v6"/><path d="M19 11l3-3"/>
         </g>
       )},
       { id: "spur_unsw", name: "Unswitched Fused Spur", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="10" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="10" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="10" y="13" width="12" height="6" rx="1.6"/><path d="M16 13V7M16 19v6"/>
         </g>
       )},
@@ -142,7 +142,7 @@ export const SYMBOLS = {
       )},
       { id: "sw_grid", name: "Grid Switch", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="14" height="14" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="9" y="9" width="14" height="14" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="9" y="9" width="14" height="14" rx="2"/><path d="M16 9v14M9 16h14"/>
         </g>
       )},
@@ -163,19 +163,19 @@ export const SYMBOLS = {
       )},
       { id: "sw_pull", name: "Pull Switch", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="11" r="5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="11" r="5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="11" r="5"/><path d="M16 16v9"/><circle cx="16" cy="25.5" r="1.5" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "sw_pir_light", name: "PIR Light Sensor", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="10" y="9" width="12" height="9" rx="2.4" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="10" y="9" width="12" height="9" rx="2.4" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="10" y="9" width="12" height="9" rx="2.4"/><circle cx="16" cy="13.5" r="2.2"/><path d="M13 18l-1.3 4.5M19 18l1.3 4.5"/>
         </g>
       )},
       { id: "sw_keycard", name: "Keycard Switch", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="8" width="14" height="16" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="9" y="8" width="14" height="16" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="9" y="8" width="14" height="16" rx="2"/><path d="M12 12h8"/><rect x="12" y="16" width="5.5" height="4" rx="1"/>
         </g>
       )},
@@ -187,61 +187,61 @@ export const SYMBOLS = {
     items: [
       { id: "lt_pendant", name: "Pendant Light", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M16 4v6"/><circle cx="16" cy="16" r="6"/><path d="M11.8 11.8l8.4 8.4M20.2 11.8l-8.4 8.4"/>
         </g>
       )},
       { id: "lt_downlight", name: "Downlighter", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="7.5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="7.5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="7.5"/><circle cx="16" cy="16" r="2" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "lt_downlight_ip", name: "Downlighter IP-rated", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="7.5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="7.5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="7.5"/><circle cx="16" cy="16" r="2" fill="currentColor" stroke="none"/><path d="M25.5 5.5c1.9 2.1 1.9 4 0 5.2-1.9-1.2-1.9-3.1 0-5.2z" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "lt_2d", name: "2D Fitting", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="8" y="8" width="16" height="16" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="8" y="8" width="16" height="16" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="8" y="8" width="16" height="16" rx="2"/><circle cx="16" cy="16" r="4"/>
         </g>
       )},
       { id: "lt_batten", name: "Batten Holder", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="7.5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="7.5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="7.5"/><path d="M8.5 16h15M16 8.5v15"/>
         </g>
       )},
       { id: "lt_wall", name: "Wall Light", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 9a7 7 0 0 1 0 14z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M9 9a7 7 0 0 1 0 14z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M9 6v20"/><path d="M9 9a7 7 0 0 1 0 14z"/>
         </g>
       )},
       { id: "lt_strip", name: "LED Strip", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="5" y="13" width="22" height="6" rx="3" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="5" y="13" width="22" height="6" rx="3" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="5" y="13" width="22" height="6" rx="3"/><path d="M9 16h.01M13 16h.01M17 16h.01M21 16h.01M23 16h.01"/>
         </g>
       )},
       { id: "lt_emergency", name: "Emergency Light", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="8" y="11" width="16" height="10" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="8" y="11" width="16" height="10" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="8" y="11" width="16" height="10" rx="2"/><path d="M11.5 19v-6l2.5 3 2.5-3v6"/><path d="M19 13v6"/>
         </g>
       )},
       { id: "lt_external", name: "External Light", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="8" y="11" width="16" height="10" rx="5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="8" y="11" width="16" height="10" rx="5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="8" y="11" width="16" height="10" rx="5"/><path d="M12 16h8"/>
         </g>
       )},
       { id: "lt_external_updown", name: "External Up/Down (D/D)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="5"/><path d="M16 9V4M13.5 6.2l2.5-2.5 2.5 2.5"/><path d="M16 23v5M13.5 25.8l2.5 2.5 2.5-2.5"/>
         </g>
       )},
@@ -253,31 +253,31 @@ export const SYMBOLS = {
     items: [
       { id: "det_smoke", name: "Smoke Detector", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
-          <circle cx="16" cy="16" r="8"/><circle cx="16" cy="16" r="2" fill="currentColor" stroke="none"/><path d="M16 5.5v2.5M16 24v2.5M5.5 16h2.5M24 16h2.5M9 9l1.8 1.8M21.2 21.2L23 23M23 9l-1.8 1.8M10.8 21.2L9 23"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
+          <circle cx="16" cy="16" r="8"/><path d="M16 5.5v2.5M16 24v2.5M5.5 16h2.5M24 16h2.5M9 9l1.8 1.8M21.2 21.2L23 23M23 9l-1.8 1.8M10.8 21.2L9 23"/><text x="16" y="19" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="7" fontWeight="600" fill="currentColor" stroke="none">SD</text>
         </g>
       )},
       { id: "det_heat", name: "Heat Detector", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><path d="M13 12v8M19 12v8M13 16h6"/>
         </g>
       )},
       { id: "det_co", name: "CO Detector", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><text x="16" y="19.2" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="8" fontWeight="600" fill="currentColor" stroke="none">CO</text>
         </g>
       )},
       { id: "det_combined", name: "Smoke/Heat/CO", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><circle cx="16" cy="16" r="2" fill="currentColor" stroke="none"/><path d="M12.5 12.5h7M12.5 19.5h7"/>
         </g>
       )},
       { id: "det_thermostat", name: "Thermostat", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><path d="M16 16V9.5"/><path d="M16 16l5 3"/>
         </g>
       )},
@@ -289,37 +289,37 @@ export const SYMBOLS = {
     items: [
       { id: "sec_pir", name: "Intruder PIR", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="10" y="9" width="12" height="9" rx="2.4" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="10" y="9" width="12" height="9" rx="2.4" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="10" y="9" width="12" height="9" rx="2.4"/><circle cx="16" cy="13.5" r="2.2"/><path d="M13 18l-1.3 4.5M19 18l1.3 4.5"/>
         </g>
       )},
       { id: "sec_keypad", name: "Alarm Keypad", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="5" width="14" height="22" rx="2.6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="9" y="5" width="14" height="22" rx="2.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="9" y="5" width="14" height="22" rx="2.6"/><path d="M12 9.5h8"/><circle cx="13" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="22" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="22" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="22" r="1" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "sec_hub", name: "Alarm Hub", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="6" y="10" width="20" height="14" rx="2.6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="6" y="10" width="20" height="14" rx="2.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="6" y="10" width="20" height="14" rx="2.6"/><path d="M16 10V6"/><circle cx="16" cy="5.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="11" cy="14.5" r="1.4" fill="currentColor" stroke="none"/><path d="M10 20h12"/>
         </g>
       )},
       { id: "sec_bell", name: "Alarm Sounder (Bell)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 6a6 6 0 0 0-6 6c0 4.5-2 6.5-2 6.5h16s-2-2-2-6.5a6 6 0 0 0-6-6z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M16 6a6 6 0 0 0-6 6c0 4.5-2 6.5-2 6.5h16s-2-2-2-6.5a6 6 0 0 0-6-6z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M16 6a6 6 0 0 0-6 6c0 4.5-2 6.5-2 6.5h16s-2-2-2-6.5a6 6 0 0 0-6-6z"/><path d="M13.5 22a2.5 2.5 0 0 0 5 0"/><path d="M16 6V4"/>
         </g>
       )},
       { id: "sec_door", name: "Door Sensor", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="7" y="11" width="7" height="10" rx="1.6" fill="currentColor" fillOpacity="0.16" stroke="none"/><rect x="18" y="11" width="7" height="10" rx="1.6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="7" y="11" width="7" height="10" rx="1.6" fill="currentColor" fillOpacity="0.32" stroke="none"/><rect x="18" y="11" width="7" height="10" rx="1.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="7" y="11" width="7" height="10" rx="1.6"/><rect x="18" y="11" width="7" height="10" rx="1.6"/><path d="M14 16h4" strokeDasharray="2 2.4"/>
         </g>
       )},
       { id: "sec_cctv", name: "CCTV Camera", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 13l15-3.5 1.4 5L6.4 18z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M5 13l15-3.5 1.4 5L6.4 18z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M5 13l15-3.5 1.4 5L6.4 18z"/><path d="M21.4 14.5L26 13v6l-4.6-1.5z"/><path d="M9 18v3M7 21h5"/>
         </g>
       )},
@@ -331,13 +331,13 @@ export const SYMBOLS = {
     items: [
       { id: "fx_extractor", name: "Ceiling Extract", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><circle cx="16" cy="16" r="1.6" fill="currentColor" stroke="none"/><path d="M16 14.4c0-3 1.2-4.8 4-5.2M17.4 16.8c2.6 1.5 3.2 3.6 1.6 6.2M14.6 16c-2.6 1.5-4.8.9-6.2-2.2"/>
         </g>
       )},
       { id: "fx_extractor_wall", name: "Wall Extract (SA)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="17" cy="16" r="6.5" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="17" cy="16" r="6.5" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M6 5v22"/><circle cx="17" cy="16" r="6.5"/><circle cx="17" cy="16" r="1.4" fill="currentColor" stroke="none"/><path d="M17 14.6c0-2.4 1-3.8 3.2-4.2M18.2 16.6c2 1.2 2.5 3 1.3 5.1"/><path d="M26 11.5c1.6 2.4 1.6 6.6 0 9"/>
         </g>
       )},
@@ -348,67 +348,67 @@ export const SYMBOLS = {
       )},
       { id: "fx_doorbell", name: "Door Bell", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="14" height="14" rx="3" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="9" y="9" width="14" height="14" rx="3" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="9" y="9" width="14" height="14" rx="3"/><circle cx="16" cy="16" r="3.2" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "fx_motor", name: "Motor", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><path d="M12 20v-8l4 5 4-5v8"/>
         </g>
       )},
       { id: "fx_consumer", name: "Consumer Unit", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="4" y="10" width="24" height="12" rx="2.2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="4" y="10" width="24" height="12" rx="2.2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="4" y="10" width="24" height="12" rx="2.2"/><path d="M10 10v12M16 10v12M22 10v12"/>
         </g>
       )},
       { id: "fx_meter", name: "Electrical Meter Box", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="6" y="8" width="20" height="16" rx="2.6" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="6" y="8" width="20" height="16" rx="2.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="6" y="8" width="20" height="16" rx="2.6"/><rect x="10" y="12" width="12" height="5" rx="1.2"/><path d="M11 20.5h7"/>
         </g>
       )},
       { id: "fx_isolator", name: "Isolator", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="8" y="9" width="16" height="14" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="8" y="9" width="16" height="14" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="8" y="9" width="16" height="14" rx="2"/><circle cx="13" cy="19" r="1.4" fill="currentColor" stroke="none"/><path d="M13 19l6-6"/>
         </g>
       )},
       { id: "iso_dp", name: "1G DP Isolator", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="8" y="9" width="16" height="14" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="8" y="9" width="16" height="14" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="8" y="9" width="16" height="14" rx="2"/><circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="19" r="1.3" fill="currentColor" stroke="none"/><path d="M12 19l5-5M16 19l4-4"/>
         </g>
       )},
       { id: "iso_rotary", name: "Rotary Isolator", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><path d="M16 16l5-3.5"/><path d="M22 9.5a8 8 0 0 0-6-2.3"/>
         </g>
       )},
       { id: "iso_cooker", name: "Cooker Control Unit (45A)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="6" y="9" width="20" height="14" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="6" y="9" width="20" height="14" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="6" y="9" width="20" height="14" rx="2"/><path d="M16 9V6"/><circle cx="12" cy="16" r="1.4" fill="currentColor" stroke="none"/><path d="M12 16l5-4"/><circle cx="21" cy="19" r="1.3" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "ev_charger", name: "EV Charge Point", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="6" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="9" y="6" width="14" height="20" rx="3" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="9" y="6" width="14" height="20" rx="3"/><path d="M17 11l-4 5.5h3.2L15 22l4.5-6h-3z" fill="currentColor" stroke="none"/>
         </g>
       )},
       { id: "fx_domed", name: "Domed Compact Fitting", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 5l11 11-11 11L5 16z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M16 5l11 11-11 11L5 16z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M16 5l11 11-11 11L5 16z"/><circle cx="16" cy="16" r="4.5"/>
         </g>
       )},
       { id: "mk_csp", name: "CSP Location", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M11 7h12l-3 3.5 3 3.5H11Z" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <path d="M11 7h12l-3 3.5 3 3.5H11Z" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <path d="M11 27V6"/><path d="M11 7h12l-3 3.5 3 3.5H11"/>
         </g>
       )},
@@ -420,18 +420,18 @@ export const SYMBOLS = {
     items: [
       { id: "data_point", name: "Data Point (Cat5/6)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="6" y="8" width="20" height="11" rx="2" fill="currentColor" fillOpacity="0.16"/><path d="M11 8V5.5h10V8"/><path d="M10 12.5h12"/><path d="M12.5 12.5v3.3M16 12.5v3.3M19.5 12.5v3.3"/><text x="16" y="26" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="6" fontWeight="600" fill="currentColor" stroke="none">DATA</text>
+          <rect x="6" y="8" width="20" height="11" rx="2" fill="currentColor" fillOpacity="0.32"/><path d="M11 8V5.5h10V8"/><path d="M10 12.5h12"/><path d="M12.5 12.5v3.3M16 12.5v3.3M19.5 12.5v3.3"/><text x="16" y="26" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="6" fontWeight="600" fill="currentColor" stroke="none">DATA</text>
         </g>
       )},
       { id: "data_internet", name: "Internet Connection Point", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <circle cx="16" cy="16" r="8" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <circle cx="16" cy="16" r="8"/><path d="M8 16h16"/><path d="M16 8c3.2 2.2 3.2 13.8 0 16M16 8c-3.2 2.2-3.2 13.8 0 16"/>
         </g>
       )},
       { id: "data_ont", name: "Fibre Optic (ONT)", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="6" y="11" width="20" height="10" rx="2.2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="6" y="11" width="20" height="10" rx="2.2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="6" y="11" width="20" height="10" rx="2.2"/><circle cx="10.5" cy="16" r="1.3" fill="currentColor" stroke="none"/><path d="M14.5 16H23"/>
         </g>
       )},
@@ -443,13 +443,13 @@ export const SYMBOLS = {
     items: [
       { id: "ht_towel", name: "Towel Rail", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="10" y="5" width="12" height="22" rx="3.2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="10" y="5" width="12" height="22" rx="3.2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="10" y="5" width="12" height="22" rx="3.2"/><path d="M10 10h12M10 14h12M10 18h12M10 22h12"/>
         </g>
       )},
       { id: "ht_radiator", name: "Radiator", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="7" y="9" width="18" height="14" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="7" y="9" width="18" height="14" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="7" y="9" width="18" height="14" rx="2"/><path d="M11.5 9v14M16 9v14M20.5 9v14"/>
         </g>
       )},
@@ -460,7 +460,7 @@ export const SYMBOLS = {
       )},
       { id: "ht_wiring_centre", name: "Heating Wiring Centre", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="6" y="10" width="20" height="12" rx="2" fill="currentColor" fillOpacity="0.16" stroke="none"/>
+          <rect x="6" y="10" width="20" height="12" rx="2" fill="currentColor" fillOpacity="0.32" stroke="none"/>
           <rect x="6" y="10" width="20" height="12" rx="2"/><path d="M10 22v3M14 22v3M18 22v3M22 22v3"/><path d="M10 10V7M14 10V7M18 10V7M22 10V7"/>
         </g>
       )},
