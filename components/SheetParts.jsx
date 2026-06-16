@@ -387,7 +387,7 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
  * WORKSPACE — the dark surround + the sheet inside it
  * ========================================================================= */
 export function Workspace({
-  viewportRef, drawingAreaRef, pan, zoom,
+  viewportRef, drawingAreaRef, sheetTransformRef, pan, zoom,
   meta, notes, updateMeta, updateNotes, onSheetField,
   bgImage, placed, wires, annotations,
   furniture,
@@ -409,15 +409,17 @@ export function Workspace({
       style={{
         background: "radial-gradient(circle at 50% 50%, #e2e8f0, #cbd5e1 90%)",
         touchAction: "none",
+        WebkitTouchCallout: "none",
       }}
       onPointerDown={onViewportMouseDown}
       onPointerMove={onViewportMouseMove}
       onPointerUp={onViewportMouseUp}
       onPointerCancel={onViewportMouseUp}
       onDoubleClick={onViewportDoubleClick}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Sheet, transformed by pan + zoom */}
-      <div style={{
+      <div ref={sheetTransformRef} style={{
         position: "absolute", top: 0, left: 0,
         transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         transformOrigin: "0 0",
@@ -837,6 +839,10 @@ function DrawingArea({
                left: imageDisplay.x, top: imageDisplay.y,
                width: imageDisplay.w, height: imageDisplay.h,
                display: "block",
+               pointerEvents: "none",
+               WebkitTouchCallout: "none",
+               WebkitUserSelect: "none",
+               userSelect: "none",
              }}
              draggable={false}/>
       )}
@@ -961,7 +967,9 @@ function DrawingArea({
           const itemScale = item.scale ?? 4;
           const itemSize = symbolSize * itemScale;
           const half = itemSize / 2;
-          const handleOffset = half + 18;
+          const hs = Math.min(Math.max(1 / (zoom || 1), 0.6), 6); // keep the rotate handle a steady on-screen size at any zoom
+          const handleOffset = half + 20 * hs;
+          const hDotR = 9 * hs, hHitR = 26 * hs, hLineW = Math.max(1, 1.6 * hs), hDash = `${3*hs} ${2*hs}`;
           return (
             <g key={item.id}
                transform={`translate(${item.x - half} ${item.y - half}) rotate(${item.rotation} ${half} ${half})`}>
@@ -984,12 +992,14 @@ function DrawingArea({
                 {fsym.svg}
               </svg>
               {isSel && tool === "select" && !spacePressed && (
-                <g style={{ pointerEvents: "all", cursor: "grab" }}
+                <g style={{ pointerEvents: "all", cursor: "grab", touchAction: "none" }}
                    onPointerDown={(e) => { e.stopPropagation(); try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {} startFurnRotating(item.id); }}>
-                  <line x1={half} y1={-3} x2={half} y2={-handleOffset+5}
-                        stroke="#2C97A8" strokeWidth={1} strokeDasharray="3 2"/>
-                  <circle cx={half} cy={-handleOffset} r={4}
-                          fill="#3FB7C9" stroke="#fff" strokeWidth={1}/>
+                  {/* enlarged invisible touch target so the handle is easy to grab on iPad */}
+                  <circle cx={half} cy={-handleOffset} r={hHitR} fill="transparent" stroke="none"/>
+                  <line x1={half} y1={-3} x2={half} y2={-handleOffset+hDotR}
+                        stroke="#2C97A8" strokeWidth={hLineW} strokeDasharray={hDash}/>
+                  <circle cx={half} cy={-handleOffset} r={hDotR}
+                          fill="#3FB7C9" stroke="#fff" strokeWidth={hLineW}/>
                 </g>
               )}
               {isSel && tool === "select" && !spacePressed && (
@@ -1015,7 +1025,9 @@ function DrawingArea({
           const itemSize = symbolSize * itemScale;
           const half = itemSize / 2;
           const cols = resolveColours(item.symbolId, colourMode);
-          const handleOffset = half + 18;
+          const hs = Math.min(Math.max(1 / (zoom || 1), 0.6), 6); // keep the rotate handle a steady on-screen size at any zoom
+          const handleOffset = half + 20 * hs;
+          const hDotR = 9 * hs, hHitR = 26 * hs, hLineW = Math.max(1, 1.6 * hs), hDash = `${3*hs} ${2*hs}`;
           return (
             <g key={item.id}
                transform={`translate(${item.x - half} ${item.y - half}) rotate(${item.rotation} ${half} ${half})`}>
@@ -1052,12 +1064,14 @@ function DrawingArea({
                 </text>
               )}
               {isSel && tool === "select" && !spacePressed && (
-                <g style={{ pointerEvents: "all", cursor: "grab" }}
+                <g style={{ pointerEvents: "all", cursor: "grab", touchAction: "none" }}
                    onPointerDown={(e) => { e.stopPropagation(); try { viewportRef.current?.setPointerCapture?.(e.pointerId); } catch {} startRotating(item.id); }}>
-                  <line x1={half} y1={-3} x2={half} y2={-handleOffset+5}
-                        stroke="#d97706" strokeWidth={1} strokeDasharray="3 2"/>
-                  <circle cx={half} cy={-handleOffset} r={4}
-                          fill="#fbbf24" stroke="#fff" strokeWidth={1}/>
+                  {/* enlarged invisible touch target so the handle is easy to grab on iPad */}
+                  <circle cx={half} cy={-handleOffset} r={hHitR} fill="transparent" stroke="none"/>
+                  <line x1={half} y1={-3} x2={half} y2={-handleOffset+hDotR}
+                        stroke="#d97706" strokeWidth={hLineW} strokeDasharray={hDash}/>
+                  <circle cx={half} cy={-handleOffset} r={hDotR}
+                          fill="#fbbf24" stroke="#fff" strokeWidth={hLineW}/>
                 </g>
               )}
             </g>
