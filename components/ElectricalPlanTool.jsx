@@ -229,6 +229,24 @@ function mergeSavedPaths(current, safe) {
   };
 }
 
+// For the local crash-recovery draft: ALWAYS drop the heavy image bytes
+// (base64 / blob / signed url), keeping only lightweight metadata (path + size).
+// The draft only needs to preserve WORK — placed items, notes, walls, lines —
+// so it must stay a few KB and never blow the browser's localStorage quota.
+// (A freshly-imported plan has no `path` yet, so stripTransientImages above
+// wouldn't strip it — which silently broke the whole safety net.)
+function stripImagesForDraft(p) {
+  if (!p) return p;
+  return {
+    ...p,
+    sheets: (p.sheets || []).map(s => {
+      if (!s.bgImage) return s;
+      const { src, ...rest } = s.bgImage;
+      return { ...s, bgImage: rest };
+    }),
+  };
+}
+
 // Tool definitions
 const TOOLS = {
   select: { icon: MousePointer2, label: "Select", hint: "V" },
@@ -1402,12 +1420,13 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     if (draftTimer.current) clearTimeout(draftTimer.current);
     draftTimer.current = setTimeout(() => {
       try {
-        // Strip transient image src (keep only the Storage path) so the draft
-        // is a few KB, not several MB — the large draft was itself part of the
-        // iPad memory pressure.
+        // Strip ALL image bytes (not just migrated ones) so the draft is a few
+        // KB and reliably fits in localStorage — otherwise a freshly-imported
+        // plan made the draft several MB, it silently failed, and a crash then
+        // lost the user's work entirely.
         window.localStorage.setItem("planworks:draft:v1", JSON.stringify({
           projectId: currentProjectId || null, savedAt: Date.now(),
-          project: stripTransientImages(project),
+          project: stripImagesForDraft(project),
         }));
       } catch (e) { /* storage full / unavailable */ }
     }, 800);
