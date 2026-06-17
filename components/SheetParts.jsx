@@ -1344,12 +1344,18 @@ function EditableField({ value, onChange, fontSize = 10, weight = 500, placehold
 export function Inspector({
   selectedItem, selectedAnno, wireSelected,
   updateLabel, updateAnnoText, setRotation, setItemScale,
-  rotateSelected, deleteSelected, placed,
+  rotateSelected, deleteSelected, placed, onCollapse,
 }) {
   return (
     <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-l border-slate-200 dark:border-[#263441] flex flex-col">
-      <div className="px-4 h-11 flex items-center border-b border-slate-200 dark:border-[#263441]">
+      <div className="pl-4 pr-2 h-11 flex items-center justify-between border-b border-slate-200 dark:border-[#263441]">
         <div className="text-[15px] font-semibold text-slate-900 dark:text-slate-100" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Inspector</div>
+        {onCollapse && (
+          <button onClick={onCollapse} title="Hide inspector"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-[#263441]">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        )}
       </div>
 
       {selectedItem ? (

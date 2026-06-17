@@ -339,6 +339,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [showMeta, setShowMeta] = useState(false);     // metadata edit modal
   const [printPreview, setPrintPreview] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [inspectorHidden, setInspectorHidden] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(false); // grid lines + snap to grid (off by default; toggle via Grid button)
   const [showBoq, setShowBoq] = useState(false);        // bill of quantities modal
   const [showTitleBlock, setShowTitleBlock] = useState(false); // title block template editor
@@ -692,6 +693,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const onPalettePointerDown = (e, symbolId) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (paletteDragState.current) return;
+    // Reaching for a symbol means you're done drawing link lines — drop back to the
+    // select/place tool so you don't have to manually click off the wire tool first.
+    if (tool === "wire") { setTool("select"); setWireStart(null); }
     const pointerId = e.pointerId;
     const startX = e.clientX, startY = e.clientY;
     const startPlaced = placed;
@@ -1682,18 +1686,28 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
 
         {/* ==================== RIGHT INSPECTOR ==================== */}
         {!sidebarHidden && (
-          <Inspector
-            selectedItem={selectedItem}
-            selectedAnno={selectedAnno}
-            wireSelected={!!selectedWireId}
-            updateLabel={updateLabel}
-            updateAnnoText={updateAnnoText}
-            setRotation={setRotation}
-            setItemScale={setItemScale}
-            rotateSelected={rotateSelected}
-            deleteSelected={deleteSelected}
-            placed={placed}
-          />
+          inspectorHidden ? (
+            <div className="w-9 bg-[#EBEFF6] dark:bg-[#1A2530] border-l border-slate-200 dark:border-[#263441] flex flex-col items-center pt-1.5">
+              <button onClick={() => setInspectorHidden(false)} title="Show inspector"
+                className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-[#263441]">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+            </div>
+          ) : (
+            <Inspector
+              selectedItem={selectedItem}
+              selectedAnno={selectedAnno}
+              wireSelected={!!selectedWireId}
+              updateLabel={updateLabel}
+              updateAnnoText={updateAnnoText}
+              setRotation={setRotation}
+              setItemScale={setItemScale}
+              rotateSelected={rotateSelected}
+              deleteSelected={deleteSelected}
+              placed={placed}
+              onCollapse={() => setInspectorHidden(true)}
+            />
+          )
         )}
       </div>
 
