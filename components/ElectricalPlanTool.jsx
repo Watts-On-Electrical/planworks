@@ -154,7 +154,7 @@ function normaliseProject(p) {
 
 // All Storage paths referenced by a project (one per sheet that has an image).
 function collectImagePaths(p) {
-  return (p?.sheets || []).map(s => s?.bgImage?.path).filter(Boolean);
+  return (p?.sheets || []).flatMap(s => [s?.bgImage?.path, s?.bgImage?.pdfPath]).filter(Boolean);
 }
 
 // JSON-safe copy for persistence: drop the transient `src` whenever the image
@@ -182,8 +182,11 @@ async function hydrateImages(p) {
     ...p,
     sheets: (p.sheets || []).map(s => {
       const bg = s.bgImage;
-      if (bg && bg.path && urls.get(bg.path)) return { ...s, bgImage: { ...bg, src: urls.get(bg.path) } };
-      return s;
+      if (!bg) return s;
+      let nbg = bg;
+      if (bg.path && urls.get(bg.path)) nbg = { ...nbg, src: urls.get(bg.path) };
+      if (bg.pdfPath && urls.get(bg.pdfPath)) nbg = { ...nbg, pdfSrc: urls.get(bg.pdfPath) };
+      return nbg === bg ? s : { ...s, bgImage: nbg };
     }),
   };
 }
@@ -464,7 +467,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   // bytes to Supabase Storage in the background and attach the durable `path`.
   // Falls back to inline base64 only if the upload can't happen (offline / not
   // configured) so the plan is never lost.
-  const setPlanImageFromBlob = (blob, w, h, existingObjectUrl = null) => {
+  const setPlanImageFromBlob = (blob, w, h, existingObjectUrl = null, sourcePdf = null) => {
     const targetId = activeSheetIdRef.current;
     const prevPath = sheetsRef.current.find(s => s.id === targetId)?.bgImage?.path || null;
     const displayUrl = existingObjectUrl || URL.createObjectURL(blob);
@@ -473,7 +476,20 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     (async () => {
       try {
         const { path } = await uploadPlanImage(blob);
-        patchSheetById(targetId, { bgImage: { src: displayUrl, w, h, path } });
+        // If this came from a PDF, also stash the original PDF so the upcoming
+        // renderer can draw it crisply at any zoom. Done in the SAME patch as the
+        // preview path to avoid a race between two async bgImage updates. Failure
+        // here is non-fatal — the rasterised preview still works exactly as before.
+        let pdfExtra = {};
+        if (sourcePdf) {
+          try {
+            const { path: pdfPath } = await uploadPlanImage(sourcePdf);
+            pdfExtra = { pdfPath, pdfPage: 1 };
+          } catch (e) {
+            console.warn("original PDF store failed (preview still works):", e?.message);
+          }
+        }
+        patchSheetById(targetId, { bgImage: { src: displayUrl, w, h, path, ...pdfExtra } });
         if (prevPath && prevPath !== path) deletePlanImages([prevPath]);
       } catch (err) {
         console.warn("plan image upload failed; using inline fallback:", err?.message);
@@ -538,7 +554,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         const blob = await new Promise((res, rej) =>
           c.toBlob(b => b ? res(b) : rej(new Error("Could not render the plan image.")), mime, quality));
         c.width = c.height = 0; // release the large canvas promptly
-        setPlanImageFromBlob(blob, iw, ih);
+        setPlanImageFromBlob(blob, iw, ih, null, file);
       } catch (err) {
         alert("Could not read PDF: " + err.message);
       } finally {
