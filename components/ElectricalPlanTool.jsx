@@ -523,16 +523,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         const isTouch = typeof navigator !== "undefined" &&
           (navigator.maxTouchPoints > 1 ||
            (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
-        // This rasterised copy is no longer the on-screen plan (the crisp windowed
-        // PDF renderer does that now). It's only a lightweight fallback and the
-        // source the PDF-quote EXPORT snapshots, so it just needs to match the
-        // export's pixel need: the plan area is ~1041px on the print sheet, captured
-        // at x3 (desktop) / x2 (touch) ≈ 3120 / 2080px. Targeting ~3600 / 2400px
-        // keeps a safe margin while cutting the import bitmap ~3x — no memory spike.
-        const TARGET_W = isTouch ? 2400 : 3600;
-        const MAX_DIM = isTouch ? 3000 : 4800;
-        const MAX_AREA = isTouch ? 7_000_000 : 16_000_000;
-        let renderScale = TARGET_W / base.width;
+        const TARGET_W = isTouch ? 2400 : 4400;
+        const MAX_DIM = isTouch ? 3000 : 6400;
+        const MAX_AREA = isTouch ? 9_000_000 : 40_000_000;
+        let renderScale = Math.max(isTouch ? 1.5 : 3, Math.min(TARGET_W / base.width, isTouch ? 3.2 : 5));
         let w = base.width * renderScale, h = base.height * renderScale;
         const maxSide = Math.max(w, h);
         if (maxSide > MAX_DIM) { const k = MAX_DIM / maxSide; renderScale *= k; w *= k; h *= k; }
