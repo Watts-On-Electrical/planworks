@@ -2633,35 +2633,109 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 
   const fileBase = () => (meta.projectName || meta.plot || "drawing").replace(/[^a-z0-9-_]+/gi, "_");
 
-  // One-click PDF: rasterise each A3 page and assemble a multi-page PDF.
+  // One-click PDF.
+  //
+  // The plan itself is embedded as TRUE VECTOR — the original imported PDF page,
+  // dropped straight into the output — so it stays razor-sharp at any zoom. No
+  // raster ceiling, no iOS canvas-size cap (which is why bumping the screenshot
+  // scale never helped: Safari silently clamps any canvas over ~16.7MP).
+  //
+  // Everything the app draws on top (symbols, wires, dimensions, title block,
+  // notes, legend, borders) is captured as a TRANSPARENT overlay and laid over
+  // the vector plan; the white "paper" is the PDF page itself. A sheet imported
+  // as a plain image (no PDF source) falls back to a normal raster so it still
+  // exports.
   const downloadPDF = async () => {
     setPdfBusy(true);
     try {
-      const [{ default: jsPDF }, h2cMod] = await Promise.all([import("jspdf"), import("html2canvas")]);
+      const [{ PDFDocument }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
-      const pages = document.querySelectorAll("#print-root .print-page");
-      if (!pages.length) { setPdfBusy(false); return; }
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
-      const W = pdf.internal.pageSize.getWidth();
-      const H = pdf.internal.pageSize.getHeight();
-      // iPad/iOS Safari crashes on the very large canvas a scale-3 A3 render makes,
-      // so render at a lower scale on touch devices.
+      const pageEls = document.querySelectorAll("#print-root .print-page");
+      if (!pageEls.length) { setPdfBusy(false); return; }
+
+      // A3 landscape in PDF points (1mm = 72/25.4 pt). The SHEET fills the page.
+      const MM = 72 / 25.4;
+      const PAGE_W = 420 * MM; // 1190.55
+      const PAGE_H = 297 * MM; // 841.89
+      const sx = PAGE_W / SHEET.width;
+      const sy = PAGE_H / SHEET.height;
+
+      // The overlay now only carries symbols + app text (the plan is vector), so
+      // a modest scale is sharp enough AND stays under the iOS canvas cap.
       const isTouch = typeof navigator !== "undefined" &&
         (navigator.maxTouchPoints > 1 ||
          (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
-      // Capture at high resolution on desktop so zooming into the exported PDF
-      // stays sharp. scale 3 only grabbed ~3100px of the ~6400px of plan detail
-      // we already hold, throwing the rest away; scale 5 grabs ~5200px (~480 DPI
-      // on A3) so small text/dimensions stay readable when zoomed. Touch stays
-      // low on purpose — iOS Safari crashes rendering a canvas this large.
-      const shotScale = isTouch ? 2 : 5;
-      for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: shotScale, backgroundColor: "#ffffff", useCORS: true, logging: false });
-        const img = canvas.toDataURL("image/jpeg", 0.95);
-        if (i > 0) pdf.addPage("a3", "landscape");
-        pdf.addImage(img, "JPEG", 0, 0, W, H);
+      const shotScale = isTouch ? 2 : 3;
+
+      const out = await PDFDocument.create();
+
+      for (let i = 0; i < pageEls.length; i++) {
+        const el = pageEls[i];
+        const bg = (sheets[i] && sheets[i].bgImage) || null;
+        const page = out.addPage([PAGE_W, PAGE_H]);
+
+        // 1. Vector plan underlay — only if we still hold the source PDF.
+        let vectorOK = false;
+        if (bg && bg.pdfSrc && bg.w && bg.h) {
+          try {
+            const bytes = await (await fetch(bg.pdfSrc)).arrayBuffer();
+            const [embedded] = await out.embedPdf(bytes, [Math.max(0, (bg.pdfPage || 1) - 1)]);
+            // Reproduce the on-screen placement exactly: contain inside DRAW, centred.
+            const fit = Math.min(DRAW.w / bg.w, DRAW.h / bg.h);
+            const pw = bg.w * fit, ph = bg.h * fit;
+            const planX = DRAW.x + (DRAW.w - pw) / 2;
+            const planY = DRAW.y + (DRAW.h - ph) / 2;
+            page.drawPage(embedded, {
+              x: planX * sx,
+              y: PAGE_H - (planY + ph) * sy, // pdf-lib origin is bottom-left
+              width: pw * sx,
+              height: ph * sy,
+            });
+            vectorOK = true;
+          } catch (err) {
+            vectorOK = false; // any trouble → fall back to raster for this page
+          }
+        }
+
+        // 2. Overlay capture. When the plan is vector, hide the raster plan image
+        //    and make the plan-area + sheet backgrounds transparent so the vector
+        //    shows through; restore the DOM straight after.
+        const planImg = el.querySelector('img[alt="plan"]');
+        const planArea = el.querySelector('[data-plan-area]');
+        const sheetRoot = el.firstElementChild;
+        const saved = [];
+        if (vectorOK) {
+          // .print-page gets its white from the stylesheet; an inline override
+          // beats it. The other two are inline whites stacked over the plan.
+          saved.push([el, "background", el.style.background]); el.style.background = "transparent";
+          if (planImg)   { saved.push([planImg, "visibility", planImg.style.visibility]); planImg.style.visibility = "hidden"; }
+          if (planArea)  { saved.push([planArea, "background", planArea.style.background]); planArea.style.background = "transparent"; }
+          if (sheetRoot) { saved.push([sheetRoot, "background", sheetRoot.style.background]); sheetRoot.style.background = "transparent"; }
+        }
+
+        let overlayCanvas;
+        try {
+          overlayCanvas = await html2canvas(el, {
+            scale: shotScale,
+            backgroundColor: vectorOK ? null : "#ffffff",
+            useCORS: true,
+            logging: false,
+          });
+        } finally {
+          saved.forEach(([node, prop, val]) => { node.style[prop] = val || ""; });
+        }
+
+        const png = await out.embedPng(overlayCanvas.toDataURL("image/png"));
+        page.drawImage(png, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
       }
-      pdf.save(fileBase() + ".pdf");
+
+      const bytes = await out.save();
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileBase() + ".pdf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
     } catch (e) {
       alert("PDF export failed: " + (e?.message || e));
     } finally {
@@ -2898,7 +2972,7 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
   }, [bgImage, DRAW.w, DRAW.h]);
 
   return (
-    <div style={{
+    <div data-plan-area="" style={{
       position: "absolute",
       left: DRAW.x, top: DRAW.y, width: DRAW.w, height: DRAW.h,
       background: "#ffffff", border: "1px solid #0a0a0a", overflow: "hidden",
