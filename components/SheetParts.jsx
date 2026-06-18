@@ -2648,7 +2648,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
   const downloadPDF = async () => {
     setPdfBusy(true);
     try {
-      const [{ PDFDocument }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
+      const [{ PDFDocument, degrees }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
       const pageEls = document.querySelectorAll("#print-root .print-page");
       if (!pageEls.length) { setPdfBusy(false); return; }
@@ -2679,18 +2679,37 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
         if (bg && bg.pdfSrc && bg.w && bg.h) {
           try {
             const bytes = await (await fetch(bg.pdfSrc)).arrayBuffer();
-            const [embedded] = await out.embedPdf(bytes, [Math.max(0, (bg.pdfPage || 1) - 1)]);
-            // Reproduce the on-screen placement exactly: contain inside DRAW, centred.
-            const fit = Math.min(DRAW.w / bg.w, DRAW.h / bg.h);
-            const pw = bg.w * fit, ph = bg.h * fit;
+            const idx = Math.max(0, (bg.pdfPage || 1) - 1);
+            const srcDoc = await PDFDocument.load(bytes);
+            // Architect PDFs are commonly saved with a /Rotate flag. The on-screen
+            // preview honours it, so the export must too — otherwise the plan comes
+            // out turned and stretched and the symbols no longer line up.
+            const rot = ((srcDoc.getPage(idx).getRotation().angle % 360) + 360) % 360;
+            const [embedded] = await out.embedPdf(srcDoc, [idx]);
+            // Displayed (rotation-applied) dimensions: what the preview shows and
+            // what the symbols were positioned against.
+            const swap = rot === 90 || rot === 270;
+            const dw = swap ? embedded.height : embedded.width;
+            const dh = swap ? embedded.width : embedded.height;
+            // Contain inside DRAW, centred — identical maths to the on-screen plan,
+            // so the vector underlay lands exactly where the raster preview did.
+            const fit = Math.min(DRAW.w / dw, DRAW.h / dh);
+            const pw = dw * fit, ph = dh * fit;
             const planX = DRAW.x + (DRAW.w - pw) / 2;
             const planY = DRAW.y + (DRAW.h - ph) / 2;
-            page.drawPage(embedded, {
-              x: planX * sx,
-              y: PAGE_H - (planY + ph) * sy, // pdf-lib origin is bottom-left
-              width: pw * sx,
-              height: ph * sy,
-            });
+            const X = planX * sx;
+            const Wt = pw * sx;
+            const Ht = ph * sy;
+            const Yb = PAGE_H - (planY + ph) * sy; // bottom of footprint (pdf-lib is bottom-left)
+            // pdf-lib rotates a page about its (x,y) origin, so each /Rotate needs
+            // its own origin offset. These four cases are verified against rendered
+            // ground truth for 0 / 90 / 180 / 270.
+            const place =
+              rot === 90  ? { x: X,      y: Yb + Ht, width: Ht, height: Wt, rotate: degrees(-90) } :
+              rot === 180 ? { x: X + Wt, y: Yb + Ht, width: Wt, height: Ht, rotate: degrees(180) } :
+              rot === 270 ? { x: X + Wt, y: Yb,      width: Ht, height: Wt, rotate: degrees(90) } :
+                            { x: X,      y: Yb,      width: Wt, height: Ht, rotate: degrees(0) };
+            page.drawPage(embedded, place);
             vectorOK = true;
           } catch (err) {
             vectorOK = false; // any trouble → fall back to raster for this page
