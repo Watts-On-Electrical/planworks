@@ -839,10 +839,18 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         const rpx = fx0 * base.width, rpy = fy0 * base.height;
         const rpw = (fx1 - fx0) * base.width, rph = (fy1 - fy0) * base.height;
         if (rpw < 1 || rph < 1) return;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        // Render the visible window ABOVE device resolution (supersample) so fine
+        // text stays crisp at maximum zoom, then let the device downsample it.
+        // Bounded by both total area and per-side length to stay well under iOS
+        // Safari's canvas ceiling — memory stays flat and the iPad never crashes.
+        const SS = 2;                                      // supersample factor
+        const dpr = Math.min(window.devicePixelRatio || 1, 2) * SS;
         let bw = (ix1 - ix0) * dpr, bh = (iy1 - iy0) * dpr;
-        const MAX_AREA = 6_000_000;                        // flat memory budget (~6MP)
+        const MAX_AREA = 12_000_000;                       // ~12MP visible-window budget
+        const MAX_DIM = 4096;                              // iOS-safe per-side limit
         if (bw * bh > MAX_AREA) { const k = Math.sqrt(MAX_AREA / (bw * bh)); bw *= k; bh *= k; }
+        const big = Math.max(bw, bh);
+        if (big > MAX_DIM) { const k = MAX_DIM / big; bw *= k; bh *= k; }
         bw = Math.max(1, Math.round(bw)); bh = Math.max(1, Math.round(bh));
         const renderScale = bw / rpw;                      // page points -> bitmap px
         const vpr = page.getViewport({ scale: renderScale });
