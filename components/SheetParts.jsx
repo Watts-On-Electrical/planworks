@@ -2649,7 +2649,12 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
       const isTouch = typeof navigator !== "undefined" &&
         (navigator.maxTouchPoints > 1 ||
          (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
-      const shotScale = isTouch ? 2 : 3;
+      // Capture at high resolution on desktop so zooming into the exported PDF
+      // stays sharp. scale 3 only grabbed ~3100px of the ~6400px of plan detail
+      // we already hold, throwing the rest away; scale 5 grabs ~5200px (~480 DPI
+      // on A3) so small text/dimensions stay readable when zoomed. Touch stays
+      // low on purpose — iOS Safari crashes rendering a canvas this large.
+      const shotScale = isTouch ? 2 : 5;
       for (let i = 0; i < pages.length; i++) {
         const canvas = await html2canvas(pages[i], { scale: shotScale, backgroundColor: "#ffffff", useCORS: true, logging: false });
         const img = canvas.toDataURL("image/jpeg", 0.95);
