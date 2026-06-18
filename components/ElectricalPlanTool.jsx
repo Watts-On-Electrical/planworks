@@ -60,7 +60,7 @@ const DEFAULT_META = {
   date: new Date().toISOString().slice(0, 10),
   revision: "A",
   revNote: "First Issue",
-  company: "Watts On Electrical Ltd",
+  company: "",
   clientName: "",
   clientEmail: "",
 };

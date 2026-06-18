@@ -440,7 +440,7 @@ export function Workspace({
           spacePressed={spacePressed}
           DRAW={DRAW}
           showGrid={showGrid} gridSize={gridSize}
-          zoom={zoom}
+          zoom={zoom} pan={pan} viewportRef={viewportRef}
           onDrawingDrop={onDrawingDrop}
           onDrawingDragOver={onDrawingDragOver}
           onDrawingDragLeave={onDrawingDragLeave}
@@ -477,7 +477,7 @@ export function Sheet({
   furniture,
   walls, wallDraft, wallCursor, wallThickness,
   colourMode, symbolSize, wireStart, onWireSelect,
-  spacePressed, DRAW, showGrid, gridSize, zoom,
+  spacePressed, DRAW, showGrid, gridSize, zoom, pan, viewportRef,
   onDrawingDrop, onDrawingDragOver, onDrawingDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   onFurnitureMouseDown, startFurnRotating, startFurnResizing,
@@ -523,7 +523,7 @@ export function Sheet({
         walls={walls} wallDraft={wallDraft} wallCursor={wallCursor} wallThickness={wallThickness}
         colourMode={colourMode} symbolSize={symbolSize}
         wireStart={wireStart} onWireSelect={onWireSelect}
-        spacePressed={spacePressed} zoom={zoom}
+        spacePressed={spacePressed} zoom={zoom} pan={pan} viewportRef={viewportRef}
         showGrid={showGrid} gridSize={gridSize}
         onDrop={onDrawingDrop}
         onDragOver={onDrawingDragOver}
@@ -789,12 +789,100 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
 /* ----------------------------------------------------------------------------
  * DRAWING AREA — the main canvas where the plan + symbols + annotations live
  * ------------------------------------------------------------------------- */
+function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
+  const wrapRef = useRef(null);
+  const canvasRef = useRef(null);
+  const pageRef = useRef(null);
+  const taskRef = useRef(null);
+  const [loaded, setLoaded] = useState(0);
+
+  // Load the PDF page once per source.
+  useEffect(() => {
+    let dead = false;
+    pageRef.current = null;
+    const src = bgImage?.pdfSrc;
+    if (!src || typeof window === "undefined" || !window.pdfjsLib) return;
+    (async () => {
+      try {
+        const pdf = await window.pdfjsLib.getDocument(src).promise;
+        const page = await pdf.getPage(bgImage.pdfPage || 1);
+        if (dead) return;
+        pageRef.current = page;
+        setLoaded(n => n + 1);
+      } catch (e) { console.warn("PdfBackground load failed:", e?.message); }
+    })();
+    return () => { dead = true; };
+  }, [bgImage?.pdfSrc, bgImage?.pdfPage]);
+
+  // Re-render only the visible window after the view settles. The on-screen
+  // canvas never exceeds the viewport, so memory stays flat at any zoom, while
+  // the vector source keeps it perfectly sharp.
+  useEffect(() => {
+    const page = pageRef.current;
+    const wrap = wrapRef.current, cv = canvasRef.current;
+    if (!page || !wrap || !cv || !imageDisplay) return;
+    const id = setTimeout(() => {
+      try {
+        const pr = wrap.getBoundingClientRect();           // page rect on screen (post-transform)
+        if (pr.width < 2 || pr.height < 2) return;
+        const vp = viewportRef?.current;
+        const vr = vp ? vp.getBoundingClientRect()
+                      : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+        const ix0 = Math.max(pr.left, vr.left), iy0 = Math.max(pr.top, vr.top);
+        const ix1 = Math.min(pr.right, vr.right), iy1 = Math.min(pr.bottom, vr.bottom);
+        if (ix1 - ix0 < 2 || iy1 - iy0 < 2) return;        // page off-screen
+        const fx0 = (ix0 - pr.left) / pr.width, fy0 = (iy0 - pr.top) / pr.height;
+        const fx1 = (ix1 - pr.left) / pr.width, fy1 = (iy1 - pr.top) / pr.height;
+        const base = page.getViewport({ scale: 1 });
+        const rpx = fx0 * base.width, rpy = fy0 * base.height;
+        const rpw = (fx1 - fx0) * base.width, rph = (fy1 - fy0) * base.height;
+        if (rpw < 1 || rph < 1) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        let bw = (ix1 - ix0) * dpr, bh = (iy1 - iy0) * dpr;
+        const MAX_AREA = 6_000_000;                        // flat memory budget (~6MP)
+        if (bw * bh > MAX_AREA) { const k = Math.sqrt(MAX_AREA / (bw * bh)); bw *= k; bh *= k; }
+        bw = Math.max(1, Math.round(bw)); bh = Math.max(1, Math.round(bh));
+        const renderScale = bw / rpw;                      // page points -> bitmap px
+        const vpr = page.getViewport({ scale: renderScale });
+        cv.width = bw; cv.height = bh;
+        cv.style.left = (fx0 * imageDisplay.w) + "px";
+        cv.style.top = (fy0 * imageDisplay.h) + "px";
+        cv.style.width = ((fx1 - fx0) * imageDisplay.w) + "px";
+        cv.style.height = ((fy1 - fy0) * imageDisplay.h) + "px";
+        const ctx = cv.getContext("2d", { alpha: false });
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, bw, bh);
+        if (taskRef.current) { try { taskRef.current.cancel(); } catch {} }
+        const task = page.render({
+          canvasContext: ctx,
+          viewport: vpr,
+          transform: [1, 0, 0, 1, -rpx * renderScale, -rpy * renderScale],
+        });
+        taskRef.current = task;
+        task.promise.catch(() => {});
+      } catch (e) { /* transient during fast moves — next settle re-renders */ }
+    }, 150);
+    return () => clearTimeout(id);
+  }, [loaded, zoom, pan?.x, pan?.y, imageDisplay?.x, imageDisplay?.y, imageDisplay?.w, imageDisplay?.h, viewportRef]);
+
+  if (!imageDisplay) return null;
+  return (
+    <div ref={wrapRef} style={{
+      position: "absolute",
+      left: imageDisplay.x, top: imageDisplay.y,
+      width: imageDisplay.w, height: imageDisplay.h,
+      background: "#ffffff", overflow: "hidden", pointerEvents: "none",
+    }}>
+      <canvas ref={canvasRef} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }} />
+    </div>
+  );
+}
+
 function DrawingArea({
   drawingAreaRef, DRAW, bgImage, placed, wires, annotations,
   furniture,
   walls, wallDraft, wallCursor, wallThickness,
   colourMode, symbolSize, wireStart, onWireSelect, spacePressed,
-  zoom, showGrid, gridSize,
+  zoom, pan, viewportRef, showGrid, gridSize,
   onDrop, onDragOver, onDragLeave,
   onItemMouseDown, onAnnotationBodyMouseDown, onAnnotationAnchorMouseDown,
   onFurnitureMouseDown, startFurnRotating, startFurnResizing,
@@ -860,18 +948,28 @@ function DrawingArea({
       )}
 
       {bgImage && imageDisplay && (
-        <img src={bgImage.src} alt="plan"
-             style={{
-               position: "absolute",
-               left: imageDisplay.x, top: imageDisplay.y,
-               width: imageDisplay.w, height: imageDisplay.h,
-               display: "block",
-               pointerEvents: "none",
-               WebkitTouchCallout: "none",
-               WebkitUserSelect: "none",
-               userSelect: "none",
-             }}
-             draggable={false}/>
+        bgImage.pdfSrc ? (
+          <PdfBackground
+            bgImage={bgImage}
+            imageDisplay={imageDisplay}
+            zoom={zoom}
+            pan={pan}
+            viewportRef={viewportRef}
+          />
+        ) : (
+          <img src={bgImage.src} alt="plan"
+               style={{
+                 position: "absolute",
+                 left: imageDisplay.x, top: imageDisplay.y,
+                 width: imageDisplay.w, height: imageDisplay.h,
+                 display: "block",
+                 pointerEvents: "none",
+                 WebkitTouchCallout: "none",
+                 WebkitUserSelect: "none",
+                 userSelect: "none",
+               }}
+               draggable={false}/>
+        )
       )}
 
       {/* Grid overlay — drawn above the imported plan, below symbols, so the
@@ -1813,7 +1911,7 @@ function BoqPrintPages({ boq, projectName, company }) {
           {pg.preamble && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 26 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{company || "Watts On Electrical Ltd"}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{company || ""}</div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "#22808F", fontWeight: 700 }}>Electrical Bill of Quantities</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginTop: 2, lineHeight: 1.1 }}>{m.development || projectName || "Project"}</div>
@@ -1891,7 +1989,7 @@ function BoqPrintPages({ boq, projectName, company }) {
           )}
 
           <div style={{ position: "absolute", bottom: 22, left: 46, right: 46, fontSize: 8.5, color: "#94a3b8", display: "flex", justifyContent: "space-between", borderTop: "1px solid #eef2f6", paddingTop: 8 }}>
-            <span>Unit rates and totals to be completed by supplier · {company || "Watts On Electrical Ltd"}</span>
+            <span>Unit rates and totals to be completed by supplier{company ? ` · ${company}` : ""}</span>
             <span>Page {pi + 1} of {pages.length}</span>
           </div>
         </div>
