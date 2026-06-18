@@ -3,22 +3,22 @@
 import React, { useState } from "react";
 import { supabase, isConfigured } from "@/lib/supabase";
 
-export default function LoginScreen() {
-  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+export default function LoginScreen({ recovery = false, onRecovered }) {
+  const [mode, setMode] = useState("signin"); // "signin" | "signup" | "forgot"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [sentTo, setSentTo] = useState(""); // set when a confirmation email was sent
+  const [sentTo, setSentTo] = useState("");        // email we just messaged
+  const [sentKind, setSentKind] = useState("");    // "confirm" | "reset"
+  const [resetDone, setResetDone] = useState(false);
 
   const switchMode = (m) => {
     setMode(m);
-    setError("");
-    setSentTo("");
-    setPassword("");
-    setConfirm("");
+    setError(""); setSentTo(""); setSentKind("");
+    setPassword(""); setConfirm("");
   };
 
   const signIn = async (e) => {
@@ -28,7 +28,6 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (error) setError(error.message || "Couldn't sign in. Check your email and password.");
-    // Success: AppShell's onAuthStateChange swaps to the app automatically.
   };
 
   const signUp = async (e) => {
@@ -47,20 +46,189 @@ export default function LoginScreen() {
       },
     });
     setBusy(false);
-    if (error) {
-      setError(error.message || "Couldn't create your account.");
-      return;
-    }
-    // Email confirmation ON -> a user exists but no session yet: prompt to confirm.
-    if (data?.user && !data?.session) {
-      setSentTo(email.trim());
-      return;
-    }
-    // Email confirmation OFF -> session is live; AppShell takes over from here.
+    if (error) { setError(error.message || "Couldn't create your account."); return; }
+    if (data?.user && !data?.session) { setSentTo(email.trim()); setSentKind("confirm"); return; }
+    // confirmation off -> session live; AppShell takes over.
   };
 
-  const onSubmit = mode === "signin" ? signIn : signUp;
+  const sendReset = async (e) => {
+    e?.preventDefault();
+    if (!isConfigured) { setError("This app isn't linked to the cloud yet."); return; }
+    if (!email.trim()) { setError("Enter the email address for your account."); return; }
+    setBusy(true); setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+    });
+    setBusy(false);
+    if (error) { setError(error.message || "Couldn't send the reset email."); return; }
+    setSentTo(email.trim()); setSentKind("reset");
+  };
 
+  const setNewPassword = async (e) => {
+    e?.preventDefault();
+    if (password.length < 8) { setError("Use a password of at least 8 characters."); return; }
+    if (password !== confirm) { setError("Those two passwords don't match."); return; }
+    setBusy(true); setError("");
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (error) { setError(error.message || "Couldn't update your password. The link may have expired — request a new one."); return; }
+    setResetDone(true);
+  };
+
+  // ---- Recovery: user arrived via the reset link, set a new password ----
+  if (recovery) {
+    return (
+      <Frame>
+        {resetDone ? (
+          <div className="login-card">
+            <div className="check-badge" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 13l5 5L20 7" stroke="#22808F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <h1>Password updated</h1>
+            <p className="sub">You're all set. Carry on into Plotwire.</p>
+            <button type="button" className="submit" onClick={() => onRecovered?.()}>
+              Continue to Plotwire
+            </button>
+          </div>
+        ) : (
+          <form className="login-card" onSubmit={setNewPassword}>
+            <h1>Set a new password</h1>
+            <p className="sub">Choose a new password for your account.</p>
+
+            <label className="field">
+              <span>New password</span>
+              <input type="password" autoComplete="new-password" value={password}
+                     onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required/>
+            </label>
+            <label className="field">
+              <span>Confirm new password</span>
+              <input type="password" autoComplete="new-password" value={confirm}
+                     onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required/>
+            </label>
+
+            {error && <div className="err">{error}</div>}
+
+            <button type="submit" className="submit" disabled={busy}>
+              {busy ? "Saving…" : "Save new password"}
+            </button>
+          </form>
+        )}
+      </Frame>
+    );
+  }
+
+  // ---- Emailed confirmation / reset-sent state ----
+  if (sentTo) {
+    const isReset = sentKind === "reset";
+    return (
+      <Frame>
+        <div className="login-card">
+          <div className="check-badge" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13l5 5L20 7" stroke="#22808F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <h1>Check your email</h1>
+          <p className="sub">
+            {isReset
+              ? <>We've sent a password-reset link to <b>{sentTo}</b>. Open it to choose a new password.</>
+              : <>We've sent a confirmation link to <b>{sentTo}</b>. Open it to activate your account, then come back and sign in.</>}
+          </p>
+          <button type="button" className="submit" onClick={() => switchMode("signin")}>
+            Back to sign in
+          </button>
+          <p className="note">No email after a minute? Check spam, or try again.</p>
+        </div>
+      </Frame>
+    );
+  }
+
+  // ---- Normal logged-out flow: signin / signup / forgot ----
+  const onSubmit = mode === "signin" ? signIn : mode === "signup" ? signUp : sendReset;
+
+  return (
+    <Frame>
+      <form className="login-card" onSubmit={onSubmit}>
+        <h1>
+          {mode === "signin" ? "Sign in" : mode === "signup" ? "Create your account" : "Reset your password"}
+        </h1>
+        <p className="sub">
+          {mode === "signin" ? "Welcome back. Your drawings are saved to your account."
+            : mode === "signup" ? "Set up Plotwire for your business — it takes a few seconds."
+            : "Enter your account email and we'll send you a link to set a new password."}
+        </p>
+
+        {mode === "signup" && (
+          <label className="field">
+            <span>Your name</span>
+            <input type="text" autoComplete="name" value={name}
+                   onChange={(e) => setName(e.target.value)} placeholder="Jane Smith" required/>
+          </label>
+        )}
+
+        <label className="field">
+          <span>Email</span>
+          <input type="email" autoComplete="username" value={email}
+                 onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcompany.co.uk" required/>
+        </label>
+
+        {mode !== "forgot" && (
+          <label className="field">
+            <span>Password</span>
+            <input type="password"
+                   autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                   value={password}
+                   onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required/>
+          </label>
+        )}
+
+        {mode === "signin" && (
+          <div className="link-row">
+            <button type="button" className="linkish" onClick={() => switchMode("forgot")}>
+              Forgot password?
+            </button>
+          </div>
+        )}
+
+        {mode === "signup" && (
+          <label className="field">
+            <span>Confirm password</span>
+            <input type="password" autoComplete="new-password" value={confirm}
+                   onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required/>
+          </label>
+        )}
+
+        {error && <div className="err">{error}</div>}
+
+        <button type="submit" className="submit" disabled={busy}>
+          {busy
+            ? (mode === "signin" ? "Signing in…" : mode === "signup" ? "Creating account…" : "Sending…")
+            : (mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link")}
+        </button>
+
+        <div className="alt">
+          {mode === "signin" && (
+            <>New to Plotwire?{" "}
+              <button type="button" onClick={() => switchMode("signup")}>Create an account</button>
+            </>
+          )}
+          {mode === "signup" && (
+            <>Already have an account?{" "}
+              <button type="button" onClick={() => switchMode("signin")}>Sign in</button>
+            </>
+          )}
+          {mode === "forgot" && (
+            <button type="button" onClick={() => switchMode("signin")}>Back to sign in</button>
+          )}
+        </div>
+
+        {!isConfigured && (
+          <div className="note">The cloud connection isn't set up yet — check the environment variables.</div>
+        )}
+      </form>
+    </Frame>
+  );
+}
+
+function Frame({ children }) {
   return (
     <div className="login-root">
       <style>{CSS}</style>
@@ -72,90 +240,7 @@ export default function LoginScreen() {
         <p className="tag">Electrical layouts, quotes &amp; bills of quantities — drawn in minutes.</p>
         <div className="rail-foot">Plotwire</div>
       </div>
-
-      <div className="login-main">
-        {sentTo ? (
-          <div className="login-card">
-            <div className="check-badge" aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none"><path d="M4 13l5 5L20 7" stroke="#22808F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            <h1>Check your email</h1>
-            <p className="sub">
-              We've sent a confirmation link to <b>{sentTo}</b>. Open it to activate your
-              account, then come back and sign in.
-            </p>
-            <button type="button" className="submit" onClick={() => switchMode("signin")}>
-              Back to sign in
-            </button>
-            <p className="note">
-              No email after a minute? Check spam, or try creating the account again.
-            </p>
-          </div>
-        ) : (
-          <form className="login-card" onSubmit={onSubmit}>
-            <h1>{mode === "signin" ? "Sign in" : "Create your account"}</h1>
-            <p className="sub">
-              {mode === "signin"
-                ? "Welcome back. Your drawings are saved to your account."
-                : "Set up Plotwire for your business — it takes a few seconds."}
-            </p>
-
-            {mode === "signup" && (
-              <label className="field">
-                <span>Your name</span>
-                <input type="text" autoComplete="name" value={name}
-                       onChange={(e) => setName(e.target.value)} placeholder="Jane Smith" required/>
-              </label>
-            )}
-
-            <label className="field">
-              <span>Email</span>
-              <input type="email" autoComplete="username" value={email}
-                     onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcompany.co.uk" required/>
-            </label>
-
-            <label className="field">
-              <span>Password</span>
-              <input type="password"
-                     autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                     value={password}
-                     onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required/>
-            </label>
-
-            {mode === "signup" && (
-              <label className="field">
-                <span>Confirm password</span>
-                <input type="password" autoComplete="new-password" value={confirm}
-                       onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required/>
-              </label>
-            )}
-
-            {error && <div className="err">{error}</div>}
-
-            <button type="submit" className="submit" disabled={busy}>
-              {busy
-                ? (mode === "signin" ? "Signing in…" : "Creating account…")
-                : (mode === "signin" ? "Sign in" : "Create account")}
-            </button>
-
-            <div className="alt">
-              {mode === "signin" ? (
-                <>New to Plotwire?{" "}
-                  <button type="button" onClick={() => switchMode("signup")}>Create an account</button>
-                </>
-              ) : (
-                <>Already have an account?{" "}
-                  <button type="button" onClick={() => switchMode("signin")}>Sign in</button>
-                </>
-              )}
-            </div>
-
-            {!isConfigured && (
-              <div className="note">The cloud connection isn't set up yet — check the environment variables.</div>
-            )}
-          </form>
-        )}
-      </div>
+      <div className="login-main">{children}</div>
     </div>
   );
 }
@@ -179,6 +264,9 @@ const CSS = `
 .field span{display:block; font-size:12.5px; font-weight:500; color:#3A4654; margin-bottom:6px}
 .field input{width:100%; height:46px; border-radius:11px; border:1px solid #E6EBF1; background:#fff; padding:0 14px; font-size:14.5px; color:#0E141B; outline:none; transition:border-color .15s, box-shadow .15s}
 .field input:focus{border-color:#3FB7C9; box-shadow:0 0 0 3px rgba(63,183,201,.18)}
+.link-row{display:flex; justify-content:flex-end; margin:-6px 0 16px}
+.linkish{background:none; border:none; padding:0; font:inherit; font-size:12.5px; color:#22808F; font-weight:500; cursor:pointer}
+.linkish:hover{color:#3FB7C9; text-decoration:underline}
 .err{background:#FEF2F2; border:1px solid #FECACA; color:#B91C1C; font-size:13px; border-radius:10px; padding:10px 12px; margin-bottom:14px}
 .submit{width:100%; height:48px; border:none; border-radius:12px; background:#3FB7C9; color:#08313a; font-weight:600; font-size:15px; cursor:pointer; transition:background .15s, transform .1s}
 .submit:hover:not(:disabled){background:#52C4D5}

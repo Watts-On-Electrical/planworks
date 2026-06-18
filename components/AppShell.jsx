@@ -23,6 +23,7 @@ export default function AppShell({ children }) {
     try { return localStorage.getItem("planworks:theme") || "light"; } catch { return "light"; }
   });
   const [session, setSession] = useState(null);
+  const [recovery, setRecovery] = useState(false);
   const [checking, setChecking] = useState(true);
   const [titleBlock, setTitleBlock] = useState(null); // null until loaded → default in the meantime
   const [boqTemplate, setBoqTemplate] = useState(null); // null = use built-in default
@@ -37,12 +38,20 @@ export default function AppShell({ children }) {
   useEffect(() => {
     if (!isConfigured || !supabase) { setChecking(false); setSession(false); return; }
     let active = true;
+    // A password-reset link lands back here carrying a recovery token in the URL
+    // hash. Flag it before the app renders so we show the set-password screen
+    // instead of dropping the user straight into the app.
+    if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+      setRecovery(true);
+    }
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session || false);
       setChecking(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (_e === "PASSWORD_RECOVERY") setRecovery(true);
+      if (_e === "SIGNED_OUT") setRecovery(false);
       setSession(s || false);
       setChecking(false);
     });
@@ -79,6 +88,7 @@ export default function AppShell({ children }) {
   }, []);
 
   if (checking) return <Splash />;
+  if (recovery) return <LoginScreen recovery onRecovered={() => setRecovery(false)} />;
   if (!session) return <LoginScreen />;
 
   return (
