@@ -166,7 +166,7 @@ function stripTransientImages(p) {
     ...p,
     sheets: (p.sheets || []).map(s => {
       const bg = s.bgImage;
-      if (bg && bg.path) { const { src, ...rest } = bg; return { ...s, bgImage: rest }; }
+      if (bg && bg.path) { const { src, pdfSrc, ...rest } = bg; return { ...s, bgImage: rest }; }
       return s;
     }),
   };
@@ -197,7 +197,7 @@ async function prepareProjectForSave(p) {
   const sheets = await Promise.all((p?.sheets || []).map(async (s) => {
     const bg = s.bgImage;
     if (!bg) return s;
-    if (bg.path) { const { src, ...rest } = bg; return { ...s, bgImage: rest }; }
+    if (bg.path) { const { src, pdfSrc, ...rest } = bg; return { ...s, bgImage: rest }; }
     if (typeof bg.src === "string" && bg.src.startsWith("data:")) {
       try {
         const { path } = await uploadPlanImage(dataUrlToBlob(bg.src));
@@ -244,7 +244,7 @@ function stripImagesForDraft(p) {
     ...p,
     sheets: (p.sheets || []).map(s => {
       if (!s.bgImage) return s;
-      const { src, ...rest } = s.bgImage;
+      const { src, pdfSrc, ...rest } = s.bgImage;
       return { ...s, bgImage: rest };
     }),
   };
@@ -471,15 +471,16 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const targetId = activeSheetIdRef.current;
     const prevPath = sheetsRef.current.find(s => s.id === targetId)?.bgImage?.path || null;
     const displayUrl = existingObjectUrl || URL.createObjectURL(blob);
-    patchSheetById(targetId, { bgImage: { src: displayUrl, w, h } });
+    // For PDFs, mint a LOCAL link to the original right away so the crisp windowed
+    // renderer switches on the instant the plan is imported — no save/reopen needed.
+    // This link is transient (blob: URL) and is stripped before any save; the
+    // permanent copy is uploaded below and re-linked by hydrateImages on next load.
+    const pdfNow = sourcePdf ? { pdfSrc: URL.createObjectURL(sourcePdf), pdfPage: 1 } : {};
+    patchSheetById(targetId, { bgImage: { src: displayUrl, w, h, ...pdfNow } });
     setTimeout(fitToScreen, 60);
     (async () => {
       try {
         const { path } = await uploadPlanImage(blob);
-        // If this came from a PDF, also stash the original PDF so the upcoming
-        // renderer can draw it crisply at any zoom. Done in the SAME patch as the
-        // preview path to avoid a race between two async bgImage updates. Failure
-        // here is non-fatal — the rasterised preview still works exactly as before.
         let pdfExtra = {};
         if (sourcePdf) {
           try {
@@ -489,13 +490,13 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
             console.warn("original PDF store failed (preview still works):", e?.message);
           }
         }
-        patchSheetById(targetId, { bgImage: { src: displayUrl, w, h, path, ...pdfExtra } });
+        patchSheetById(targetId, { bgImage: { src: displayUrl, w, h, path, ...pdfNow, ...pdfExtra } });
         if (prevPath && prevPath !== path) deletePlanImages([prevPath]);
       } catch (err) {
         console.warn("plan image upload failed; using inline fallback:", err?.message);
         try {
           const dataUrl = await blobToDataUrl(blob);
-          patchSheetById(targetId, { bgImage: { src: dataUrl, w, h } });
+          patchSheetById(targetId, { bgImage: { src: dataUrl, w, h, ...pdfNow } });
         } catch { /* keep the object URL for this session at least */ }
       }
     })();
