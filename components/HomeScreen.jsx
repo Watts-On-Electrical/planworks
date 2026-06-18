@@ -13,7 +13,17 @@ const DRAW = {
   h: SHEET.height - SHEET.margin * 2 - SHEET.titleHeight - 8,
 };
 
-const USER_NAME = "Joe"; // greeting name — change here or wire to settings later
+// Derive a display name from the logged-in account (metadata name if present,
+// otherwise a tidy version of the email's local part). No hardcoded names.
+function displayName(user) {
+  const meta = user?.user_metadata || {};
+  const fromMeta = meta.full_name || meta.name;
+  if (fromMeta) return String(fromMeta).trim().split(/\s+/)[0];
+  const email = user?.email || "";
+  if (!email) return "";
+  const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+  return local ? local.charAt(0).toUpperCase() + local.slice(1) : "";
+}
 
 function greeting() {
   const h = new Date().getHours();
@@ -157,7 +167,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
           <div className="navitem" title="Symbol library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="3.2"/><rect x="14" y="4" width="6" height="6" rx="1.4"/><path d="M4 15h6v6H4zM14 18h6"/><circle cx="17" cy="18" r="3.2"/></svg></div>
           <div className="rail-spacer"></div>
           <div className="navitem" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 0 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9 2 2 0 0 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2 2 2 0 0 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9 2 2 0 0 1 0 4 1.7 1.7 0 0 0-1.5 1z"/></svg></div>
-          <div className="rail-avatar">{USER_NAME.slice(0, 2).toUpperCase()}</div>
+          <div className="rail-avatar">{(displayName(user) || user?.email || "?").slice(0, 2).toUpperCase()}</div>
         </aside>
 
         <div className="main">
@@ -173,8 +183,8 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
                 )}
               </button>
               <div className="account" title={user?.email || ""}>
-                <div style={{ textAlign: "right" }}><div className="nm">{USER_NAME} Watts</div><div className="sub">{user?.email || "Watts On Electrical"}</div></div>
-                <div className="pic">{(user?.email || USER_NAME).slice(0, 2).toUpperCase()}</div>
+                <div style={{ textAlign: "right" }}><div className="nm">{displayName(user) || "Account"}</div><div className="sub">{user?.email || ""}</div></div>
+                <div className="pic">{(user?.email || displayName(user) || "?").slice(0, 2).toUpperCase()}</div>
               </div>
               <button className="theme-toggle" onClick={onSignOut} title="Sign out" aria-label="Sign out">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
@@ -199,8 +209,8 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
               <div className="hero-glow"></div>
               <div className="hero-inner">
                 <div>
-                  <div className="eyebrow">Watts On Electrical · Leeds</div>
-                  <h1>{greeting()}, {USER_NAME}</h1>
+                  <div className="eyebrow">Plotwire</div>
+                  <h1>{greeting()}{displayName(user) ? `, ${displayName(user)}` : ""}</h1>
                   <p>Pick up where you left off, or start a new layout. Everything you draw is counted into your bill of quantities automatically.</p>
                 </div>
                 <div className="hero-actions">
