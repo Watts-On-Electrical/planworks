@@ -4,10 +4,22 @@ import React, { useState } from "react";
 import { supabase, isConfigured } from "@/lib/supabase";
 
 export default function LoginScreen() {
+  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sentTo, setSentTo] = useState(""); // set when a confirmation email was sent
+
+  const switchMode = (m) => {
+    setMode(m);
+    setError("");
+    setSentTo("");
+    setPassword("");
+    setConfirm("");
+  };
 
   const signIn = async (e) => {
     e?.preventDefault();
@@ -16,7 +28,38 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (error) setError(error.message || "Couldn't sign in. Check your email and password.");
+    // Success: AppShell's onAuthStateChange swaps to the app automatically.
   };
+
+  const signUp = async (e) => {
+    e?.preventDefault();
+    if (!isConfigured) { setError("This app isn't linked to the cloud yet."); return; }
+    if (!name.trim()) { setError("Please tell us your name."); return; }
+    if (password.length < 8) { setError("Use a password of at least 8 characters."); return; }
+    if (password !== confirm) { setError("Those two passwords don't match."); return; }
+    setBusy(true); setError("");
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { name: name.trim() },
+        emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+      },
+    });
+    setBusy(false);
+    if (error) {
+      setError(error.message || "Couldn't create your account.");
+      return;
+    }
+    // Email confirmation ON -> a user exists but no session yet: prompt to confirm.
+    if (data?.user && !data?.session) {
+      setSentTo(email.trim());
+      return;
+    }
+    // Email confirmation OFF -> session is live; AppShell takes over from here.
+  };
+
+  const onSubmit = mode === "signin" ? signIn : signUp;
 
   return (
     <div className="login-root">
@@ -31,32 +74,87 @@ export default function LoginScreen() {
       </div>
 
       <div className="login-main">
-        <form className="login-card" onSubmit={signIn}>
-          <h1>Sign in</h1>
-          <p className="sub">Welcome back. Your drawings are saved to your account.</p>
+        {sentTo ? (
+          <div className="login-card">
+            <div className="check-badge" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 13l5 5L20 7" stroke="#22808F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <h1>Check your email</h1>
+            <p className="sub">
+              We've sent a confirmation link to <b>{sentTo}</b>. Open it to activate your
+              account, then come back and sign in.
+            </p>
+            <button type="button" className="submit" onClick={() => switchMode("signin")}>
+              Back to sign in
+            </button>
+            <p className="note">
+              No email after a minute? Check spam, or try creating the account again.
+            </p>
+          </div>
+        ) : (
+          <form className="login-card" onSubmit={onSubmit}>
+            <h1>{mode === "signin" ? "Sign in" : "Create your account"}</h1>
+            <p className="sub">
+              {mode === "signin"
+                ? "Welcome back. Your drawings are saved to your account."
+                : "Set up Plotwire for your business — it takes a few seconds."}
+            </p>
 
-          <label className="field">
-            <span>Email</span>
-            <input type="email" autoComplete="username" value={email}
-                   onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcompany.co.uk" required/>
-          </label>
+            {mode === "signup" && (
+              <label className="field">
+                <span>Your name</span>
+                <input type="text" autoComplete="name" value={name}
+                       onChange={(e) => setName(e.target.value)} placeholder="Jane Smith" required/>
+              </label>
+            )}
 
-          <label className="field">
-            <span>Password</span>
-            <input type="password" autoComplete="current-password" value={password}
-                   onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required/>
-          </label>
+            <label className="field">
+              <span>Email</span>
+              <input type="email" autoComplete="username" value={email}
+                     onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcompany.co.uk" required/>
+            </label>
 
-          {error && <div className="err">{error}</div>}
+            <label className="field">
+              <span>Password</span>
+              <input type="password"
+                     autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                     value={password}
+                     onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required/>
+            </label>
 
-          <button type="submit" className="submit" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
+            {mode === "signup" && (
+              <label className="field">
+                <span>Confirm password</span>
+                <input type="password" autoComplete="new-password" value={confirm}
+                       onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required/>
+              </label>
+            )}
 
-          {!isConfigured && (
-            <div className="note">The cloud connection isn't set up yet — check the environment variables.</div>
-          )}
-        </form>
+            {error && <div className="err">{error}</div>}
+
+            <button type="submit" className="submit" disabled={busy}>
+              {busy
+                ? (mode === "signin" ? "Signing in…" : "Creating account…")
+                : (mode === "signin" ? "Sign in" : "Create account")}
+            </button>
+
+            <div className="alt">
+              {mode === "signin" ? (
+                <>New to Plotwire?{" "}
+                  <button type="button" onClick={() => switchMode("signup")}>Create an account</button>
+                </>
+              ) : (
+                <>Already have an account?{" "}
+                  <button type="button" onClick={() => switchMode("signin")}>Sign in</button>
+                </>
+              )}
+            </div>
+
+            {!isConfigured && (
+              <div className="note">The cloud connection isn't set up yet — check the environment variables.</div>
+            )}
+          </form>
+        )}
       </div>
     </div>
   );
@@ -76,7 +174,7 @@ const CSS = `
 .login-main{flex:1; display:flex; align-items:center; justify-content:center; padding:32px}
 .login-card{width:100%; max-width:380px}
 .login-card h1{font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600; letter-spacing:-.02em}
-.login-card .sub{color:#697785; font-size:14px; margin-top:6px; margin-bottom:26px}
+.login-card .sub{color:#697785; font-size:14px; margin-top:6px; margin-bottom:26px; line-height:1.55}
 .field{display:block; margin-bottom:16px}
 .field span{display:block; font-size:12.5px; font-weight:500; color:#3A4654; margin-bottom:6px}
 .field input{width:100%; height:46px; border-radius:11px; border:1px solid #E6EBF1; background:#fff; padding:0 14px; font-size:14.5px; color:#0E141B; outline:none; transition:border-color .15s, box-shadow .15s}
@@ -86,6 +184,11 @@ const CSS = `
 .submit:hover:not(:disabled){background:#52C4D5}
 .submit:active:not(:disabled){transform:translateY(1px)}
 .submit:disabled{opacity:.6; cursor:default}
-.note{margin-top:16px; font-size:12.5px; color:#9AA6B2; text-align:center}
+.alt{margin-top:18px; font-size:13.5px; color:#697785; text-align:center}
+.alt button{background:none; border:none; padding:0; font:inherit; color:#22808F; font-weight:600; cursor:pointer}
+.alt button:hover{color:#3FB7C9; text-decoration:underline}
+.note{margin-top:16px; font-size:12.5px; color:#9AA6B2; text-align:center; line-height:1.5}
+.check-badge{width:52px; height:52px; border-radius:14px; background:#ECF8FA; display:grid; place-items:center; margin-bottom:18px}
+.check-badge svg{width:28px; height:28px}
 @media (max-width:760px){.login-rail{display:none}}
 `;
