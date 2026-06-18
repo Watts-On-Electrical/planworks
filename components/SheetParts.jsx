@@ -18,6 +18,7 @@ import { findFurniture, FURNITURE, FURNITURE_VIEWBOX, FURNITURE_COLOUR } from "@
 import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
+import { ensurePdfjs } from "@/lib/pdfjs";
 import { useEditor } from "@/store/editorStore";
 
 // Per-project title block. The editor publishes the *effective* title block
@@ -801,10 +802,11 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
     let dead = false;
     pageRef.current = null;
     const src = bgImage?.pdfSrc;
-    if (!src || typeof window === "undefined" || !window.pdfjsLib) return;
+    if (!src || typeof window === "undefined") return;
     (async () => {
       try {
-        const pdf = await window.pdfjsLib.getDocument(src).promise;
+        const pdfjs = await ensurePdfjs();
+        const pdf = await pdfjs.getDocument(src).promise;
         const page = await pdf.getPage(bgImage.pdfPage || 1);
         if (dead) return;
         pageRef.current = page;

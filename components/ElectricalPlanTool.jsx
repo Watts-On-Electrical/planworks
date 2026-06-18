@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { listProjects, getProjectData, insertProject, updateProjectRow, deleteProjectRow } from "@/lib/db";
 import { uploadPlanImage, signPlanImages, deletePlanImages, dataUrlToBlob, blobToDataUrl } from "@/lib/planImages";
+import { ensurePdfjs } from "@/lib/pdfjs";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
   findSymbol, findCategory, resolveColours,
@@ -508,19 +509,9 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     if (isPdf) {
       setPdfLoading(true);
       try {
-        if (!window.pdfjsLib) {
-          await new Promise((res, rej) => {
-            const s = document.createElement("script");
-            s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-            s.onload = res;
-            s.onerror = () => rej(new Error("Failed to load PDF library"));
-            document.head.appendChild(s);
-          });
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-        }
+        const pdfjs = await ensurePdfjs();
         const buf = await file.arrayBuffer();
-        const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+        const pdf = await pdfjs.getDocument({ data: buf }).promise;
         // Just use first page for now (multi-page is a future feature)
         const page = await pdf.getPage(1);
 
