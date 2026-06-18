@@ -816,14 +816,21 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
     return () => { dead = true; };
   }, [bgImage?.pdfSrc, bgImage?.pdfPage]);
 
-  // Re-render only the visible window after the view settles. The on-screen
-  // canvas never exceeds the viewport, so memory stays flat at any zoom, while
-  // the vector source keeps it perfectly sharp.
+  // Re-render the visible window whenever the on-screen geometry SETTLES.
+  // We watch the wrapper's real screen rect rather than React zoom/pan props,
+  // because pinch-zoom on touch devices is written straight to the DOM and does
+  // NOT update those props until you lift your fingers — so a prop-based trigger
+  // redraws at the stale pre-pinch scale and looks blurry. Watching the actual
+  // rect catches every case: wheel zoom, imperative pinch, pan and resize. The
+  // on-screen canvas never exceeds the viewport, so memory stays flat at any
+  // zoom while the vector source keeps it perfectly sharp.
   useEffect(() => {
-    const page = pageRef.current;
-    const wrap = wrapRef.current, cv = canvasRef.current;
-    if (!page || !wrap || !cv || !imageDisplay) return;
-    const id = setTimeout(() => {
+    if (!imageDisplay) return;
+
+    const renderWindow = () => {
+      const page = pageRef.current;
+      const wrap = wrapRef.current, cv = canvasRef.current;
+      if (!page || !wrap || !cv) return;
       try {
         const pr = wrap.getBoundingClientRect();           // page rect on screen (post-transform)
         if (pr.width < 2 || pr.height < 2) return;
@@ -870,9 +877,22 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         taskRef.current = task;
         task.promise.catch(() => {});
       } catch (e) { /* transient during fast moves — next settle re-renders */ }
-    }, 150);
-    return () => clearTimeout(id);
-  }, [loaded, zoom, pan?.x, pan?.y, imageDisplay?.x, imageDisplay?.y, imageDisplay?.w, imageDisplay?.h, viewportRef]);
+    };
+
+    // Poll the wrapper's screen rect; redraw once it has held still ~130ms.
+    let lastKey = "", changedAt = 0, done = false;
+    const tick = () => {
+      const wrap = wrapRef.current;
+      if (!wrap) return;
+      const r = wrap.getBoundingClientRect();
+      const key = Math.round(r.left) + "|" + Math.round(r.top) + "|" +
+                  Math.round(r.width) + "|" + Math.round(r.height);
+      if (key !== lastKey) { lastKey = key; changedAt = Date.now(); done = false; }
+      else if (!done && Date.now() - changedAt >= 130) { done = true; renderWindow(); }
+    };
+    const iv = setInterval(tick, 60);
+    return () => clearInterval(iv);
+  }, [loaded, imageDisplay?.x, imageDisplay?.y, imageDisplay?.w, imageDisplay?.h, viewportRef]);
 
   if (!imageDisplay) return null;
   return (
