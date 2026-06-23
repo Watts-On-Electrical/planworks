@@ -3,45 +3,24 @@
 import React, { useState } from "react";
 import { startCheckout } from "@/lib/billingClient";
 
-// NOTE: bullet copy below is intentionally light and seat-based for launch.
-// Per-tier feature *limits* are Phase B — once Joe defines them, the bullets
-// here are the place to spell them out. Keep prices in sync with the Stripe
-// products (Solo £15 / Pro £29 / Team £59, monthly).
-const PLANS = [
-  {
-    id: "solo",
-    name: "Solo",
-    price: 15,
-    blurb: "For sole traders running their own jobs.",
-    features: ["1 user", "Unlimited plans & quotes", "Auto bill of quantities", "Branded PDF export", "Cloud sync across devices"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 29,
-    popular: true,
-    blurb: "For growing firms with a couple of estimators.",
-    features: ["Up to 3 users", "Everything in Solo", "Priority email support", "Early access to new tools"],
-  },
-  {
-    id: "team",
-    name: "Team",
-    price: 59,
-    blurb: "For established contractors with a full office.",
-    features: ["Up to 10 users", "Everything in Pro", "Shared company templates", "Onboarding help"],
-  },
+const FEATURES = [
+  "Unlimited plans & quotes",
+  "Automatic bill of quantities",
+  "Branded PDF export",
+  "All your jobs in one place",
+  "Unlimited users on your account",
 ];
 
 export default function Paywall({ user, onSignOut, onManageBilling, hasLapsed = false, notice = "" }) {
-  const [busyPlan, setBusyPlan] = useState(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const choose = async (planId) => {
-    setError(""); setBusyPlan(planId);
+  const choose = async () => {
+    setError(""); setBusy(true);
     try {
-      await startCheckout(planId); // redirects away on success
+      await startCheckout(); // redirects away on success
     } catch (e) {
-      setBusyPlan(null);
+      setBusy(false);
       setError(e?.message || "Couldn't start checkout. Try again in a moment.");
     }
   };
@@ -64,11 +43,11 @@ export default function Paywall({ user, onSignOut, onManageBilling, hasLapsed = 
 
       <main className="pay-main">
         <div className="pay-intro">
-          <div className="eyebrow">Choose your plan</div>
+          <div className="eyebrow">{hasLapsed ? "Welcome back" : "Subscribe to continue"}</div>
           <h1>{hasLapsed ? "Pick up where you left off" : "Start your 14-day free trial"}</h1>
           <p className="lede">
             {hasLapsed
-              ? "Your subscription isn't active. Choose a plan to carry on — your drawings are safe."
+              ? "Your subscription isn't active. Re-subscribe to carry on — your drawings are safe."
               : "Full access while you trial. We'll take your card now, but won't charge until day 14 — cancel any time before then."}
           </p>
         </div>
@@ -77,38 +56,29 @@ export default function Paywall({ user, onSignOut, onManageBilling, hasLapsed = 
           <div className={`pay-banner ${error ? "is-error" : ""}`}>{error || notice}</div>
         )}
 
-        <div className="cards">
-          {PLANS.map((p) => (
-            <div key={p.id} className={`card ${p.popular ? "is-popular" : ""}`}>
-              {p.popular && <div className="badge">Most popular</div>}
-              <div className="card-name">{p.name}</div>
-              <div className="card-price">
-                <span className="amt">£{p.price}</span><span className="per">/month</span>
-              </div>
-              <p className="card-blurb">{p.blurb}</p>
-              <ul className="feat">
-                {p.features.map((f) => (
-                  <li key={f}>
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 13l4 4L19 7" stroke="#22808F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                className={`pick ${p.popular ? "primary" : "ghost"}`}
-                onClick={() => choose(p.id)}
-                disabled={busyPlan !== null}
-              >
-                {busyPlan === p.id ? "Redirecting…" : (hasLapsed ? `Choose ${p.name}` : "Start free trial")}
-              </button>
-            </div>
-          ))}
+        <div className="card">
+          <div className="card-name">Plotwire</div>
+          <div className="card-price">
+            <span className="amt">£15</span><span className="per">/month</span>
+          </div>
+          <p className="card-blurb">One simple plan. Unlimited users on your account.</p>
+          <ul className="feat">
+            {FEATURES.map((f) => (
+              <li key={f}>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 13l4 4L19 7" stroke="#22808F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="pick primary" onClick={choose} disabled={busy}>
+            {busy ? "Redirecting…" : (hasLapsed ? "Re-subscribe" : "Start free trial")}
+          </button>
+          <div className="reassure">
+            <span>14-day free trial</span><i /><span>Cancel anytime</span>
+          </div>
         </div>
 
-        <div className="reassure">
-          <span>14-day free trial</span><i /><span>Cancel anytime</span><i /><span>Secure checkout by Stripe</span>
-        </div>
+        <div className="secure">Secure checkout by Stripe</div>
 
         {hasLapsed && onManageBilling && (
           <button type="button" className="manage-link" onClick={onManageBilling}>
@@ -135,41 +105,30 @@ const CSS = `
 .wordmark b{color:#3FB7C9}
 .signout{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#c6d2de; font:inherit; font-size:12.5px; padding:8px 13px; border-radius:9px; cursor:pointer; transition:background .15s, border-color .15s; max-width:46vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .signout:hover{background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2)}
-.pay-main{position:relative; max-width:1040px; margin:0 auto; padding:14px 24px 56px}
-.pay-intro{text-align:center; max-width:600px; margin:14px auto 30px}
+.pay-main{position:relative; max-width:460px; margin:0 auto; padding:18px 24px 56px}
+.pay-intro{text-align:center; margin:18px auto 28px}
 .eyebrow{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:#3FB7C9; margin-bottom:14px}
-.pay-intro h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:34px; line-height:1.1; letter-spacing:-.02em}
-.lede{color:#aab8c6; font-size:15px; line-height:1.6; margin-top:14px}
-.pay-banner{max-width:600px; margin:0 auto 26px; text-align:center; font-size:13.5px; color:#d8e2ec; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:11px 14px}
+.pay-intro h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:30px; line-height:1.12; letter-spacing:-.02em}
+.lede{color:#aab8c6; font-size:14.5px; line-height:1.6; margin-top:14px}
+.pay-banner{margin:0 auto 22px; text-align:center; font-size:13.5px; color:#d8e2ec; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:11px; padding:11px 14px}
 .pay-banner.is-error{color:#FECACA; background:rgba(185,28,28,.14); border-color:rgba(254,202,202,.3)}
-.cards{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:start}
-.card{position:relative; background:#fff; color:#0E141B; border-radius:18px; padding:26px 22px 24px; border:1px solid rgba(255,255,255,.5); box-shadow:0 18px 40px -22px rgba(0,0,0,.5)}
-.card.is-popular{border:2px solid #3FB7C9; box-shadow:0 22px 50px -20px rgba(63,183,201,.5); transform:translateY(-6px)}
-.badge{position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:#3FB7C9; color:#08313a; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:500; padding:5px 12px; border-radius:999px; white-space:nowrap}
-.card-name{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18px}
+.card{position:relative; background:#fff; color:#0E141B; border-radius:18px; padding:28px 26px 24px; border:2px solid #3FB7C9; box-shadow:0 22px 50px -20px rgba(63,183,201,.5)}
+.card-name{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:19px}
 .card-price{margin-top:8px; display:flex; align-items:baseline; gap:4px}
-.card-price .amt{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:38px; letter-spacing:-.02em; color:#0E141B}
-.card-price .per{font-size:13.5px; color:#697785}
-.card-blurb{color:#697785; font-size:13px; line-height:1.5; margin-top:8px; min-height:38px}
-.feat{list-style:none; margin:18px 0 22px; display:flex; flex-direction:column; gap:11px}
-.feat li{display:flex; align-items:flex-start; gap:9px; font-size:13.5px; color:#3A4654; line-height:1.4}
-.feat svg{width:17px; height:17px; flex:0 0 17px; margin-top:1px}
-.pick{width:100%; height:46px; border-radius:11px; font:inherit; font-weight:600; font-size:14.5px; cursor:pointer; transition:background .15s, transform .1s, border-color .15s}
+.card-price .amt{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:44px; letter-spacing:-.02em; color:#0E141B}
+.card-price .per{font-size:14px; color:#697785}
+.card-blurb{color:#697785; font-size:13px; line-height:1.5; margin-top:8px}
+.feat{list-style:none; margin:20px 0 22px; display:flex; flex-direction:column; gap:12px}
+.feat li{display:flex; align-items:flex-start; gap:9px; font-size:14px; color:#3A4654; line-height:1.4}
+.feat svg{width:18px; height:18px; flex:0 0 18px; margin-top:1px}
+.pick{width:100%; height:48px; border-radius:11px; font:inherit; font-weight:600; font-size:15px; cursor:pointer; transition:background .15s, transform .1s; border:none; background:#3FB7C9; color:#08313a}
+.pick:hover:not(:disabled){background:#52C4D5}
+.pick:active:not(:disabled){transform:translateY(1px)}
 .pick:disabled{opacity:.6; cursor:default}
-.pick.primary{border:none; background:#3FB7C9; color:#08313a}
-.pick.primary:hover:not(:disabled){background:#52C4D5}
-.pick.primary:active:not(:disabled){transform:translateY(1px)}
-.pick.ghost{background:#fff; border:1px solid #D7DEE6; color:#22808F}
-.pick.ghost:hover:not(:disabled){border-color:#3FB7C9; background:#F6FbfC}
-.pick.ghost:active:not(:disabled){transform:translateY(1px)}
-.reassure{display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-top:30px; color:#8b9bab; font-size:12.5px; font-family:'JetBrains Mono',monospace; letter-spacing:.04em}
-.reassure i{width:4px; height:4px; border-radius:50%; background:#4a5b6c}
-.manage-link{display:block; margin:22px auto 0; background:none; border:none; color:#9fb0c0; font:inherit; font-size:13px; text-decoration:underline; cursor:pointer}
+.reassure{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:16px; color:#8b9bab; font-size:12px; font-family:'JetBrains Mono',monospace; letter-spacing:.04em}
+.reassure i{width:4px; height:4px; border-radius:50%; background:#c2ccd6}
+.secure{text-align:center; margin-top:22px; color:#8b9bab; font-size:12px; font-family:'JetBrains Mono',monospace; letter-spacing:.06em}
+.manage-link{display:block; margin:18px auto 0; background:none; border:none; color:#9fb0c0; font:inherit; font-size:13px; text-decoration:underline; cursor:pointer}
 .manage-link:hover{color:#cfdae4}
-@media (max-width:820px){
-  .cards{grid-template-columns:1fr; max-width:440px; margin:0 auto}
-  .card.is-popular{transform:none}
-  .pay-intro h1{font-size:28px}
-}
-@media (prefers-reduced-motion:reduce){ .card.is-popular{transform:none} }
+@media (max-width:520px){ .pay-intro h1{font-size:25px} }
 `;
