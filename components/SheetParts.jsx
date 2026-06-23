@@ -15,6 +15,7 @@ import {
   getPaletteSymbols, getPaletteGroups,
 } from "@/lib/symbols.jsx";
 import { findFurniture, FURNITURE, FURNITURE_VIEWBOX, FURNITURE_COLOUR } from "@/lib/furniture.jsx";
+import { drawSymbol } from "@/lib/symbolPdf";
 import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
@@ -2584,6 +2585,77 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
  * Renders a clean copy of the sheet at 1:1, full-screen,
  * with the rest of the app hidden via the print stylesheet.
  * ========================================================================= */
+// ---------------------------------------------------------------------------
+// Vector-symbol export helpers. The print DOM already renders every symbol as
+// real SVG (tagged data-sym-glyph); we read its shapes + resolved colours
+// straight from the DOM and hand them to the pdf-lib engine, so the export
+// never has to rasterise symbols (which is what crashed iPad and shifted them).
+// ---------------------------------------------------------------------------
+function cssColorToHex(c) {
+  if (!c || c === "none" || c === "transparent") return null;
+  if (c[0] === "#") return c;
+  const m = c.match(/rgba?\(([^)]+)\)/i);
+  if (!m) return null;
+  const parts = m[1].split(",").map((s) => parseFloat(s));
+  if (parts.length >= 4 && parts[3] === 0) return null; // fully transparent
+  const [r, g, b] = parts;
+  const hx = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  return `#${hx(r)}${hx(g)}${hx(b)}`;
+}
+
+function parseGroupTransform(str) {
+  const out = { tx: 0, ty: 0, rot: 0 };
+  if (!str) return out;
+  const t = str.match(/translate\(\s*([-\d.]+)[ ,]+([-\d.]+)/);
+  if (t) { out.tx = parseFloat(t[1]); out.ty = parseFloat(t[2]); }
+  const r = str.match(/rotate\(\s*([-\d.]+)/);
+  if (r) out.rot = parseFloat(r[1]);
+  return out;
+}
+
+// Walk a glyph <svg> and turn its primitive children into engine prims.
+function glyphToPrims(glyphEl) {
+  const prims = [];
+  const nodes = glyphEl.querySelectorAll("path, line, rect, circle, polyline, polygon");
+  nodes.forEach((el) => {
+    const cs = window.getComputedStyle(el);
+    const fill = cssColorToHex(cs.fill);
+    const stroke = cssColorToHex(cs.stroke);
+    if (!fill && !stroke) return;
+    const strokeWidth = parseFloat(cs.strokeWidth) || 1.5;
+    let dash = null;
+    if (cs.strokeDasharray && cs.strokeDasharray !== "none") {
+      dash = cs.strokeDasharray.split(/[ ,]+/).map((n) => parseFloat(n)).filter((n) => !isNaN(n));
+      if (!dash.length) dash = null;
+    }
+    const tag = el.tagName.toLowerCase();
+    const base = { fill, stroke, strokeWidth, strokeDasharray: dash };
+    const num = (a) => parseFloat(el.getAttribute(a)) || 0;
+    if (tag === "path") prims.push({ ...base, kind: "path", d: el.getAttribute("d") || "" });
+    else if (tag === "line") prims.push({ ...base, kind: "line", x1: num("x1"), y1: num("y1"), x2: num("x2"), y2: num("y2") });
+    else if (tag === "rect") prims.push({ ...base, kind: "rect", x: num("x"), y: num("y"), w: num("width"), h: num("height") });
+    else if (tag === "circle") prims.push({ ...base, kind: "circle", cx: num("cx"), cy: num("cy"), r: num("r") });
+    else if (tag === "polyline" || tag === "polygon") {
+      const pts = (el.getAttribute("points") || "").trim().split(/\s+/).map((p) => p.split(",").map(Number)).filter((p) => p.length === 2);
+      prims.push({ ...base, kind: tag, points: pts });
+    }
+  });
+  return prims;
+}
+
+// Build a placement job (in PDF points) for one glyph element.
+function glyphToJob(glyphEl, DRAW, sx, sy, PAGE_H) {
+  const size = parseFloat(glyphEl.getAttribute("width")) || 0;
+  if (!size) return null;
+  const g = glyphEl.parentNode; // the <g> carrying translate()/rotate()
+  const { tx, ty, rot } = parseGroupTransform(g && g.getAttribute ? g.getAttribute("transform") : "");
+  const half = size / 2;
+  const localX = tx + half, localY = ty + half;      // symbol centre in DRAW space
+  const cx = (DRAW.x + localX) * sx;                  // → PDF points
+  const cy = PAGE_H - (DRAW.y + localY) * sy;         // pdf-lib is bottom-left
+  return { prims: glyphToPrims(glyphEl), cx, cy, size: size * sx, rotationDeg: rot };
+}
+
 export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1, DRAW, onClose, onPrint }) {
   const { meta, notes } = project;
   const sheets = project.sheets && project.sheets.length
@@ -2648,7 +2720,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
   const downloadPDF = async () => {
     setPdfBusy(true);
     try {
-      const [{ PDFDocument, degrees }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
+      const [{ PDFDocument, degrees, rgb }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
       const pageEls = document.querySelectorAll("#print-root .print-page");
       if (!pageEls.length) { setPdfBusy(false); return; }
@@ -2732,6 +2804,19 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
           if (sheetRoot) { saved.push([sheetRoot, "background", sheetRoot.style.background]); sheetRoot.style.background = "transparent"; }
         }
 
+        // Symbols → true vector. Read each glyph's shapes + placement from the
+        // DOM now, then HIDE the glyphs so html2canvas never rasterises them —
+        // that raster of many symbols is what exhausts iOS Safari and crashes
+        // the export. The symbols are redrawn as crisp vector below.
+        const glyphEls = Array.from(el.querySelectorAll('[data-sym-glyph]'));
+        const symbolJobs = [];
+        for (const gEl of glyphEls) {
+          const job = glyphToJob(gEl, DRAW, sx, sy, PAGE_H);
+          if (job) symbolJobs.push(job);
+          saved.push([gEl, "visibility", gEl.style.visibility]);
+          gEl.style.visibility = "hidden";
+        }
+
         let overlayCanvas;
         try {
           overlayCanvas = await html2canvas(el, {
@@ -2746,6 +2831,11 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 
         const png = await out.embedPng(overlayCanvas.toDataURL("image/png"));
         page.drawImage(png, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+
+        // Draw the symbols on top, as vector, exactly where they sit on screen.
+        for (const job of symbolJobs) {
+          try { drawSymbol(page, job, { rgb, degrees }); } catch (e) { /* skip a bad glyph, never fail the export */ }
+        }
       }
 
       const bytes = await out.save();
@@ -3051,7 +3141,7 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
           return (
             <g key={item.id}
                transform={`translate(${item.x - half} ${item.y - half}) rotate(${item.rotation} ${half} ${half})`}>
-              <svg x={0} y={0} width={itemSize} height={itemSize} viewBox={VIEWBOX}
+              <svg data-sym-glyph="" x={0} y={0} width={itemSize} height={itemSize} viewBox={VIEWBOX}
                    style={{ color: cols.body, "--feeder": cols.feeder, overflow: "visible" }}>
                 {sym.svg}
               </svg>

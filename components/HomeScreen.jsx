@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { listProjects, localProjectsPending, migrateLocalProjects } from "@/lib/db";
 import { signPlanImages } from "@/lib/planImages";
+import { useApp } from "@/components/AppShell";
 
 /* Sheet geometry — must match ElectricalPlanTool */
 const SHEET = { width: 1587, height: 1123, margin: 18, legendWidth: 230, notesWidth: 280, titleHeight: 110 };
@@ -83,6 +84,7 @@ function PlanThumb({ project }) {
 }
 
 export default function HomeScreen({ onOpenProject, onNewProject, onImport, theme, onToggleTheme, user, onSignOut }) {
+  const { manageBilling, subscription } = useApp();
   const [cards, setCards] = useState(null);
   const [pending, setPending] = useState(0);   // local jobs awaiting upload
   const [migrating, setMigrating] = useState(false);
@@ -186,6 +188,14 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
                 <div style={{ textAlign: "right" }}><div className="nm">{displayName(user) || "Account"}</div><div className="sub">{user?.email || ""}</div></div>
                 <div className="pic">{(user?.email || displayName(user) || "?").slice(0, 2).toUpperCase()}</div>
               </div>
+              {subscription?.status === "trialing" && (
+                <span className="trial-chip" title="You're on a free trial">Trial</span>
+              )}
+              {manageBilling && (
+                <button className="theme-toggle" onClick={manageBilling} title="Manage billing" aria-label="Manage billing">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/></svg>
+                </button>
+              )}
               <button className="theme-toggle" onClick={onSignOut} title="Sign out" aria-label="Sign out">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
               </button>
@@ -324,6 +334,7 @@ const CSS = `
 .pw-home .account .nm{font-size:13px; font-weight:500; line-height:1.15}
 .pw-home .account .sub{font-size:11px; color:var(--muted)}
 .pw-home .account .pic{width:32px; height:32px; border-radius:50%; background:var(--brand); color:#fff; display:grid; place-items:center; font-weight:600; font-size:12px; font-family:'Space Grotesk',sans-serif}
+.pw-home .trial-chip{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#08313a; background:#3FB7C9; padding:4px 8px; border-radius:999px; font-weight:600; white-space:nowrap}
 .pw-home .theme-toggle{width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--muted); display:grid; place-items:center; cursor:pointer; transition:all .16s}
 .pw-home .theme-toggle:hover{color:var(--ink); border-color:var(--muted-2)}
 .pw-home .theme-toggle svg{width:18px; height:18px}
