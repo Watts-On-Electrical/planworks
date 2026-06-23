@@ -33,7 +33,12 @@ export default function AppShell({ children }) {
   const settingsRef = useRef({}); // latest full settings blob, so saves merge
 
   // --- Billing gate state ---
-  const subscription = useSubscription(session);
+  // Billing ships dark: the paywall only enforces when this flag is explicitly
+  // turned on in the environment. Until then the app behaves exactly as before
+  // (no gate), so a half-configured Stripe can never lock users out. Set
+  // NEXT_PUBLIC_BILLING_ENABLED=true in Vercel once Stripe is live and tested.
+  const BILLING_ENABLED = process.env.NEXT_PUBLIC_BILLING_ENABLED === "true";
+  const subscription = useSubscription(BILLING_ENABLED ? session : null);
   const [activating, setActivating] = useState(false); // returning from Stripe Checkout
   const [billingNotice, setBillingNotice] = useState("");
 
@@ -136,19 +141,21 @@ export default function AppShell({ children }) {
   if (recovery) return <LoginScreen recovery onRecovered={() => setRecovery(false)} />;
   if (!session) return <LoginScreen />;
 
-  // Signed in — now check billing access.
-  if (subscription.loading) return <Splash />;
-  if (activating && !subscription.isActive) return <Splash label="Activating your subscription…" />;
-  if (!subscription.isActive) {
-    return (
-      <Paywall
-        user={session?.user || null}
-        onSignOut={signOut}
-        onManageBilling={manageBilling}
-        hasLapsed={Boolean(subscription.sub)}
-        notice={billingNotice}
-      />
-    );
+  // Signed in — enforce billing access only when billing is switched on.
+  if (BILLING_ENABLED) {
+    if (subscription.loading) return <Splash />;
+    if (activating && !subscription.isActive) return <Splash label="Activating your subscription…" />;
+    if (!subscription.isActive) {
+      return (
+        <Paywall
+          user={session?.user || null}
+          onSignOut={signOut}
+          onManageBilling={manageBilling}
+          hasLapsed={Boolean(subscription.sub)}
+          notice={billingNotice}
+        />
+      );
+    }
   }
 
   return (

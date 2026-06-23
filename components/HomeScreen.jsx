@@ -191,7 +191,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, them
               {subscription?.status === "trialing" && (
                 <span className="trial-chip" title="You're on a free trial">Trial</span>
               )}
-              {manageBilling && (
+              {manageBilling && subscription?.sub && (
                 <button className="theme-toggle" onClick={manageBilling} title="Manage billing" aria-label="Manage billing">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/></svg>
                 </button>
