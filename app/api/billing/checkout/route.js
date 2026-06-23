@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { bearer, userFromToken, PRICE_BY_PLAN, APP_URL, TRIAL_DAYS } from "@/lib/billing";
+import { bearer, userFromToken, STRIPE_PRICE, APP_URL, TRIAL_DAYS } from "@/lib/billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,15 +11,13 @@ export async function POST(req) {
     const user = await userFromToken(bearer(req));
     if (!user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
 
-    const { plan } = await req.json().catch(() => ({}));
-    const price = PRICE_BY_PLAN[plan];
-    if (!price) return NextResponse.json({ error: "Unknown plan." }, { status: 400 });
+    const price = STRIPE_PRICE;
+    if (!price) return NextResponse.json({ error: "Billing isn't configured yet." }, { status: 400 });
 
     const admin = getSupabaseAdmin();
     const stripe = getStripe();
 
-    // Reuse an existing Stripe customer if this user has subscribed before, so a
-    // lapsed-then-resubscribing user keeps one customer record (and card on file).
+    // Reuse an existing Stripe customer if this user has subscribed before.
     const { data: existing } = await admin
       .from("subscriptions")
       .select("stripe_customer_id")
