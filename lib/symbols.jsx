@@ -94,13 +94,13 @@ export const SYMBOLS = {
       { id: "sock_fcu", name: "Switched Fused Spur", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
           <rect x="10" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <rect x="10" y="13" width="12" height="6" rx="1.6"/><path d="M16 13V7M16 19v6"/><path d="M19 11l3-3"/>
+          <rect x="10" y="13" width="12" height="6" rx="1.6"/><path d="M16 13V7"/><path d="M19 11l3-3"/>
         </g>
       )},
       { id: "spur_unsw", name: "Unswitched Fused Spur", svg: (
         <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
           <rect x="10" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity="0.32" stroke="none"/>
-          <rect x="10" y="13" width="12" height="6" rx="1.6"/><path d="M16 13V7M16 19v6"/>
+          <rect x="10" y="13" width="12" height="6" rx="1.6"/><path d="M16 13V7"/>
         </g>
       )},
     ],
@@ -641,4 +641,5 @@ export function getPaletteGroups() {
 export function getPaletteSymbols() {
   return getPaletteGroups().flatMap(g => g.items);
 }
+
 
