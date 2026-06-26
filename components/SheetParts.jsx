@@ -791,6 +791,14 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
 /* ----------------------------------------------------------------------------
  * DRAWING AREA â€” the main canvas where the plan + symbols + annotations live
  * ------------------------------------------------------------------------- */
+function sharpPlanEnabled() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("sharpplan") === "1") return true;
+  } catch { /* ignore */ }
+  return process.env.NEXT_PUBLIC_SHARP_PLAN === "true";
+}
+
 function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
@@ -903,7 +911,7 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
       width: imageDisplay.w, height: imageDisplay.h,
       background: "#ffffff", overflow: "hidden", pointerEvents: "none",
     }}>
-      <canvas ref={canvasRef} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }} />
+      <canvas ref={canvasRef} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", ...(sharpPlanEnabled() ? { transform: "translateZ(0)", willChange: "transform", backfaceVisibility: "hidden" } : null) }} />
     </div>
   );
 }
@@ -3259,4 +3267,5 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
+
 
