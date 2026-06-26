@@ -1,11 +1,11 @@
-/* ============================================================================
- * SYMBOL LIBRARY — UK Architectural Plan Style
+﻿/* ============================================================================
+ * SYMBOL LIBRARY â€” UK Architectural Plan Style
  * Aligned with industry-standard residential MEP legends
  * (Preston Baker / Yorkshire Homes style reference).
  *
  * Two layers:
- *   1. SYMBOLS — visual definitions, grouped by category
- *   2. SYMBOL_META — legend descriptions + mounting heights (AFL)
+ *   1. SYMBOLS â€” visual definitions, grouped by category
+ *   2. SYMBOL_META â€” legend descriptions + mounting heights (AFL)
  * ========================================================================= */
 
 "use client";
@@ -18,7 +18,7 @@ const FEEDER = 1.0;
 export const CATEGORY_COLOURS = {
   sockets:   { primary: "#1d4ed8", soft: "#93c5fd", label: "Blue"   },
   switches:  { primary: "#15803d", soft: "#86efac", label: "Green"  },
-  lighting:  { primary: "#b45309", soft: "#fcd34d", label: "Amber"  },
+  lighting:  { primary: "#ea580c", soft: "#fcd34d", label: "Amber"  },
   detectors: { primary: "#b91c1c", soft: "#fca5a5", label: "Red"    },
   security:  { primary: "#7c2d12", soft: "#fdba74", label: "Burnt"  },
   fixtures:  { primary: "#6d28d9", soft: "#c4b5fd", label: "Violet" },
@@ -463,21 +463,21 @@ export const SYMBOLS = {
 export const VIEWBOX = "0 0 32 32";
 
 /* ----------------------------------------------------------------------------
- * SYMBOL_META — descriptions + mounting heights, phrased to match industry-
+ * SYMBOL_META â€” descriptions + mounting heights, phrased to match industry-
  * standard UK residential MEP legends.
  * ------------------------------------------------------------------------- */
 export const SYMBOL_META = {
-  // Sockets — low level
+  // Sockets â€” low level
   sock_sso_ll:     { description: "Single Socket Low Level",                height: "450mm AFL" },
   sock_dso_ll:     { description: "Double Socket Low Level",                height: "450mm AFL" },
   sock_dso_usb_ll: { description: "Double Socket Low Level (USB-C)",        height: "450mm AFL" },
 
-  // Sockets — high level
+  // Sockets â€” high level
   sock_sso_hl:     { description: "Single Socket High Level",               height: "1100mm AFL" },
   sock_dso_hl:     { description: "Double Socket High Level",               height: "1100mm AFL" },
   sock_dso_usb_hl: { description: "Double Socket High Level (USB-C)",       height: "1100mm AFL" },
 
-  // Sockets — specialist
+  // Sockets â€” specialist
   sock_2a:         { description: "2A Socket Outlet",                       height: "450mm AFL" },
   sock_cooker:     { description: "Cooker Outlet",                          height: "1100mm AFL" },
   sock_shaver:     { description: "Shaver Socket",                          height: "1200mm AFL" },
@@ -501,7 +501,7 @@ export const SYMBOL_META = {
   lt_pendant:        { description: "Pendant Light",                                 height: "Ceiling" },
   lt_downlight:      { description: "Ceiling mounted downlight",                     height: "Ceiling" },
   lt_downlight_ip:   { description: "Ceiling or under cabinet mounted downlight IP Rated", height: "Ceiling / under cabinet" },
-  lt_batten:         { description: "Light fitting — Batten Holder (Ceiling / Wall)", height: "Ceiling / wall" },
+  lt_batten:         { description: "Light fitting â€” Batten Holder (Ceiling / Wall)", height: "Ceiling / wall" },
   lt_wall:           { description: "Wall Light",                                    height: "1800mm AFL" },
   lt_strip:          { description: "LED Strip Lighting",                            height: "Per location" },
   lt_emergency:      { description: "Emergency Lighting",                            height: "Ceiling" },
@@ -528,11 +528,11 @@ export const SYMBOL_META = {
   fx_ext_tap:        { description: "External Tap (electrically isolated)",                              height: "Per location" },
   fx_doorbell:       { description: "Door Bell Push",                                                    height: "1200mm AFL" },
   fx_motor:          { description: "Motor / Plant Connection",                                          height: "Per location" },
-  fx_consumer:       { description: "Consumer Unit — switches to between",                               height: "1350–1450mm AFL" },
+  fx_consumer:       { description: "Consumer Unit â€” switches to between",                               height: "1350â€“1450mm AFL" },
   fx_meter:          { description: "Electrical Meter Box (refer to site plans for plot locations)",     height: "Per site plan" },
   fx_isolator:       { description: "Isolator Switch",                                                   height: "1500mm AFL" },
   fx_domed:          { description: "Domed compact fitting (chrome collar)",                             height: "Ceiling" },
-  mk_csp:            { description: "CSP location — set out on Preston Baker site drawings",             height: "Per site plan" },
+  mk_csp:            { description: "CSP location â€” set out on Preston Baker site drawings",             height: "Per site plan" },
 
   // Data
   data_point:    { description: "Data Point (Cat5e / Cat6)",                 height: "450mm AFL" },
@@ -545,7 +545,7 @@ export const SYMBOL_META = {
   ht_uf:         { description: "Underfloor Heating Zone",                   height: "Floor" },
   ht_wiring_centre:{ description: "Heating Wiring Centre",                  height: "Per location" },
 
-  // Added — isolators, spurs & services
+  // Added â€” isolators, spurs & services
   spur_unsw:       { description: "Unswitched Fused Spur",                  height: "Above worktop / per location" },
   lt_2d:           { description: "2D Surface Fitting",                     height: "Ceiling" },
   iso_dp:          { description: "1 Gang Double Pole Isolator",            height: "1500mm AFL" },
@@ -609,7 +609,7 @@ export function resolveColours(symbolId, mode) {
 }
 
 /* ============================================================================
- * PALETTE_GROUPS — user-facing subcategories. The palette renders these as
+ * PALETTE_GROUPS â€” user-facing subcategories. The palette renders these as
  * labelled sections; search flattens across all of them.
  * ========================================================================= */
 export const PALETTE_GROUPS = [
@@ -641,3 +641,4 @@ export function getPaletteGroups() {
 export function getPaletteSymbols() {
   return getPaletteGroups().flatMap(g => g.items);
 }
+
