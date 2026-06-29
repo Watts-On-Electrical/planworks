@@ -827,19 +827,19 @@ const CSS = `
 .cadv__title .sub{font-family:'JetBrains Mono',monospace; font-size:11px; color:#6E7B88}
 .cadv__body{flex:1; display:flex; min-height:0}
 .cadv__rail{flex:0 0 60px; width:60px; background:#F4F6F9; border-right:1px solid rgba(44,62,80,.1); display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0}
-.cadv__tool{position:relative; width:42px; height:42px; border:1px solid transparent; border-radius:10px; background:transparent; color:#54616E; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .14s,color .14s,border-color .14s}
-.cadv__tool:hover{background:#fff; color:#18222D; border-color:rgba(44,62,80,.12)}
+.cadv__tool{position:relative; width:42px; height:42px; border:1px solid transparent; border-radius:10px; background:transparent; color:#2C97A8; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .14s,color .14s,border-color .14s}
+.cadv__tool:hover{background:#fff; color:#1C6F7C; border-color:rgba(44,62,80,.12)}
 .cadv__tool.on{background:#2C3E50; color:#3FB7C9; border-color:#2C3E50}
 .cadv__tool .key{position:absolute; right:4px; bottom:2px; font-family:'JetBrains Mono',monospace; font-size:8.5px; opacity:.55}
-.cadv__workspace{flex:1; position:relative; min-width:0; overflow:hidden; background:radial-gradient(120% 120% at 50% 0%, #243443 0%, #18222D 100%)}
+.cadv__workspace{flex:1; position:relative; min-width:0; overflow:hidden; background:#FFFFFF}
 .cadv__svg{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none}
 .cadv-ink{stroke:#16212B}
 .cadv-poche{fill:#C9D0D8}
 .cadv-paper{fill:#FFFFFF}
 .cadv-sel{stroke:#3FB7C9}
 .cadv-active{stroke:#3FB7C9}
-.cadv-grid-minor{stroke:#93C7D0; opacity:.16}
-.cadv-grid-major{stroke:#93C7D0; opacity:.30}
+.cadv-grid-minor{stroke:#AAC6CE; opacity:.4}
+.cadv-grid-major{stroke:#84AEBA; opacity:.55}
 .cadv-dim{stroke:#2C3E50}
 .cadv-dim-crit{stroke:#C4564B}
 .cadv-boundary{stroke:#38B24A}
@@ -939,4 +939,5 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
