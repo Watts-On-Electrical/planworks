@@ -1,35 +1,35 @@
 ﻿"use client";
 
 /* ============================================================================
- * components/cad/CadSketch.jsx - read-only CAD floor-plan preview (stage 2).
+ * components/cad/CadSketch.jsx - CAD floor-plan sketch screen.
  *
- * Renders a Drawing (the sample plan for now) as proper CAD linework - double
- * line walls with poche, door swing arcs, multi-line windows, dimension
- * strings, room labels, stairs, boundary, grid - with pan + zoom. Strokes use
- * vector-effect:non-scaling-stroke so weights stay constant at any zoom.
- *
- * Drawing tools / selection arrive in later stages; this stage proves the look.
+ * Stage 3 (chunk 1): tool rail + external/internal WALL drawing with ortho
+ * lock, grid snap, live length read-out and snap cursor; plus select / delete /
+ * convert and the contextual inspector + status bar. Built on the verified
+ * engine (lib/cad/plan) and renderer. Still its own isolated /sketch screen.
  * ========================================================================= */
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  T_EXT, T_INT, wallPoly, wallFaces, ptStr, hyp, fmtMM, SAMPLE_PLAN,
+  T_EXT, T_INT, wallPoly, wallFaces, ptStr, hyp, segLen, snap, fmtMM,
+  hitTest, SAMPLE_PLAN,
 } from "@/lib/cad/plan";
 
 const SHEET = { x: -2500, y: -2600, w: 12200, h: 12600 };
 const SCALE_MIN = 0.02, SCALE_MAX = 0.6;
 
 // ------------------------- node renderers -------------------------
-function WallNode({ s }) {
+function WallNode({ s, selected }) {
   const t = s.type === "external" ? T_EXT : T_INT;
-  const sw = s.type === "external" ? 1.4 : 1.1;
+  const cls = selected ? "cadv-sel" : "cadv-ink";
+  const sw = selected ? 2 : (s.type === "external" ? 1.4 : 1.1);
   return (
     <g>
       <polygon points={ptStr(wallPoly(s, t))} className="cadv-poche" stroke="none" />
       {wallFaces(s, t).map((f, i) => (
         <line key={i} x1={f[0][0]} y1={f[0][1]} x2={f[1][0]} y2={f[1][1]}
-          className="cadv-ink" strokeWidth={sw} vectorEffect="non-scaling-stroke" strokeLinecap="square" />
+          className={cls} strokeWidth={sw} vectorEffect="non-scaling-stroke" strokeLinecap="square" />
       ))}
     </g>
   );
@@ -125,23 +125,66 @@ function Tag({ refTxt, x, y }) {
   );
 }
 
+// tool rail glyphs
+function Glyph({ name }) {
+  const paths = {
+    select: <path d="M5 4l14 6-6 2-2 6z" />,
+    ext: <g><path d="M4 8h16M4 16h16" /></g>,
+    int: <g><path d="M4 9h16M4 15h16" /></g>,
+    pan: <path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-1.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2.5-4a1.6 1.6 0 0 1 2.7-1.6L9 14" />,
+  };
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={name === "ext" ? 2.4 : name === "int" ? 1.4 : 1.7} strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+      {paths[name]}
+    </svg>
+  );
+}
+
+const TOOLS = [
+  ["select", "Select", "V"],
+  ["ext", "External wall", "E"],
+  ["int", "Internal wall", "I"],
+  ["pan", "Pan", "H"],
+];
+
 // ------------------------- main screen -------------------------
-export default function CadSketch({ drawing = SAMPLE_PLAN, title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247" }) {
+export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247" }) {
   const router = useRouter();
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
-  const drag = useRef(null);
+  const panRef = useRef(null);
+  const viewRef = useRef(null);
+
+  const initial = useMemo(() => ({
+    EXT: SAMPLE_PLAN.EXT, EXTENT: SAMPLE_PLAN.EXTENT,
+    walls: SAMPLE_PLAN.walls.map((w) => ({ ...w })),
+    doors: SAMPLE_PLAN.doors.map((d) => ({ ...d })),
+    windows: SAMPLE_PLAN.windows.map((w) => ({ ...w })),
+    dims: SAMPLE_PLAN.dims.map((d) => ({ ...d })),
+    rooms: SAMPLE_PLAN.rooms.map((r) => ({ ...r })),
+    notes: [],
+    rooflights: SAMPLE_PLAN.rooflights, stairs: SAMPLE_PLAN.stairs, boundary: SAMPLE_PLAN.boundary,
+  }), []);
+
+  const [model, setModel] = useState(initial);
+  const [tool, setTool] = useState("select");
   const [view, setView] = useState({ s: 0.08, tx: 200, ty: 200 });
+  const [draftPts, setDraftPts] = useState([]);
+  const [cur, setCur] = useState({ x: 0, y: 0, sx: -99, sy: -99, on: false });
+  const [sel, setSel] = useState(null);
+  const [settings, setSettings] = useState({ grid: 100 });
+  const [flags, setFlags] = useState({ ortho: true, gridSnap: true });
   const [size, setSize] = useState({ w: 900, h: 600 });
+
+  viewRef.current = view;
 
   const fit = useCallback((sz) => {
     sz = sz || size;
-    const pad = 80;
-    const planX0 = -2300, planY0 = -2300;
-    const planW = (drawing.EXTENT?.w || 8400) + 3400, planH = (drawing.EXTENT?.h || 8800) + 3000;
+    const pad = 80, planX0 = -2300, planY0 = -2300;
+    const planW = (model.EXTENT?.w || 8400) + 3400, planH = (model.EXTENT?.h || 8800) + 3000;
     const s = Math.min((sz.w - pad * 2) / planW, (sz.h - pad * 2) / planH);
     setView({ s, tx: (sz.w - planW * s) / 2 - planX0 * s, ty: (sz.h - planH * s) / 2 - planY0 * s });
-  }, [drawing, size]);
+  }, [model, size]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -153,7 +196,22 @@ export default function CadSketch({ drawing = SAMPLE_PLAN, title = "Maple House 
     return () => ro.disconnect();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Native non-passive wheel listener so we can zoom toward the cursor.
+  // keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      const map = { v: "select", e: "ext", i: "int", h: "pan" };
+      const k = e.key.toLowerCase();
+      if (map[k]) { setTool(map[k]); setDraftPts([]); }
+      else if (e.key === "Escape") { setDraftPts([]); setSel(null); }
+      else if (e.key === "Enter") { setDraftPts([]); }
+      else if (e.key === "Delete" || e.key === "Backspace") { deleteSel(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // wheel zoom toward cursor (native, non-passive)
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -172,15 +230,67 @@ export default function CadSketch({ drawing = SAMPLE_PLAN, title = "Maple House 
     return () => svg.removeEventListener("wheel", onWheel);
   }, []);
 
-  const onPointerDown = (e) => { drag.current = { x: e.clientX, y: e.clientY }; svgRef.current?.setPointerCapture?.(e.pointerId); };
-  const onPointerMove = (e) => {
-    if (!drag.current) return;
-    const dx = e.clientX - drag.current.x, dy = e.clientY - drag.current.y;
-    drag.current = { x: e.clientX, y: e.clientY };
-    setView((v) => ({ ...v, tx: v.tx + dx, ty: v.ty + dy }));
+  const toWorld = (clientX, clientY) => {
+    const r = svgRef.current.getBoundingClientRect();
+    const v = viewRef.current;
+    return { x: (clientX - r.left - v.tx) / v.s, y: (clientY - r.top - v.ty) / v.s };
   };
-  const onPointerUp = () => { drag.current = null; };
+  const snapPt = (raw, from) => {
+    let x = raw.x, y = raw.y;
+    if (flags.ortho && from) { if (Math.abs(x - from.x) >= Math.abs(y - from.y)) y = from.y; else x = from.x; }
+    if (flags.gridSnap) { x = snap(x, settings.grid); y = snap(y, settings.grid); }
+    return { x, y };
+  };
 
+  const isWallTool = tool === "ext" || tool === "int";
+  const drawingTool = tool !== "select" && tool !== "pan";
+
+  const handleMove = (e) => {
+    if (panRef.current) {
+      setView({ s: viewRef.current.s, tx: panRef.current.tx + (e.clientX - panRef.current.mx), ty: panRef.current.ty + (e.clientY - panRef.current.my) });
+      return;
+    }
+    const raw = toWorld(e.clientX, e.clientY);
+    const from = draftPts.length ? draftPts[draftPts.length - 1] : null;
+    const p = isWallTool ? snapPt(raw, from) : (flags.gridSnap ? { x: snap(raw.x, settings.grid), y: snap(raw.y, settings.grid) } : raw);
+    setCur({ x: p.x, y: p.y, sx: e.clientX, sy: e.clientY, on: true });
+  };
+  const handleDown = (e) => {
+    if (tool === "pan" || e.button === 1 || e.shiftKey) {
+      panRef.current = { mx: e.clientX, my: e.clientY, tx: view.tx, ty: view.ty };
+      e.preventDefault();
+    }
+  };
+  const handleUp = () => { panRef.current = null; };
+
+  const commitWallSeg = (a, b) => {
+    if (a.x === b.x && a.y === b.y) return;
+    const seg = { id: "w" + Date.now() + Math.round(Math.random() * 1e4), type: tool === "ext" ? "external" : "internal", x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+    setModel((m) => ({ ...m, walls: m.walls.concat([seg]) }));
+  };
+  const handleClick = (e) => {
+    if (panRef.current) return;
+    const raw = toWorld(e.clientX, e.clientY);
+    if (isWallTool) {
+      const from = draftPts.length ? draftPts[draftPts.length - 1] : null;
+      const p = snapPt(raw, from);
+      if (draftPts.length) commitWallSeg(draftPts[draftPts.length - 1], p);
+      setDraftPts(draftPts.concat([p]));
+      return;
+    }
+    if (tool === "select") setSel(hitTest(model.walls, raw.x, raw.y));
+  };
+  const handleDouble = () => { if (draftPts.length) setDraftPts([]); };
+
+  const deleteSel = () => {
+    if (!sel) return;
+    setModel((m) => ({ ...m, walls: m.walls.filter((w) => w.id !== sel.id) }));
+    setSel(null);
+  };
+  const convertSel = () => {
+    if (!sel) return;
+    setModel((m) => ({ ...m, walls: m.walls.map((w) => w.id === sel.id ? { ...w, type: w.type === "external" ? "internal" : "external" } : w) }));
+  };
   const zoomBy = (factor) => setView((v) => {
     const ns = Math.max(SCALE_MIN, Math.min(SCALE_MAX, v.s * factor));
     const cxp = size.w / 2, cyp = size.h / 2;
@@ -201,28 +311,60 @@ export default function CadSketch({ drawing = SAMPLE_PLAN, title = "Maple House 
       grid.push(<line key={"gy" + gy} x1={SHEET.x} y1={gy} x2={SHEET.x + SHEET.w} y2={gy} className={maj ? "cadv-grid-major" : "cadv-grid-minor"} strokeWidth={maj ? 0.8 : 0.5} vectorEffect="non-scaling-stroke" />);
     }
     g.push(<g key="grid">{grid}</g>);
-    if (drawing.boundary) g.push(<polyline key="bnd" points={ptStr(drawing.boundary)} className="cadv-boundary" fill="none" strokeWidth={1.4} strokeDasharray="14 10" vectorEffect="non-scaling-stroke" />);
-    (drawing.rooflights || []).forEach((rl) => g.push(
+    if (model.boundary) g.push(<polyline key="bnd" points={ptStr(model.boundary)} className="cadv-boundary" fill="none" strokeWidth={1.4} strokeDasharray="14 10" vectorEffect="non-scaling-stroke" />);
+    (model.rooflights || []).forEach((rl) => g.push(
       <g key={rl.ref}>
         <rect x={rl.x} y={rl.y} width={rl.w} height={rl.h} fill="none" className="cadv-ink" strokeWidth={0.8} strokeDasharray="20 14" vectorEffect="non-scaling-stroke" opacity={0.6} />
         <text x={rl.x + rl.w / 2} y={rl.y + rl.h / 2} className="cadv-note" fontSize={150} textAnchor="middle" fontWeight={600}>{rl.ref}</text>
       </g>));
-    g.push(<g key="walls">{drawing.walls.map((s) => <WallNode key={s.id} s={s} />)}</g>);
-    g.push(<g key="doors">{drawing.doors.map((d) => <DoorNode key={d.id} d={d} />)}</g>);
-    g.push(<g key="wins">{drawing.windows.map((wn) => <WindowNode key={wn.id} wn={wn} />)}</g>);
-    if (drawing.stairs) g.push(<StairNode key="stairs" s={drawing.stairs} />);
-    g.push(<g key="dims">{drawing.dims.map((d) => <DimNode key={d.id} d={d} />)}</g>);
-    g.push(<g key="rooms">{drawing.rooms.map((r, i) => (
+    g.push(<g key="walls">{model.walls.map((s) => <WallNode key={s.id} s={s} selected={sel && sel.kind === "wall" && sel.id === s.id} />)}</g>);
+    g.push(<g key="doors">{model.doors.map((d) => <DoorNode key={d.id} d={d} />)}</g>);
+    g.push(<g key="wins">{model.windows.map((wn) => <WindowNode key={wn.id} wn={wn} />)}</g>);
+    if (model.stairs) g.push(<StairNode key="stairs" s={model.stairs} />);
+    g.push(<g key="dims">{model.dims.map((d) => <DimNode key={d.id} d={d} />)}</g>);
+    g.push(<g key="rooms">{model.rooms.map((r, i) => (
       <g key={"room" + i} className="cadv-room">
         <text x={r.x} y={r.y} className="nm" fontSize={230} textAnchor="middle">{r.name.toUpperCase()}</text>
         {r.area ? <text x={r.x} y={r.y + 300} className="ar" fontSize={165} textAnchor="middle">{r.area.toFixed(1) + " m\u00B2"}</text> : null}
       </g>))}</g>);
     const tags = [];
-    drawing.doors.forEach((d) => { if (d.ref) tags.push(<Tag key={"tg" + d.id} refTxt={d.ref} x={d.x + (d.dir === "h" ? 0 : d.fold * 430)} y={d.y + (d.dir === "h" ? d.fold * 430 : 0)} />); });
-    drawing.windows.forEach((w) => { if (w.ref) tags.push(<Tag key={"tg" + w.id} refTxt={w.ref} x={w.x + (w.dir === "h" ? 0 : (w.x < 1000 ? 430 : -430))} y={w.y + (w.dir === "h" ? (w.y < 1000 ? 360 : -360) : 0)} />); });
+    model.doors.forEach((d) => { if (d.ref) tags.push(<Tag key={"tg" + d.id} refTxt={d.ref} x={d.x + (d.dir === "h" ? 0 : d.fold * 430)} y={d.y + (d.dir === "h" ? d.fold * 430 : 0)} />); });
+    model.windows.forEach((w) => { if (w.ref) tags.push(<Tag key={"tg" + w.id} refTxt={w.ref} x={w.x + (w.dir === "h" ? 0 : (w.x < 1000 ? 430 : -430))} y={w.y + (w.dir === "h" ? (w.y < 1000 ? 360 : -360) : 0)} />); });
     g.push(<g key="tags">{tags}</g>);
     return g;
-  }, [drawing]);
+  }, [model, sel]);
+
+  const overlay = [];
+  if (isWallTool && draftPts.length) {
+    for (let i = 0; i < draftPts.length - 1; i++)
+      overlay.push(<line key={"dp" + i} x1={draftPts[i].x} y1={draftPts[i].y} x2={draftPts[i + 1].x} y2={draftPts[i + 1].y} className="cadv-active" strokeWidth={1.6} vectorEffect="non-scaling-stroke" />);
+    const last = draftPts[draftPts.length - 1];
+    overlay.push(<line key="rb" x1={last.x} y1={last.y} x2={cur.x} y2={cur.y} className="cadv-active" strokeWidth={1.6} strokeDasharray="8 6" vectorEffect="non-scaling-stroke" />);
+    draftPts.forEach((p, k) => overlay.push(<rect key={"v" + k} x={p.x - 90} y={p.y - 90} width={180} height={180} className="cadv-active" fill="#fff" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />));
+  }
+  if (drawingTool && cur.on) {
+    overlay.push(<line key="chx" x1={SHEET.x} y1={cur.y} x2={SHEET.x + SHEET.w} y2={cur.y} className="cadv-active" strokeWidth={0.6} opacity={0.4} vectorEffect="non-scaling-stroke" />);
+    overlay.push(<line key="chy" x1={cur.x} y1={SHEET.y} x2={cur.x} y2={SHEET.y + SHEET.h} className="cadv-active" strokeWidth={0.6} opacity={0.4} vectorEffect="non-scaling-stroke" />);
+    overlay.push(<circle key="cdot" cx={cur.x} cy={cur.y} r={70} className="cadv-active" fill="#fff" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />);
+  }
+
+  let hud = null;
+  if (isWallTool && draftPts.length && cur.on) {
+    const lp = draftPts[draftPts.length - 1];
+    const L = Math.round(hyp(cur.x - lp.x, cur.y - lp.y));
+    const wr = wrapRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+    hud = <div className="cadv__hud" style={{ left: cur.sx - wr.left, top: cur.sy - wr.top }}>Length <b>{fmtMM(L)} mm</b></div>;
+  }
+
+  const selWall = sel && sel.kind === "wall" ? model.walls.find((w) => w.id === sel.id) : null;
+  const hint = {
+    select: "Click a wall to select. Hold Shift and drag to pan.",
+    ext: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an external wall",
+    int: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an internal wall",
+    pan: "Drag to pan the sheet",
+  }[tool];
+
+  const svgCursor = tool === "pan" ? "grab" : (drawingTool ? "crosshair" : "default");
 
   return (
     <div className="cadv">
@@ -231,32 +373,94 @@ export default function CadSketch({ drawing = SAMPLE_PLAN, title = "Maple House 
         <button className="cadv__back" onClick={() => router.push("/")} title="Back to dashboard">&#8249;</button>
         <div className="cadv__title">
           <div className="name">{title}</div>
-          <div className="sub">{codeRef} &#183; Sketch preview &#183; 1:50 @ A3</div>
+          <div className="sub">{codeRef} &#183; Sketch mode &#183; 1:50 @ A3</div>
         </div>
-        <div className="cadv__badge">Preview &#8212; drawing tools coming next</div>
       </div>
-      <div className="cadv__workspace" ref={wrapRef}>
-        <svg
-          ref={svgRef}
-          className="cadv__svg"
-          width="100%" height="100%"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-        >
-          <g transform={`translate(${view.tx} ${view.ty}) scale(${view.s})`}>{planEls}</g>
-        </svg>
-        <div className="cadv__zoom">
-          <button onClick={() => zoomBy(1.2)} title="Zoom in">+</button>
-          <button onClick={() => zoomBy(1 / 1.2)} title="Zoom out">&#8722;</button>
-          <button onClick={() => fit()} title="Zoom to fit">&#10530;</button>
+
+      <div className="cadv__body">
+        <div className="cadv__rail">
+          {TOOLS.map(([id, label, key]) => (
+            <button key={id} className={"cadv__tool" + (tool === id ? " on" : "")} title={label + " (" + key + ")"}
+              onClick={() => { setTool(id); setDraftPts([]); }}>
+              <Glyph name={id} />
+              <span className="key">{key}</span>
+            </button>
+          ))}
         </div>
-        <div className="cadv__chip">
-          <span className="north">N &#8593;</span>
-          <span className="bar"><i /><i className="alt" /><i /></span>
-          <span>0 1 2 m</span>
+
+        <div className="cadv__workspace" ref={wrapRef}>
+          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor }}
+            onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
+            onClick={handleClick} onDoubleClick={handleDouble}
+            onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
+            <g transform={`translate(${view.tx} ${view.ty}) scale(${view.s})`}>
+              {planEls}
+              {overlay}
+            </g>
+          </svg>
+          {hud}
+          <div className="cadv__zoom">
+            <button onClick={() => zoomBy(1.2)} title="Zoom in">+</button>
+            <button onClick={() => zoomBy(1 / 1.2)} title="Zoom out">&#8722;</button>
+            <button onClick={() => fit()} title="Zoom to fit">&#10530;</button>
+          </div>
+          <div className="cadv__chip">
+            <span className="north">N &#8593;</span>
+            <span className="bar"><i /><i className="alt" /><i /></span>
+            <span>0 1 2 m</span>
+          </div>
         </div>
+
+        <div className="cadv__inspector">
+          {selWall ? (
+            <div>
+              <div className="cadv__sect first">Selected wall</div>
+              <div className="cadv-prop"><span className="k">Length</span><span className="v mono">{fmtMM(segLen(selWall))} mm</span></div>
+              <div className="cadv-prop"><span className="k">Type</span><span className="v">{selWall.type === "external" ? "External" : "Internal"}</span></div>
+              <div className="cadv-prop"><span className="k">Thickness</span><span className="v mono">{selWall.type === "external" ? T_EXT : T_INT} mm</span></div>
+              <div className="cadv__row">
+                <button className="cadv-btn" onClick={convertSel}>Make {selWall.type === "external" ? "internal" : "external"}</button>
+                <button className="cadv-btn danger" onClick={deleteSel}>Delete</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="cadv__sect first">Active tool</div>
+              <div className="cadv-prop"><span className="k">Tool</span><span className="v">{TOOLS.find((t) => t[0] === tool)?.[1]}</span></div>
+              {isWallTool && (
+                <>
+                  <div className="cadv__sect">Wall type</div>
+                  <div className="cadv-seg">
+                    <button className={tool === "ext" ? "on" : ""} onClick={() => { setTool("ext"); setDraftPts([]); }}>External &middot; {T_EXT}</button>
+                    <button className={tool === "int" ? "on" : ""} onClick={() => { setTool("int"); setDraftPts([]); }}>Internal &middot; {T_INT}</button>
+                  </div>
+                </>
+              )}
+              <div className="cadv__sect">Snap grid</div>
+              <div className="cadv-seg">
+                {[50, 100, 250].map((gv) => (
+                  <button key={gv} className={settings.grid === gv ? "on" : ""} onClick={() => setSettings((s) => ({ ...s, grid: gv }))}>{gv}mm</button>
+                ))}
+              </div>
+              <div className="cadv__sect">Drawing aids</div>
+              <div className="cadv-seg">
+                <button className={flags.ortho ? "on" : ""} onClick={() => setFlags((f) => ({ ...f, ortho: !f.ortho }))}>Ortho</button>
+                <button className={flags.gridSnap ? "on" : ""} onClick={() => setFlags((f) => ({ ...f, gridSnap: !f.gridSnap }))}>Snap</button>
+              </div>
+              <div className="cadv-hint">{hint}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="cadv__status">
+        <span className="cell xy">X <b>{Math.round(cur.x)}</b> Y <b>{Math.round(cur.y)}</b></span>
+        <span className="cell cmd">{hint}</span>
+        <span className="spacer" />
+        <span className={"cell toggle" + (flags.ortho ? " on" : "")} onClick={() => setFlags((f) => ({ ...f, ortho: !f.ortho }))}>ORTHO</span>
+        <span className={"cell toggle" + (flags.gridSnap ? " on" : "")} onClick={() => setFlags((f) => ({ ...f, gridSnap: !f.gridSnap }))}>GRID</span>
+        <span className="cell">GRID {settings.grid}mm</span>
+        <span className="cell">{Math.round(view.s / 0.08 * 100)}%</span>
       </div>
     </div>
   );
@@ -270,13 +474,19 @@ const CSS = `
 .cadv__back:hover{background:#F4F6F9}
 .cadv__title .name{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#18222D}
 .cadv__title .sub{font-family:'JetBrains Mono',monospace; font-size:11px; color:#6E7B88}
-.cadv__badge{margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#1C6F7C; background:rgba(63,183,201,.12); border:1px solid rgba(63,183,201,.25); border-radius:999px; padding:5px 11px}
+.cadv__body{flex:1; display:flex; min-height:0}
+.cadv__rail{flex:0 0 60px; width:60px; background:#F4F6F9; border-right:1px solid rgba(44,62,80,.1); display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0}
+.cadv__tool{position:relative; width:42px; height:42px; border:1px solid transparent; border-radius:10px; background:transparent; color:#54616E; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .14s,color .14s,border-color .14s}
+.cadv__tool:hover{background:#fff; color:#18222D; border-color:rgba(44,62,80,.12)}
+.cadv__tool.on{background:#2C3E50; color:#3FB7C9; border-color:#2C3E50}
+.cadv__tool .key{position:absolute; right:4px; bottom:2px; font-family:'JetBrains Mono',monospace; font-size:8.5px; opacity:.55}
 .cadv__workspace{flex:1; position:relative; min-width:0; overflow:hidden; background:radial-gradient(120% 120% at 50% 0%, #243443 0%, #18222D 100%)}
-.cadv__svg{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none}
-.cadv__svg:active{cursor:grabbing}
+.cadv__svg{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none}
 .cadv-ink{stroke:#16212B}
 .cadv-poche{fill:#C9D0D8}
 .cadv-paper{fill:#FFFFFF}
+.cadv-sel{stroke:#3FB7C9}
+.cadv-active{stroke:#3FB7C9}
 .cadv-grid-minor{stroke:#93C7D0; opacity:.16}
 .cadv-grid-major{stroke:#93C7D0; opacity:.30}
 .cadv-dim{stroke:#2C3E50}
@@ -289,6 +499,8 @@ const CSS = `
 .cadv-room .ar{fill:#6E7B88}
 .cadv-tag-txt{font-family:'JetBrains Mono',monospace; fill:#16212B}
 .cadv-note{font-family:'JetBrains Mono',monospace; fill:#54616E}
+.cadv__hud{position:absolute; z-index:8; pointer-events:none; background:#1A2733; color:#EAF1F6; font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:4px 8px; border-radius:6px; white-space:nowrap; transform:translate(14px,14px)}
+.cadv__hud b{color:#3FB7C9; font-weight:600}
 .cadv__zoom{position:absolute; right:16px; bottom:16px; display:flex; flex-direction:column; background:#fff; border:1px solid rgba(44,62,80,.1); border-radius:12px; overflow:hidden; box-shadow:0 6px 16px rgba(20,33,46,.09)}
 .cadv__zoom button{width:38px; height:38px; border:0; background:#fff; color:#3E4C59; font-size:17px; cursor:pointer}
 .cadv__zoom button:hover{background:#F4F6F9; color:#18222D}
@@ -298,4 +510,29 @@ const CSS = `
 .cadv__chip .bar{display:inline-flex; height:6px; border:1px solid #6E7B88}
 .cadv__chip .bar i{width:20px; height:100%; background:#3E4C59}
 .cadv__chip .bar i.alt{background:#fff}
+.cadv__inspector{flex:0 0 278px; width:278px; background:#fff; border-left:1px solid rgba(44,62,80,.1); overflow-y:auto}
+.cadv__sect{padding:14px 16px 4px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8C97A3}
+.cadv__sect.first{padding-top:16px}
+.cadv-prop{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 16px}
+.cadv-prop .k{font-size:12.5px; color:#54616E}
+.cadv-prop .v{font-size:12.5px; color:#18222D; font-weight:540}
+.cadv-prop .v.mono{font-family:'JetBrains Mono',monospace}
+.cadv-seg{display:flex; gap:4px; padding:4px 16px 8px}
+.cadv-seg button{flex:1; height:34px; border:1px solid rgba(44,62,80,.12); border-radius:9px; background:#fff; font:inherit; font-size:11.5px; font-weight:540; color:#54616E; cursor:pointer; transition:all .14s}
+.cadv-seg button:hover{border-color:rgba(44,62,80,.22); color:#18222D}
+.cadv-seg button.on{background:#2C3E50; border-color:#2C3E50; color:#EAF1F6}
+.cadv__row{display:flex; gap:8px; padding:10px 16px}
+.cadv-btn{flex:1; height:36px; border:1px solid rgba(44,62,80,.12); border-radius:9px; background:#fff; font:inherit; font-size:12.5px; font-weight:540; color:#3E4C59; cursor:pointer}
+.cadv-btn:hover{background:#F4F6F9; color:#18222D}
+.cadv-btn.danger{color:#C4564B; border-color:rgba(196,86,75,.3)}
+.cadv-btn.danger:hover{background:rgba(196,86,75,.08)}
+.cadv-hint{margin:8px 16px 14px; padding:11px 12px; border-radius:10px; background:rgba(63,183,201,.12); border:1px solid rgba(63,183,201,.2); font-size:12px; line-height:1.45; color:#1C6F7C}
+.cadv__status{flex:0 0 auto; height:34px; display:flex; align-items:center; padding:0 6px; border-top:1px solid rgba(44,62,80,.1); background:#F4F6F9; font-family:'JetBrains Mono',monospace; font-size:11px; color:#6E7B88}
+.cadv__status .cell{padding:0 12px; display:flex; align-items:center; gap:7px; height:100%}
+.cadv__status .cell+.cell{border-left:1px solid rgba(44,62,80,.1)}
+.cadv__status .cmd{color:#3E4C59}
+.cadv__status .xy b{color:#283643}
+.cadv__status .spacer{flex:1; border:0}
+.cadv__status .toggle{cursor:pointer; color:#8C97A3}
+.cadv__status .toggle.on{color:#1C6F7C; background:rgba(63,183,201,.1)}
 `;
