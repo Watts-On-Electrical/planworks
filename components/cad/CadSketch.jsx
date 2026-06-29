@@ -302,6 +302,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         pinchActiveRef.current = true;
         suppressClickRef.current = true;
         panRef.current = null;
+        el.style.willChange = "transform";
         try { el.setPointerCapture(e.pointerId); } catch {}
       }
     };
@@ -332,7 +333,10 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
           const lp = livePinchRef.current;
           livePinchRef.current = null;
           setView({ s: lp.s, tx: lp.tx, ty: lp.ty });
+        } else if (el) {
+          el.style.transform = "";
         }
+        if (el) el.style.willChange = "";
         pinchRef.current = null;
         pinchActiveRef.current = false;
       }
@@ -749,7 +753,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         </div>
 
         <div className="cadv__workspace" ref={wrapRef}>
-          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0", willChange: "transform" }}
+          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0" }}
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
             onClick={handleClick} onDoubleClick={handleDouble}
             onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
@@ -1040,6 +1044,7 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
 
 
