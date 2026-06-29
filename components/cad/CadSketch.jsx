@@ -282,7 +282,14 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   };
   const snapPt = (raw, from) => {
     let x = raw.x, y = raw.y;
-    if (flags.ortho && from) { if (Math.abs(x - from.x) >= Math.abs(y - from.y)) y = from.y; else x = from.x; }
+    if (flags.ortho && from) {
+      const dx = x - from.x, dy = y - from.y;
+      const step = Math.PI / 4;
+      const ang = Math.round(Math.atan2(dy, dx) / step) * step;
+      let dist = Math.hypot(dx, dy);
+      if (flags.gridSnap) dist = Math.round(dist / settings.grid) * settings.grid;
+      return { x: from.x + Math.cos(ang) * dist, y: from.y + Math.sin(ang) * dist };
+    }
     if (flags.gridSnap) { x = snap(x, settings.grid); y = snap(y, settings.grid); }
     return { x, y };
   };
@@ -517,7 +524,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 
   const planEls = useMemo(() => {
     const g = [];
-    g.push(<rect key="sheet" x={SHEET.x} y={SHEET.y} width={SHEET.w} height={SHEET.h} className="cadv-paper" stroke="none" />);
+    g.push(<rect key="sheet" x={SHEET.x} y={SHEET.y} width={SHEET.w} height={SHEET.h} className="cadv-paper" stroke="#2C97A8" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />);
     const grid = [];
     for (let gx = SHEET.x; gx <= SHEET.x + SHEET.w; gx += 500) {
       const maj = gx % 1000 === 0;
@@ -572,8 +579,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     overlay.push(<line key="dimrb" x1={dimP1.x} y1={dimP1.y} x2={cur.x} y2={cur.y} className="cadv-active" strokeWidth={1.2} strokeDasharray="8 6" vectorEffect="non-scaling-stroke" />);
   }
   if (drawingTool && cur.on) {
-    overlay.push(<line key="chx" x1={SHEET.x} y1={cur.y} x2={SHEET.x + SHEET.w} y2={cur.y} className="cadv-active" strokeWidth={0.6} opacity={0.4} vectorEffect="non-scaling-stroke" />);
-    overlay.push(<line key="chy" x1={cur.x} y1={SHEET.y} x2={cur.x} y2={SHEET.y + SHEET.h} className="cadv-active" strokeWidth={0.6} opacity={0.4} vectorEffect="non-scaling-stroke" />);
+    overlay.push(<line key="chx" x1={SHEET.x} y1={cur.y} x2={SHEET.x + SHEET.w} y2={cur.y} className="cadv-cross" strokeWidth={0.9} opacity={0.6} vectorEffect="non-scaling-stroke" />);
+    overlay.push(<line key="chy" x1={cur.x} y1={SHEET.y} x2={cur.x} y2={SHEET.y + SHEET.h} className="cadv-cross" strokeWidth={0.9} opacity={0.6} vectorEffect="non-scaling-stroke" />);
     overlay.push(<circle key="cdot" cx={cur.x} cy={cur.y} r={70} className="cadv-active" fill="#fff" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />);
   }
 
@@ -752,7 +759,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
               </div>
               <div className="cadv__sect">Drawing aids</div>
               <div className="cadv-seg">
-                <button className={flags.ortho ? "on" : ""} onClick={() => setFlags((f) => ({ ...f, ortho: !f.ortho }))}>Ortho</button>
+                <button className={flags.ortho ? "on" : ""} onClick={() => setFlags((f) => ({ ...f, ortho: !f.ortho }))}>Angle</button>
                 <button className={flags.gridSnap ? "on" : ""} onClick={() => setFlags((f) => ({ ...f, gridSnap: !f.gridSnap }))}>Snap</button>
               </div>
               <div className="cadv-hint">{hint}</div>
@@ -773,7 +780,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <span className="cell xy">X <b>{Math.round(cur.x)}</b> Y <b>{Math.round(cur.y)}</b></span>
         <span className="cell cmd">{hint}</span>
         <span className="spacer" />
-        <span className={"cell toggle" + (flags.ortho ? " on" : "")} onClick={() => setFlags((f) => ({ ...f, ortho: !f.ortho }))}>ORTHO</span>
+        <span className={"cell toggle" + (flags.ortho ? " on" : "")} onClick={() => setFlags((f) => ({ ...f, ortho: !f.ortho }))}>ANGLE</span>
         <span className={"cell toggle" + (flags.gridSnap ? " on" : "")} onClick={() => setFlags((f) => ({ ...f, gridSnap: !f.gridSnap }))}>GRID</span>
         <span className="cell">GRID {settings.grid}mm</span>
         <span className="cell">{Math.round(view.s / 0.08 * 100)}%</span>
@@ -838,6 +845,7 @@ const CSS = `
 .cadv-paper{fill:#FFFFFF}
 .cadv-sel{stroke:#3FB7C9}
 .cadv-active{stroke:#3FB7C9}
+.cadv-cross{stroke:#2C3E50}
 .cadv-grid-minor{stroke:#AAC6CE; opacity:.4}
 .cadv-grid-major{stroke:#84AEBA; opacity:.55}
 .cadv-dim{stroke:#2C3E50}
@@ -939,5 +947,6 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
 
