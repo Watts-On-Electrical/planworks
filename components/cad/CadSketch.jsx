@@ -35,43 +35,45 @@ function WallNode({ s, selected }) {
   );
 }
 
-function DoorNode({ d }) {
+function DoorNode({ d, selected }) {
   const { x, y, w, t } = d;
+  const ink = selected ? "cadv-sel" : "cadv-ink";
   const els = [];
   if (d.dir === "h") {
     els.push(<rect key="e" x={x - w / 2} y={y - t / 2} width={w} height={t} className="cadv-paper" stroke="none" />);
-    els.push(<line key="j1" x1={x - w / 2} y1={y - t / 2} x2={x - w / 2} y2={y + t / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
-    els.push(<line key="j2" x1={x + w / 2} y1={y - t / 2} x2={x + w / 2} y2={y + t / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="j1" x1={x - w / 2} y1={y - t / 2} x2={x - w / 2} y2={y + t / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="j2" x1={x + w / 2} y1={y - t / 2} x2={x + w / 2} y2={y + t / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
     const hx = x + d.hinge * w / 2, ex = hx, ey = y + d.fold * w, lx = x - d.hinge * w / 2;
-    els.push(<line key="lf" x1={hx} y1={y} x2={ex} y2={ey} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="lf" x1={hx} y1={y} x2={ex} y2={ey} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
     const sweep = (d.hinge * d.fold > 0) ? 1 : 0;
-    els.push(<path key="ar" d={`M${ex} ${ey} A${w} ${w} 0 0 ${sweep} ${lx} ${y}`} className="cadv-ink" fill="none" strokeWidth={0.9} vectorEffect="non-scaling-stroke" opacity={0.85} />);
+    els.push(<path key="ar" d={`M${ex} ${ey} A${w} ${w} 0 0 ${sweep} ${lx} ${y}`} className={ink} fill="none" strokeWidth={0.9} vectorEffect="non-scaling-stroke" opacity={0.85} />);
   } else {
     els.push(<rect key="e" x={x - t / 2} y={y - w / 2} width={t} height={w} className="cadv-paper" stroke="none" />);
-    els.push(<line key="j1" x1={x - t / 2} y1={y - w / 2} x2={x + t / 2} y2={y - w / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
-    els.push(<line key="j2" x1={x - t / 2} y1={y + w / 2} x2={x + t / 2} y2={y + w / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="j1" x1={x - t / 2} y1={y - w / 2} x2={x + t / 2} y2={y - w / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="j2" x1={x - t / 2} y1={y + w / 2} x2={x + t / 2} y2={y + w / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
     const hy = y + d.hinge * w / 2, ey2 = hy, ex2 = x + d.fold * w, ly = y - d.hinge * w / 2;
-    els.push(<line key="lf" x1={x} y1={hy} x2={ex2} y2={ey2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="lf" x1={x} y1={hy} x2={ex2} y2={ey2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
     const sweep2 = (d.hinge * d.fold > 0) ? 0 : 1;
-    els.push(<path key="ar" d={`M${ex2} ${ey2} A${w} ${w} 0 0 ${sweep2} ${x} ${ly}`} className="cadv-ink" fill="none" strokeWidth={0.9} vectorEffect="non-scaling-stroke" opacity={0.85} />);
+    els.push(<path key="ar" d={`M${ex2} ${ey2} A${w} ${w} 0 0 ${sweep2} ${x} ${ly}`} className={ink} fill="none" strokeWidth={0.9} vectorEffect="non-scaling-stroke" opacity={0.85} />);
   }
   return <g>{els}</g>;
 }
 
-function WindowNode({ wn }) {
+function WindowNode({ wn, selected }) {
   const { x, y, w, t } = wn, g6 = t / 6, els = [];
+  const ink = selected ? "cadv-sel" : "cadv-ink";
   if (wn.dir === "h") {
     els.push(<rect key="e" x={x - w / 2} y={y - t / 2} width={w} height={t} className="cadv-paper" stroke="none" />);
     [-t / 2, -g6, g6, t / 2].forEach((oy, i) =>
-      els.push(<line key={"g" + i} x1={x - w / 2} y1={y + oy} x2={x + w / 2} y2={y + oy} className="cadv-ink" strokeWidth={i === 0 || i === 3 ? 1.1 : 0.8} vectorEffect="non-scaling-stroke" />));
-    els.push(<line key="j1" x1={x - w / 2} y1={y - t / 2} x2={x - w / 2} y2={y + t / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
-    els.push(<line key="j2" x1={x + w / 2} y1={y - t / 2} x2={x + w / 2} y2={y + t / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+      els.push(<line key={"g" + i} x1={x - w / 2} y1={y + oy} x2={x + w / 2} y2={y + oy} className={ink} strokeWidth={i === 0 || i === 3 ? 1.1 : 0.8} vectorEffect="non-scaling-stroke" />));
+    els.push(<line key="j1" x1={x - w / 2} y1={y - t / 2} x2={x - w / 2} y2={y + t / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="j2" x1={x + w / 2} y1={y - t / 2} x2={x + w / 2} y2={y + t / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
   } else {
     els.push(<rect key="e" x={x - t / 2} y={y - w / 2} width={t} height={w} className="cadv-paper" stroke="none" />);
     [-t / 2, -g6, g6, t / 2].forEach((ox, i) =>
-      els.push(<line key={"g" + i} x1={x + ox} y1={y - w / 2} x2={x + ox} y2={y + w / 2} className="cadv-ink" strokeWidth={i === 0 || i === 3 ? 1.1 : 0.8} vectorEffect="non-scaling-stroke" />));
-    els.push(<line key="j1" x1={x - t / 2} y1={y - w / 2} x2={x + t / 2} y2={y - w / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
-    els.push(<line key="j2" x1={x - t / 2} y1={y + w / 2} x2={x + t / 2} y2={y + w / 2} className="cadv-ink" strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+      els.push(<line key={"g" + i} x1={x + ox} y1={y - w / 2} x2={x + ox} y2={y + w / 2} className={ink} strokeWidth={i === 0 || i === 3 ? 1.1 : 0.8} vectorEffect="non-scaling-stroke" />));
+    els.push(<line key="j1" x1={x - t / 2} y1={y - w / 2} x2={x + t / 2} y2={y - w / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
+    els.push(<line key="j2" x1={x - t / 2} y1={y + w / 2} x2={x + t / 2} y2={y + w / 2} className={ink} strokeWidth={1.1} vectorEffect="non-scaling-stroke" />);
   }
   if (wn.escape) {
     const ty = wn.dir === "h" ? (y < 1000 ? y + 620 : y - 620) : y;
@@ -331,18 +333,46 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       else setModel((m) => ({ ...m, notes: m.notes.concat([{ text: nm, x: Math.round(raw.x), y: Math.round(raw.y) }]) }));
       return;
     }
-    if (tool === "select") setSel(hitTest(model.walls, raw.x, raw.y));
+    if (tool === "select") {
+      const op = openingAt(raw.x, raw.y);
+      setSel(op || hitTest(model.walls, raw.x, raw.y));
+    }
   };
   const handleDouble = () => { if (draftPts.length) setDraftPts([]); };
 
+  const openingAt = (px, py) => {
+    let best = null, bd = Infinity;
+    const scan = (arr, kind) => arr.forEach((o) => {
+      const rr = Math.max(o.w / 2, 350);
+      const d = hyp(px - o.x, py - o.y);
+      if (d < rr && d < bd) { bd = d; best = { kind, id: o.id }; }
+    });
+    scan(model.doors, "door");
+    scan(model.windows, "window");
+    return best;
+  };
   const deleteSel = () => {
     if (!sel) return;
-    setModel((m) => ({ ...m, walls: m.walls.filter((w) => w.id !== sel.id) }));
+    setModel((m) => {
+      if (sel.kind === "door") return { ...m, doors: m.doors.filter((d) => d.id !== sel.id) };
+      if (sel.kind === "window") return { ...m, windows: m.windows.filter((w) => w.id !== sel.id) };
+      return { ...m, walls: m.walls.filter((w) => w.id !== sel.id) };
+    });
     setSel(null);
   };
   const convertSel = () => {
-    if (!sel) return;
+    if (!sel || sel.kind !== "wall") return;
     setModel((m) => ({ ...m, walls: m.walls.map((w) => w.id === sel.id ? { ...w, type: w.type === "external" ? "internal" : "external" } : w) }));
+  };
+  const updDoor = (fn) => {
+    if (!sel || sel.kind !== "door") return;
+    setModel((m) => ({ ...m, doors: m.doors.map((d) => d.id === sel.id ? { ...d, ...fn(d) } : d) }));
+  };
+  const flipSwing = () => updDoor((d) => ({ fold: -d.fold }));
+  const flipHinge = () => updDoor((d) => ({ hinge: -d.hinge }));
+  const toggleEscape = () => {
+    if (!sel || sel.kind !== "window") return;
+    setModel((m) => ({ ...m, windows: m.windows.map((w) => w.id === sel.id ? { ...w, escape: !w.escape } : w) }));
   };
   const zoomBy = (factor) => setView((v) => {
     const ns = Math.max(SCALE_MIN, Math.min(SCALE_MAX, v.s * factor));
@@ -372,8 +402,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       </g>));
     if (layers.walls) g.push(<g key="walls">{model.walls.map((s) => <WallNode key={s.id} s={s} selected={sel && sel.kind === "wall" && sel.id === s.id} />)}</g>);
     if (layers.openings) {
-      g.push(<g key="doors">{model.doors.map((d) => <DoorNode key={d.id} d={d} />)}</g>);
-      g.push(<g key="wins">{model.windows.map((wn) => <WindowNode key={wn.id} wn={wn} />)}</g>);
+      g.push(<g key="doors">{model.doors.map((d) => <DoorNode key={d.id} d={d} selected={sel && sel.kind === "door" && sel.id === d.id} />)}</g>);
+      g.push(<g key="wins">{model.windows.map((wn) => <WindowNode key={wn.id} wn={wn} selected={sel && sel.kind === "window" && sel.id === wn.id} />)}</g>);
     }
     if (layers.stairs && model.stairs) g.push(<StairNode key="stairs" s={model.stairs} />);
     if (layers.dims) g.push(<g key="dims">{model.dims.map((d) => <DimNode key={d.id} d={d} />)}</g>);
@@ -427,6 +457,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   }
 
   const selWall = sel && sel.kind === "wall" ? model.walls.find((w) => w.id === sel.id) : null;
+  const selDoor = sel && sel.kind === "door" ? model.doors.find((d) => d.id === sel.id) : null;
+  const selWin = sel && sel.kind === "window" ? model.windows.find((w) => w.id === sel.id) : null;
   const hint = {
     select: "Click a wall to select. Hold Shift and drag to pan.",
     ext: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an external wall",
@@ -496,6 +528,34 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
               <div className="cadv__row">
                 <button className="cadv-btn" onClick={convertSel}>Make {selWall.type === "external" ? "internal" : "external"}</button>
                 <button className="cadv-btn danger" onClick={deleteSel}>Delete</button>
+              </div>
+            </div>
+          ) : selDoor ? (
+            <div>
+              <div className="cadv__sect first">Selected door</div>
+              <div className="cadv-prop"><span className="k">Width</span><span className="v mono">{selDoor.w} mm</span></div>
+              <div className="cadv-prop"><span className="k">On</span><span className="v">{selDoor.t === T_EXT ? "External wall" : "Internal wall"}</span></div>
+              <div className="cadv__sect">Swing</div>
+              <div className="cadv-seg">
+                <button onClick={flipSwing}>Flip side</button>
+                <button onClick={flipHinge}>Flip hinge</button>
+              </div>
+              <div className="cadv-hint">Flip side swaps which room the door opens into; flip hinge swaps the hinged edge. Between them you get all four swings.</div>
+              <div className="cadv__row">
+                <button className="cadv-btn danger" onClick={deleteSel}>Delete door</button>
+              </div>
+            </div>
+          ) : selWin ? (
+            <div>
+              <div className="cadv__sect first">Selected window</div>
+              <div className="cadv-prop"><span className="k">Width</span><span className="v mono">{selWin.w} mm</span></div>
+              <div className="cadv-prop"><span className="k">On</span><span className="v">{selWin.t === T_EXT ? "External wall" : "Internal wall"}</span></div>
+              <div className="cadv__sect">Marking</div>
+              <div className="cadv-seg">
+                <button className={selWin.escape ? "on" : ""} onClick={toggleEscape}>Escape window</button>
+              </div>
+              <div className="cadv__row">
+                <button className="cadv-btn danger" onClick={deleteSel}>Delete window</button>
               </div>
             </div>
           ) : (
