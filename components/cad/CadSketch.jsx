@@ -286,13 +286,15 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       if (e.pointerType !== "touch") return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pts.size === 2) {
-        const [a, b] = [...pts.values()];
+        const ids = [...pts.keys()];
+        const a = pts.get(ids[0]), b = pts.get(ids[1]);
         const rect = el.getBoundingClientRect();
         const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         const midX = (a.x + b.x) / 2 - rect.left;
         const midY = (a.y + b.y) / 2 - rect.top;
         const v = viewRef.current;
         pinchRef.current = {
+          idA: ids[0], idB: ids[1],
           startDist: dist, startS: v.s,
           worldX: (midX - v.tx) / v.s, worldY: (midY - v.ty) / v.s,
           rectLeft: rect.left, rectTop: rect.top,
@@ -306,8 +308,9 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     const onMove = (e) => {
       if (!pts.has(e.pointerId)) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pinchRef.current && pts.size >= 2) {
-        const [a, b] = [...pts.values()];
+      if (pinchRef.current) {
+        const a = pts.get(pinchRef.current.idA), b = pts.get(pinchRef.current.idB);
+        if (!a || !b) return;
         const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         const { startDist, startS, worldX, worldY, rectLeft, rectTop } = pinchRef.current;
         const newS = Math.max(SCALE_MIN, Math.min(SCALE_MAX, startS * (dist / startDist)));
@@ -322,8 +325,9 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       }
     };
     const onUp = (e) => {
+      const pr = pinchRef.current;
       pts.delete(e.pointerId);
-      if (pts.size < 2) {
+      if (pr && (e.pointerId === pr.idA || e.pointerId === pr.idB)) {
         if (livePinchRef.current) {
           const lp = livePinchRef.current;
           livePinchRef.current = null;
@@ -1035,4 +1039,5 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
