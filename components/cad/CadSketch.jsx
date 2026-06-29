@@ -243,6 +243,23 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 
   useEffect(() => () => { if (moveRAF.current) cancelAnimationFrame(moveRAF.current); }, []);
 
+  useEffect(() => {
+    const settle = () => {
+      if (ptrs.current.size < 2) pinch.current = null;
+      if (ptrs.current.size === 0) { panRef.current = null; setGesturing(false); }
+    };
+    const onUp = (e) => { if (e && e.pointerId != null) ptrs.current.delete(e.pointerId); settle(); };
+    const onCancel = () => { ptrs.current.clear(); pinch.current = null; panRef.current = null; setGesturing(false); };
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("blur", onCancel);
+    return () => {
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onCancel);
+    };
+  }, []);
+
   // keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
@@ -353,6 +370,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     }
     if (tool === "pan" || e.button === 1 || e.shiftKey) {
       const v = viewRef.current;
+      multiTouched.current = true;
       panRef.current = { mx: e.clientX, my: e.clientY, tx: v.tx, ty: v.ty };
       setGesturing(true);
       e.preventDefault();
@@ -997,4 +1015,5 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
