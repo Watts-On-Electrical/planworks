@@ -187,6 +187,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const multiTouched = useRef(false);
   const moveRAF = useRef(null);
   const lastMove = useRef(null);
+  const tapRef = useRef(null);
 
   const [model, setModel] = useState(() => ({ EXTENT: { w: 8400, h: 8800, margin: 2600 }, walls: [], doors: [], windows: [], dims: [], rooms: [], notes: [], boundary: null, rooflights: [], stairs: null }));
   const [tool, setTool] = useState("select");
@@ -726,7 +727,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <div className="cadv__workspace" ref={wrapRef}>
           <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor }}
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
-            onClick={handleClick} onDoubleClick={handleDouble}
+            onDoubleClick={handleDouble}
             onPointerLeave={() => { if (ptrs.current.size === 0) setCur((c) => ({ ...c, on: false })); }}>
             <g transform={`translate(${view.tx} ${view.ty}) scale(${view.s})`}>
               {planEls}
@@ -1015,5 +1016,6 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
 
