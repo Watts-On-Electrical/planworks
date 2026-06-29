@@ -9,7 +9,7 @@
  * engine (lib/cad/plan) and renderer. Still its own isolated /sketch screen.
  * ========================================================================= */
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   T_EXT, T_INT, DOOR_W, WIN_W, wallPoly, wallFaces, ptStr, hyp, segLen, snap, fmtMM,
@@ -344,6 +344,14 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       el.removeEventListener("pointercancel", onUp, { capture: true });
     };
   }, []);
+
+  // Apply the committed view transform straight to the <g> node. Runs only when
+  // `view` changes, so unrelated re-renders (e.g. the snap cursor) never revert the
+  // transform, and it stays out of the way of the imperative pinch updates.
+  useLayoutEffect(() => {
+    const n = gRef.current;
+    if (n) n.setAttribute("transform", `translate(${view.tx} ${view.ty}) scale(${view.s})`);
+  }, [view]);
 
   // mark unsaved when the drawing changes (skips initial mount, load and new)
   useEffect(() => {
@@ -740,7 +748,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
             onClick={handleClick} onDoubleClick={handleDouble}
             onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
-            <g ref={gRef} transform={`translate(${view.tx} ${view.ty}) scale(${view.s})`}>
+            <g ref={gRef}>
               {planEls}
               {overlay}
             </g>
@@ -1027,3 +1035,4 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
