@@ -20,7 +20,7 @@ import { insertProject, getProjectData, updateProjectRow } from "@/lib/db";
 import { uploadPlanImage, dataUrlToBlob } from "@/lib/planImages";
 import { computeFrame, renderModelToPng } from "@/lib/cad/sketchToImage";
 
-const SHEET = { x: -2500, y: -2600, w: 12200, h: 12600 };
+const SHEET = { x: -6000, y: -6000, w: 28000, h: 28000 };
 const SCALE_MIN = 0.02, SCALE_MAX = 0.6;
 
 // ------------------------- node renderers -------------------------
@@ -216,7 +216,14 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     const s = Math.min((sz.w - pad * 2) / planW, (sz.h - pad * 2) / planH);
     setView({ s, tx: (sz.w - planW * s) / 2 - planX0 * s, ty: (sz.h - planH * s) / 2 - planY0 * s });
   }, [size]);
-  const fit = useCallback((sz) => fitExtent(model.EXTENT, sz), [fitExtent, model]);
+  const DEFAULT_FRAME = { x: -2300, y: -2300, w: 11800, h: 11800 };
+  const fitFrame = useCallback((frame, sz) => {
+    sz = sz || size;
+    const pad = 90;
+    const s = Math.max(SCALE_MIN, Math.min(SCALE_MAX, Math.min((sz.w - pad * 2) / frame.w, (sz.h - pad * 2) / frame.h)));
+    setView({ s, tx: sz.w / 2 - (frame.x + frame.w / 2) * s, ty: sz.h / 2 - (frame.y + frame.h / 2) * s });
+  }, [size]);
+  const fit = useCallback((sz) => fitFrame((model.walls && model.walls.length) ? computeFrame(model, 900) : DEFAULT_FRAME, sz), [fitFrame, model]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -417,7 +424,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     setLinkProjectId(null); setLinkSheetId(null); setFrame(null);
     setSel(null); setDraftPts([]); setDimP1(null); setTool("select"); setSaveState("idle");
     setNameGate(true);
-    setTimeout(() => fitExtent({ w: 8400, h: 8800, margin: 2600 }), 0);
+    setTimeout(() => fitFrame(DEFAULT_FRAME), 0);
   };
   const doLoad = async (id) => {
     try {
@@ -432,7 +439,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       setFrame(_link?.frame || null);
       setSketchId(id); setSketchName(meta?.name || "Untitled sketch");
       setSel(null); setDraftPts([]); setDimP1(null); setTool("select");
-      fitExtent(geo.EXTENT);
+      fitFrame((geo.walls && geo.walls.length) ? computeFrame(geo, 900) : DEFAULT_FRAME);
       setSaveState("saved"); setOpenPanel(false); setNameGate(false);
     } catch (e) { console.error(e); window.alert("Couldn't open: " + (e.message || e)); }
   };
@@ -932,3 +939,4 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
