@@ -188,18 +188,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const pinchActiveRef = useRef(false);
   const livePinchRef = useRef(null);
   const suppressClickRef = useRef(false);
-  const gRef = useRef(null);
-  const pointersRef = useRef(new Map());
-  const pinchRef = useRef(null);
-  const pinchActiveRef = useRef(false);
-  const livePinchRef = useRef(null);
-  const suppressClickRef = useRef(false);
-  const gRef = useRef(null);
-  const pointersRef = useRef(new Map());
-  const pinchRef = useRef(null);
-  const pinchActiveRef = useRef(false);
-  const livePinchRef = useRef(null);
-  const suppressClickRef = useRef(false);
 
   const [model, setModel] = useState(() => ({ EXTENT: { w: 8400, h: 8800, margin: 2600 }, walls: [], doors: [], windows: [], dims: [], rooms: [], notes: [], boundary: null, rooflights: [], stairs: null }));
   const [tool, setTool] = useState("select");
@@ -357,146 +345,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     };
   }, []);
 
-  // Two-finger pinch-to-zoom and two-finger pan (touch). Capture-phase listeners,
-  // decoupled from the drawing handlers; the transform is driven straight on the
-  // <g> node during the gesture and committed to state once on release.
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    const pts = pointersRef.current;
-    const onDown = (e) => {
-      if (e.pointerType !== "touch") return;
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pts.size === 2) {
-        const [a, b] = [...pts.values()];
-        const rect = el.getBoundingClientRect();
-        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-        const midX = (a.x + b.x) / 2 - rect.left;
-        const midY = (a.y + b.y) / 2 - rect.top;
-        const v = viewRef.current;
-        pinchRef.current = {
-          startDist: dist, startS: v.s,
-          worldX: (midX - v.tx) / v.s, worldY: (midY - v.ty) / v.s,
-          rectLeft: rect.left, rectTop: rect.top,
-        };
-        pinchActiveRef.current = true;
-        suppressClickRef.current = true;
-        panRef.current = null;
-        try { el.setPointerCapture(e.pointerId); } catch {}
-      }
-    };
-    const onMove = (e) => {
-      if (!pts.has(e.pointerId)) return;
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pinchRef.current && pts.size >= 2) {
-        const [a, b] = [...pts.values()];
-        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-        const { startDist, startS, worldX, worldY, rectLeft, rectTop } = pinchRef.current;
-        const newS = Math.max(SCALE_MIN, Math.min(SCALE_MAX, startS * (dist / startDist)));
-        const midX = (a.x + b.x) / 2 - rectLeft;
-        const midY = (a.y + b.y) / 2 - rectTop;
-        const tx = midX - worldX * newS;
-        const ty = midY - worldY * newS;
-        livePinchRef.current = { s: newS, tx, ty };
-        const node = gRef.current;
-        if (node) node.setAttribute("transform", `translate(${tx} ${ty}) scale(${newS})`);
-        e.preventDefault();
-      }
-    };
-    const onUp = (e) => {
-      pts.delete(e.pointerId);
-      if (pts.size < 2) {
-        if (livePinchRef.current) {
-          const lp = livePinchRef.current;
-          livePinchRef.current = null;
-          setView({ s: lp.s, tx: lp.tx, ty: lp.ty });
-        }
-        pinchRef.current = null;
-        pinchActiveRef.current = false;
-      }
-    };
-    el.addEventListener("pointerdown", onDown, { capture: true });
-    el.addEventListener("pointermove", onMove, { capture: true });
-    el.addEventListener("pointerup", onUp, { capture: true });
-    el.addEventListener("pointercancel", onUp, { capture: true });
-    return () => {
-      el.removeEventListener("pointerdown", onDown, { capture: true });
-      el.removeEventListener("pointermove", onMove, { capture: true });
-      el.removeEventListener("pointerup", onUp, { capture: true });
-      el.removeEventListener("pointercancel", onUp, { capture: true });
-    };
-  }, []);
-
-  // Two-finger pinch-to-zoom and two-finger pan (touch). Capture-phase listeners,
-  // decoupled from the drawing handlers; the transform is driven straight on the
-  // <g> node during the gesture and committed to state once on release.
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    const pts = pointersRef.current;
-    const onDown = (e) => {
-      if (e.pointerType !== "touch") return;
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pts.size === 2) {
-        const [a, b] = [...pts.values()];
-        const rect = el.getBoundingClientRect();
-        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-        const midX = (a.x + b.x) / 2 - rect.left;
-        const midY = (a.y + b.y) / 2 - rect.top;
-        const v = viewRef.current;
-        pinchRef.current = {
-          startDist: dist, startS: v.s,
-          worldX: (midX - v.tx) / v.s, worldY: (midY - v.ty) / v.s,
-          rectLeft: rect.left, rectTop: rect.top,
-        };
-        pinchActiveRef.current = true;
-        suppressClickRef.current = true;
-        panRef.current = null;
-        try { el.setPointerCapture(e.pointerId); } catch {}
-      }
-    };
-    const onMove = (e) => {
-      if (!pts.has(e.pointerId)) return;
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pinchRef.current && pts.size >= 2) {
-        const [a, b] = [...pts.values()];
-        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-        const { startDist, startS, worldX, worldY, rectLeft, rectTop } = pinchRef.current;
-        const newS = Math.max(SCALE_MIN, Math.min(SCALE_MAX, startS * (dist / startDist)));
-        const midX = (a.x + b.x) / 2 - rectLeft;
-        const midY = (a.y + b.y) / 2 - rectTop;
-        const tx = midX - worldX * newS;
-        const ty = midY - worldY * newS;
-        livePinchRef.current = { s: newS, tx, ty };
-        const node = gRef.current;
-        if (node) node.setAttribute("transform", `translate(${tx} ${ty}) scale(${newS})`);
-        e.preventDefault();
-      }
-    };
-    const onUp = (e) => {
-      pts.delete(e.pointerId);
-      if (pts.size < 2) {
-        if (livePinchRef.current) {
-          const lp = livePinchRef.current;
-          livePinchRef.current = null;
-          setView({ s: lp.s, tx: lp.tx, ty: lp.ty });
-        }
-        pinchRef.current = null;
-        pinchActiveRef.current = false;
-      }
-    };
-    el.addEventListener("pointerdown", onDown, { capture: true });
-    el.addEventListener("pointermove", onMove, { capture: true });
-    el.addEventListener("pointerup", onUp, { capture: true });
-    el.addEventListener("pointercancel", onUp, { capture: true });
-    return () => {
-      el.removeEventListener("pointerdown", onDown, { capture: true });
-      el.removeEventListener("pointermove", onMove, { capture: true });
-      el.removeEventListener("pointerup", onUp, { capture: true });
-      el.removeEventListener("pointercancel", onUp, { capture: true });
-    };
-  }, []);
-
   // mark unsaved when the drawing changes (skips initial mount, load and new)
   useEffect(() => {
     if (skipDirty.current) { skipDirty.current = false; return; }
@@ -527,8 +375,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 
   const handleMove = (e) => {
     if (pinchActiveRef.current) return;
-    if (pinchActiveRef.current) return;
-    if (pinchActiveRef.current) return;
     if (panRef.current) {
       setView({ s: viewRef.current.s, tx: panRef.current.tx + (e.clientX - panRef.current.mx), ty: panRef.current.ty + (e.clientY - panRef.current.my) });
       return;
@@ -539,10 +385,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     setCur({ x: p.x, y: p.y, sx: e.clientX, sy: e.clientY, on: true });
   };
   const handleDown = (e) => {
-    if (pinchActiveRef.current) return;
-    suppressClickRef.current = false;
-    if (pinchActiveRef.current) return;
-    suppressClickRef.current = false;
     if (pinchActiveRef.current) return;
     suppressClickRef.current = false;
     if (tool === "pan" || e.button === 1 || e.shiftKey) {
@@ -558,8 +400,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     setModel((m) => ({ ...m, walls: m.walls.concat([seg]) }));
   };
   const handleClick = (e) => {
-    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
-    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (panRef.current) return;
     const raw = toWorld(e.clientX, e.clientY);
@@ -1187,6 +1027,3 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
-
-
-
