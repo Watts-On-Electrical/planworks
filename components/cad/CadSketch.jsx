@@ -15,6 +15,7 @@ import {
   T_EXT, T_INT, DOOR_W, WIN_W, wallPoly, wallFaces, ptStr, hyp, segLen, snap, fmtMM,
   nearestWall, hitTest, SAMPLE_PLAN,
 } from "@/lib/cad/plan";
+import { listSketches, getSketchData, insertSketch, updateSketch, deleteSketch } from "@/lib/cad/sketchStore";
 
 const SHEET = { x: -2500, y: -2600, w: 12200, h: 12600 };
 const SCALE_MIN = 0.02, SCALE_MAX = 0.6;
@@ -169,6 +170,8 @@ const LAYER_LIST = [
   ["grid", "Grid"],
 ];
 
+const SAVE_LABEL = { idle: "Not saved", unsaved: "Unsaved changes", saving: "Saving...", saved: "Saved", error: "Save failed" };
+
 // ------------------------- main screen -------------------------
 export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247" }) {
   const router = useRouter();
@@ -199,16 +202,23 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [flags, setFlags] = useState({ ortho: true, gridSnap: true });
   const [layers, setLayers] = useState({ walls: true, openings: true, dims: true, rooms: true, stairs: true, boundary: true, grid: true });
   const [size, setSize] = useState({ w: 900, h: 600 });
+  const [sketchId, setSketchId] = useState(null);
+  const [sketchName, setSketchName] = useState("Untitled sketch");
+  const [saveState, setSaveState] = useState("idle");
+  const [sketches, setSketches] = useState([]);
+  const [openPanel, setOpenPanel] = useState(false);
+  const skipDirty = useRef(true);
 
   viewRef.current = view;
 
-  const fit = useCallback((sz) => {
+  const fitExtent = useCallback((extent, sz) => {
     sz = sz || size;
     const pad = 80, planX0 = -2300, planY0 = -2300;
-    const planW = (model.EXTENT?.w || 8400) + 3400, planH = (model.EXTENT?.h || 8800) + 3000;
+    const planW = (extent?.w || 8400) + 3400, planH = (extent?.h || 8800) + 3000;
     const s = Math.min((sz.w - pad * 2) / planW, (sz.h - pad * 2) / planH);
     setView({ s, tx: (sz.w - planW * s) / 2 - planX0 * s, ty: (sz.h - planH * s) / 2 - planY0 * s });
-  }, [model, size]);
+  }, [size]);
+  const fit = useCallback((sz) => fitExtent(model.EXTENT, sz), [fitExtent, model]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -253,6 +263,12 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     svg.addEventListener("wheel", onWheel, { passive: false });
     return () => svg.removeEventListener("wheel", onWheel);
   }, []);
+
+  // mark unsaved when the drawing changes (skips initial mount, load and new)
+  useEffect(() => {
+    if (skipDirty.current) { skipDirty.current = false; return; }
+    setSaveState((st) => (st === "saving" ? st : "unsaved"));
+  }, [model]);
 
   const toWorld = (clientX, clientY) => {
     const r = svgRef.current.getBoundingClientRect();
@@ -381,6 +397,47 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     return { s: ns, tx: cxp - wx * ns, ty: cyp - wy * ns };
   });
 
+  const blankModel = () => ({ EXTENT: { w: 8400, h: 8800, margin: 2600 }, walls: [], doors: [], windows: [], dims: [], rooms: [], notes: [], boundary: null, rooflights: [], stairs: null });
+  const doSave = async () => {
+    setSaveState("saving");
+    try {
+      if (sketchId) await updateSketch(sketchId, sketchName, model);
+      else { const id = await insertSketch(sketchName, model); setSketchId(id); }
+      setSaveState("saved");
+    } catch (e) { console.error(e); setSaveState("error"); window.alert("Couldn't save: " + (e.message || e)); }
+  };
+  const refreshList = async () => { try { setSketches(await listSketches()); } catch (e) { console.warn(e); } };
+  const toggleOpen = () => { const n = !openPanel; setOpenPanel(n); if (n) refreshList(); };
+  const doNew = () => {
+    skipDirty.current = true;
+    setModel(blankModel());
+    setSketchId(null); setSketchName("Untitled sketch");
+    setSel(null); setDraftPts([]); setDimP1(null); setTool("select"); setSaveState("idle");
+    setTimeout(() => fitExtent({ w: 8400, h: 8800, margin: 2600 }), 0);
+  };
+  const doLoad = async (id) => {
+    try {
+      const data = await getSketchData(id);
+      if (!data) return;
+      const meta = sketches.find((sk) => sk.id === id);
+      skipDirty.current = true;
+      setModel({ ...blankModel(), ...data });
+      setSketchId(id); setSketchName(meta?.name || "Untitled sketch");
+      setSel(null); setDraftPts([]); setDimP1(null); setTool("select");
+      fitExtent(data.EXTENT);
+      setSaveState("saved"); setOpenPanel(false);
+    } catch (e) { console.error(e); window.alert("Couldn't open: " + (e.message || e)); }
+  };
+  const doDelete = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this sketch? This can't be undone.")) return;
+    try {
+      await deleteSketch(id);
+      if (id === sketchId) doNew();
+      refreshList();
+    } catch (err) { console.error(err); window.alert("Couldn't delete: " + (err.message || err)); }
+  };
+
   const planEls = useMemo(() => {
     const g = [];
     g.push(<rect key="sheet" x={SHEET.x} y={SHEET.y} width={SHEET.w} height={SHEET.h} className="cadv-paper" stroke="none" />);
@@ -478,10 +535,28 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       <style>{CSS}</style>
       <div className="cadv__top">
         <button className="cadv__back" onClick={() => router.push("/")} title="Back to dashboard">&#8249;</button>
-        <div className="cadv__title">
-          <div className="name">{title}</div>
-          <div className="sub">{codeRef} &#183; Sketch mode &#183; 1:50 @ A3</div>
+        <input className="cadv__name" value={sketchName} onChange={(e) => setSketchName(e.target.value)} spellCheck={false} aria-label="Sketch name" />
+        <span className={"cadv__save cadv__save--" + saveState}>{SAVE_LABEL[saveState]}</span>
+        <span className="cadv__grow" />
+        <div className="cadv__acts">
+          <button onClick={doNew}>New</button>
+          <button onClick={toggleOpen}>Open</button>
+          <button className="primary" onClick={doSave} disabled={saveState === "saving"}>Save</button>
         </div>
+        {openPanel && (
+          <div className="cadv__open">
+            <div className="cadv__open-head">Your sketches</div>
+            {sketches.length === 0 ? (
+              <div className="cadv__open-empty">No saved sketches yet.</div>
+            ) : sketches.map((sk) => (
+              <button key={sk.id} className="cadv__open-row" onClick={() => doLoad(sk.id)}>
+                <span className="nm">{sk.name}</span>
+                <span className="dt">{new Date(sk.updatedAt).toLocaleDateString("en-GB")}</span>
+                <span className="del" title="Delete" onClick={(e) => doDelete(sk.id, e)}>&#215;</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="cadv__body">
@@ -632,7 +707,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 const CSS = `
 .cadv{position:absolute; inset:0; display:flex; flex-direction:column; background:#fff; font-family:'Inter',system-ui,sans-serif; overflow:hidden}
 .cadv *{box-sizing:border-box}
-.cadv__top{display:flex; align-items:center; gap:12px; padding:0 14px; height:56px; border-bottom:1px solid rgba(44,62,80,.1); flex:0 0 auto; background:#fff}
+.cadv__top{position:relative; display:flex; align-items:center; gap:10px; padding:0 14px; height:56px; border-bottom:1px solid rgba(44,62,80,.1); flex:0 0 auto; background:#fff}
 .cadv__back{width:36px; height:36px; border:1px solid rgba(44,62,80,.12); background:#fff; border-radius:9px; font-size:20px; line-height:1; color:#3E4C59; cursor:pointer}
 .cadv__back:hover{background:#F4F6F9}
 .cadv__title .name{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#18222D}
@@ -704,4 +779,28 @@ const CSS = `
 .cadv-layer .dot{width:9px; height:9px; border-radius:3px; border:1.5px solid #B5BEC7; background:transparent; flex:0 0 auto}
 .cadv-layer.on{color:#283643}
 .cadv-layer.on .dot{background:#3FB7C9; border-color:#3FB7C9}
+.cadv__name{flex:0 1 260px; min-width:120px; height:34px; border:1px solid transparent; border-radius:8px; padding:0 10px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#18222D; background:transparent}
+.cadv__name:hover{border-color:rgba(44,62,80,.12); background:#F8FAFB}
+.cadv__name:focus{outline:none; border-color:#3FB7C9; background:#fff}
+.cadv__save{font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.04em; color:#8C97A3; white-space:nowrap}
+.cadv__save--saved{color:#1C6F7C}
+.cadv__save--saving{color:#3E4C59}
+.cadv__save--unsaved{color:#B06A1E}
+.cadv__save--error{color:#C4564B}
+.cadv__grow{flex:1}
+.cadv__acts{display:flex; gap:8px}
+.cadv__acts button{height:34px; padding:0 14px; border:1px solid rgba(44,62,80,.14); border-radius:9px; background:#fff; font:inherit; font-size:12.5px; font-weight:540; color:#3E4C59; cursor:pointer}
+.cadv__acts button:hover{background:#F4F6F9; color:#18222D}
+.cadv__acts button.primary{background:#2C3E50; border-color:#2C3E50; color:#fff}
+.cadv__acts button.primary:hover{background:#22303d}
+.cadv__acts button:disabled{opacity:.5; cursor:default}
+.cadv__open{position:absolute; top:54px; right:14px; width:300px; max-height:340px; overflow-y:auto; background:#fff; border:1px solid rgba(44,62,80,.14); border-radius:12px; box-shadow:0 12px 30px rgba(20,33,46,.16); z-index:20; padding:6px}
+.cadv__open-head{padding:8px 10px 6px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8C97A3}
+.cadv__open-empty{padding:10px; font-size:12.5px; color:#6E7B88}
+.cadv__open-row{display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 10px; border:0; border-radius:8px; background:transparent; font:inherit; cursor:pointer}
+.cadv__open-row:hover{background:#F4F6F9}
+.cadv__open-row .nm{flex:1; font-size:13px; color:#18222D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cadv__open-row .dt{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#8C97A3}
+.cadv__open-row .del{width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#A6AEB6; font-size:15px}
+.cadv__open-row .del:hover{background:rgba(196,86,75,.12); color:#C4564B}
 `;
