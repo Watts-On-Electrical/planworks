@@ -295,7 +295,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         const v = viewRef.current;
         pinchRef.current = {
           idA: ids[0], idB: ids[1],
-          startDist: dist, startS: v.s,
+          startDist: dist, startS: v.s, startTx: v.tx, startTy: v.ty,
           worldX: (midX - v.tx) / v.s, worldY: (midY - v.ty) / v.s,
           rectLeft: rect.left, rectTop: rect.top,
         };
@@ -312,15 +312,15 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         const a = pts.get(pinchRef.current.idA), b = pts.get(pinchRef.current.idB);
         if (!a || !b) return;
         const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-        const { startDist, startS, worldX, worldY, rectLeft, rectTop } = pinchRef.current;
+        const { startDist, startS, startTx, startTy, worldX, worldY, rectLeft, rectTop } = pinchRef.current;
         const newS = Math.max(SCALE_MIN, Math.min(SCALE_MAX, startS * (dist / startDist)));
         const midX = (a.x + b.x) / 2 - rectLeft;
         const midY = (a.y + b.y) / 2 - rectTop;
         const tx = midX - worldX * newS;
         const ty = midY - worldY * newS;
         livePinchRef.current = { s: newS, tx, ty };
-        const node = gRef.current;
-        if (node) node.setAttribute("transform", `translate(${tx} ${ty}) scale(${newS})`);
+        const cs = newS / startS;
+        if (svgRef.current) svgRef.current.style.transform = `translate(${tx - startTx * cs}px, ${ty - startTy * cs}px) scale(${cs})`;
         e.preventDefault();
       }
     };
@@ -355,6 +355,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   useLayoutEffect(() => {
     const n = gRef.current;
     if (n) n.setAttribute("transform", `translate(${view.tx} ${view.ty}) scale(${view.s})`);
+    if (svgRef.current) svgRef.current.style.transform = "";
   }, [view]);
 
   // mark unsaved when the drawing changes (skips initial mount, load and new)
@@ -748,7 +749,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         </div>
 
         <div className="cadv__workspace" ref={wrapRef}>
-          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor }}
+          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0", willChange: "transform" }}
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
             onClick={handleClick} onDoubleClick={handleDouble}
             onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
@@ -1039,5 +1040,6 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
 
 
