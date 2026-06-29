@@ -16,6 +16,9 @@ import {
   nearestWall, hitTest, SAMPLE_PLAN,
 } from "@/lib/cad/plan";
 import { listSketches, getSketchData, insertSketch, updateSketch, deleteSketch } from "@/lib/cad/sketchStore";
+import { insertProject, getProjectData, updateProjectRow } from "@/lib/db";
+import { uploadPlanImage, dataUrlToBlob } from "@/lib/planImages";
+import { computeFrame, renderModelToPng } from "@/lib/cad/sketchToImage";
 
 const SHEET = { x: -2500, y: -2600, w: 12200, h: 12600 };
 const SCALE_MIN = 0.02, SCALE_MAX = 0.6;
@@ -208,6 +211,11 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [sketches, setSketches] = useState([]);
   const [openPanel, setOpenPanel] = useState(false);
   const skipDirty = useRef(true);
+  const [linkProjectId, setLinkProjectId] = useState(null);
+  const [linkSheetId, setLinkSheetId] = useState(null);
+  const [frame, setFrame] = useState(null);
+  const [planModal, setPlanModal] = useState(false);
+  const [planBusy, setPlanBusy] = useState(null);
 
   viewRef.current = view;
 
@@ -398,13 +406,17 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   });
 
   const blankModel = () => ({ EXTENT: { w: 8400, h: 8800, margin: 2600 }, walls: [], doors: [], windows: [], dims: [], rooms: [], notes: [], boundary: null, rooflights: [], stairs: null });
+  const currentLink = () => (linkProjectId ? { projectId: linkProjectId, sheetId: linkSheetId, frame } : null);
+  const persistSketch = async (link) => {
+    const lk = link === undefined ? currentLink() : link;
+    const data = { ...model, _link: lk };
+    if (sketchId) { await updateSketch(sketchId, sketchName, data); return sketchId; }
+    const id = await insertSketch(sketchName, data); setSketchId(id); return id;
+  };
   const doSave = async () => {
     setSaveState("saving");
-    try {
-      if (sketchId) await updateSketch(sketchId, sketchName, model);
-      else { const id = await insertSketch(sketchName, model); setSketchId(id); }
-      setSaveState("saved");
-    } catch (e) { console.error(e); setSaveState("error"); window.alert("Couldn't save: " + (e.message || e)); }
+    try { await persistSketch(); setSaveState("saved"); }
+    catch (e) { console.error(e); setSaveState("error"); window.alert("Couldn't save: " + (e.message || e)); }
   };
   const refreshList = async () => { try { setSketches(await listSketches()); } catch (e) { console.warn(e); } };
   const toggleOpen = () => { const n = !openPanel; setOpenPanel(n); if (n) refreshList(); };
@@ -412,6 +424,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     skipDirty.current = true;
     setModel(blankModel());
     setSketchId(null); setSketchName("Untitled sketch");
+    setLinkProjectId(null); setLinkSheetId(null); setFrame(null);
     setSel(null); setDraftPts([]); setDimP1(null); setTool("select"); setSaveState("idle");
     setTimeout(() => fitExtent({ w: 8400, h: 8800, margin: 2600 }), 0);
   };
@@ -420,11 +433,15 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       const data = await getSketchData(id);
       if (!data) return;
       const meta = sketches.find((sk) => sk.id === id);
+      const { _link, ...geo } = data;
       skipDirty.current = true;
-      setModel({ ...blankModel(), ...data });
+      setModel({ ...blankModel(), ...geo });
+      setLinkProjectId(_link?.projectId || null);
+      setLinkSheetId(_link?.sheetId || null);
+      setFrame(_link?.frame || null);
       setSketchId(id); setSketchName(meta?.name || "Untitled sketch");
       setSel(null); setDraftPts([]); setDimP1(null); setTool("select");
-      fitExtent(data.EXTENT);
+      fitExtent(geo.EXTENT);
       setSaveState("saved"); setOpenPanel(false);
     } catch (e) { console.error(e); window.alert("Couldn't open: " + (e.message || e)); }
   };
@@ -436,6 +453,59 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       if (id === sketchId) doNew();
       refreshList();
     } catch (err) { console.error(err); window.alert("Couldn't delete: " + (err.message || err)); }
+  };
+
+  const createDrawing = async (path, w, h, fr) => {
+    setPlanBusy("Creating drawing");
+    const sheetId = "s_" + Math.random().toString(36).slice(2, 9);
+    const today = new Date().toISOString().slice(0, 10);
+    const name = sketchName || "Untitled drawing";
+    const data = {
+      meta: { projectName: name, drawingNumber: "", date: today, revision: "A", revNote: "First Issue", company: "", clientName: "", clientEmail: "" },
+      boq: null, titleBlock: null, colourMode: "colour",
+      sheets: [{ id: sheetId, name, drawingNumber: "", bgImage: { path, w, h }, placed: [], furniture: [], walls: [], wires: [], annotations: [], symbolScale: 1 }],
+      activeSheetId: sheetId,
+    };
+    const newId = await insertProject(name, data);
+    setLinkProjectId(newId); setLinkSheetId(sheetId); setFrame(fr);
+    await persistSketch({ projectId: newId, sheetId, frame: fr });
+    setPlanBusy(null);
+    router.push("/drawing?id=" + newId);
+  };
+  const runUsePlan = async (mode) => {
+    setPlanModal(false);
+    setPlanBusy("Preparing plan");
+    try {
+      const fr = (mode === "update" && frame) ? frame : computeFrame(model);
+      const { dataUrl, w, h } = await renderModelToPng(model, fr, 2200);
+      setPlanBusy("Uploading plan");
+      const { path } = await uploadPlanImage(dataUrlToBlob(dataUrl));
+      if (mode === "update" && linkProjectId) {
+        setPlanBusy("Updating drawing");
+        let proj = null;
+        try { proj = await getProjectData(linkProjectId); } catch { proj = null; }
+        if (!proj) { await createDrawing(path, w, h, fr); return; }
+        const newSheets = (proj.sheets || []).map((s) => s.id === linkSheetId ? { ...s, bgImage: { path, w, h } } : s);
+        const matched = (proj.sheets || []).some((s) => s.id === linkSheetId);
+        if (!matched && newSheets.length) {
+          const aid = (proj.activeSheetId && newSheets.find((s) => s.id === proj.activeSheetId)) ? proj.activeSheetId : newSheets[0].id;
+          for (let i = 0; i < newSheets.length; i++) if (newSheets[i].id === aid) newSheets[i] = { ...newSheets[i], bgImage: { path, w, h } };
+        }
+        await updateProjectRow(linkProjectId, proj.meta?.projectName || sketchName, { ...proj, sheets: newSheets });
+        await persistSketch({ projectId: linkProjectId, sheetId: linkSheetId, frame: fr });
+        setFrame(fr); setPlanBusy(null);
+        router.push("/drawing?id=" + linkProjectId);
+        return;
+      }
+      await createDrawing(path, w, h, fr);
+    } catch (e) {
+      console.error(e); setPlanBusy(null);
+      window.alert("Couldn't send the plan to the editor: " + (e.message || e));
+    }
+  };
+  const openUsePlan = () => {
+    if (!model.walls || !model.walls.length) { window.alert("Draw at least the outline walls before sending the plan to the editor."); return; }
+    setPlanModal(true);
   };
 
   const planEls = useMemo(() => {
@@ -541,7 +611,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <div className="cadv__acts">
           <button onClick={doNew}>New</button>
           <button onClick={toggleOpen}>Open</button>
-          <button className="primary" onClick={doSave} disabled={saveState === "saving"}>Save</button>
+          <button onClick={doSave} disabled={saveState === "saving"}>Save</button>
+          <button className="accent" onClick={openUsePlan} disabled={!!planBusy}>Use this plan</button>
         </div>
         {openPanel && (
           <div className="cadv__open">
@@ -700,6 +771,30 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <span className="cell">GRID {settings.grid}mm</span>
         <span className="cell">{Math.round(view.s / 0.08 * 100)}%</span>
       </div>
+
+      {planModal && (
+        <div className="cadv__modal-bg" onClick={() => setPlanModal(false)}>
+          <div className="cadv__modal" onClick={(e) => e.stopPropagation()}>
+            <div className="h">Send plan to the editor</div>
+            {linkProjectId ? (
+              <>
+                <p>This sketch is already linked to an electrical drawing. Update that drawing with your latest plan and keep every symbol you have placed, or start a brand-new drawing.</p>
+                <button className="m-btn primary" onClick={() => runUsePlan("update")}>Update existing drawing<small>Keeps your placed symbols in position</small></button>
+                <button className="m-btn" onClick={() => runUsePlan("new")}>Create a new drawing<small>A fresh drawing with no symbols yet</small></button>
+              </>
+            ) : (
+              <>
+                <p>This creates a new electrical drawing on your dashboard using this plan as the background, then opens it so you can start placing symbols.</p>
+                <button className="m-btn primary" onClick={() => runUsePlan("new")}>Create electrical drawing</button>
+              </>
+            )}
+            <button className="m-cancel" onClick={() => setPlanModal(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {planBusy && (
+        <div className="cadv__busy"><div className="box"><span className="spin" />{planBusy}&#8230;</div></div>
+      )}
     </div>
   );
 }
@@ -803,4 +898,23 @@ const CSS = `
 .cadv__open-row .dt{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#8C97A3}
 .cadv__open-row .del{width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#A6AEB6; font-size:15px}
 .cadv__open-row .del:hover{background:rgba(196,86,75,.12); color:#C4564B}
+.cadv__acts button.accent{background:#2C97A8; border-color:#2C97A8; color:#fff}
+.cadv__acts button.accent:hover{background:#23808e}
+.cadv__acts button.accent:disabled{opacity:.5; cursor:default}
+.cadv__modal-bg{position:fixed; inset:0; background:rgba(16,24,32,.5); display:flex; align-items:center; justify-content:center; z-index:50}
+.cadv__modal{width:420px; max-width:92vw; background:#fff; border-radius:16px; padding:22px; box-shadow:0 24px 60px rgba(16,24,32,.3)}
+.cadv__modal .h{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18px; color:#18222D; margin-bottom:8px}
+.cadv__modal p{font-size:13.5px; line-height:1.5; color:#54616E; margin:0 0 16px}
+.cadv__modal .m-btn{display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; padding:12px 14px; margin-bottom:10px; border:1px solid rgba(44,62,80,.16); border-radius:11px; background:#fff; font:inherit; font-size:14px; font-weight:600; color:#18222D; cursor:pointer}
+.cadv__modal .m-btn small{font-weight:400; font-size:12px; color:#8C97A3; margin-top:3px}
+.cadv__modal .m-btn:hover{background:#F4F6F9}
+.cadv__modal .m-btn.primary{background:#2C97A8; border-color:#2C97A8; color:#fff}
+.cadv__modal .m-btn.primary small{color:rgba(255,255,255,.85)}
+.cadv__modal .m-btn.primary:hover{background:#23808e}
+.cadv__modal .m-cancel{width:100%; height:38px; border:0; background:transparent; font:inherit; font-size:13px; color:#6E7B88; cursor:pointer; margin-top:2px}
+.cadv__modal .m-cancel:hover{color:#18222D}
+.cadv__busy{position:fixed; inset:0; background:rgba(16,24,32,.55); display:flex; align-items:center; justify-content:center; z-index:60}
+.cadv__busy .box{display:flex; align-items:center; gap:12px; background:#fff; padding:16px 22px; border-radius:12px; font-size:14px; color:#18222D; font-weight:540}
+.cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
+@keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
