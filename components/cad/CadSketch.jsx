@@ -12,8 +12,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  T_EXT, T_INT, wallPoly, wallFaces, ptStr, hyp, segLen, snap, fmtMM,
-  hitTest, SAMPLE_PLAN,
+  T_EXT, T_INT, DOOR_W, WIN_W, wallPoly, wallFaces, ptStr, hyp, segLen, snap, fmtMM,
+  nearestWall, hitTest, SAMPLE_PLAN,
 } from "@/lib/cad/plan";
 
 const SHEET = { x: -2500, y: -2600, w: 12200, h: 12600 };
@@ -131,6 +131,11 @@ function Glyph({ name }) {
     select: <path d="M5 4l14 6-6 2-2 6z" />,
     ext: <g><path d="M4 8h16M4 16h16" /></g>,
     int: <g><path d="M4 9h16M4 15h16" /></g>,
+    door: <g><path d="M5 20V5h7" /><path d="M12 5a8 8 0 0 1 8 8" /></g>,
+    window: <g><rect x="4" y="7" width="16" height="10" /><path d="M4 12h16M12 7v10" /></g>,
+    dim: <g><path d="M4 12h16M4 9v6M20 9v6" /></g>,
+    room: <path d="M4 8h11l4 4-4 4H4z" />,
+    text: <g><path d="M5 6h14M12 6v12" /></g>,
     pan: <path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-1.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2.5-4a1.6 1.6 0 0 1 2.7-1.6L9 14" />,
   };
   return (
@@ -144,7 +149,22 @@ const TOOLS = [
   ["select", "Select", "V"],
   ["ext", "External wall", "E"],
   ["int", "Internal wall", "I"],
+  ["door", "Door", "D"],
+  ["window", "Window", "W"],
+  ["dim", "Dimension", "M"],
+  ["room", "Room label", "R"],
+  ["text", "Note", "T"],
   ["pan", "Pan", "H"],
+];
+
+const LAYER_LIST = [
+  ["walls", "Walls"],
+  ["openings", "Doors & windows"],
+  ["dims", "Dimensions"],
+  ["rooms", "Rooms & notes"],
+  ["stairs", "Stairs & fittings"],
+  ["boundary", "Site boundary"],
+  ["grid", "Grid"],
 ];
 
 // ------------------------- main screen -------------------------
@@ -172,8 +192,10 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [draftPts, setDraftPts] = useState([]);
   const [cur, setCur] = useState({ x: 0, y: 0, sx: -99, sy: -99, on: false });
   const [sel, setSel] = useState(null);
-  const [settings, setSettings] = useState({ grid: 100 });
+  const [dimP1, setDimP1] = useState(null);
+  const [settings, setSettings] = useState({ grid: 100, doorW: DOOR_W, winW: WIN_W });
   const [flags, setFlags] = useState({ ortho: true, gridSnap: true });
+  const [layers, setLayers] = useState({ walls: true, openings: true, dims: true, rooms: true, stairs: true, boundary: true, grid: true });
   const [size, setSize] = useState({ w: 900, h: 600 });
 
   viewRef.current = view;
@@ -200,10 +222,10 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   useEffect(() => {
     const onKey = (e) => {
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
-      const map = { v: "select", e: "ext", i: "int", h: "pan" };
+      const map = { v: "select", e: "ext", i: "int", d: "door", w: "window", m: "dim", r: "room", t: "text", h: "pan" };
       const k = e.key.toLowerCase();
-      if (map[k]) { setTool(map[k]); setDraftPts([]); }
-      else if (e.key === "Escape") { setDraftPts([]); setSel(null); }
+      if (map[k]) { setTool(map[k]); setDraftPts([]); setDimP1(null); }
+      else if (e.key === "Escape") { setDraftPts([]); setDimP1(null); setSel(null); }
       else if (e.key === "Enter") { setDraftPts([]); }
       else if (e.key === "Delete" || e.key === "Backspace") { deleteSel(); }
     };
@@ -278,6 +300,37 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       setDraftPts(draftPts.concat([p]));
       return;
     }
+    if (tool === "door" || tool === "window") {
+      const nw = nearestWall(model.walls, raw.x, raw.y);
+      if (!nw) return;
+      const t = nw.seg.type === "external" ? T_EXT : T_INT;
+      if (tool === "door") {
+        const d = { id: "D" + Date.now(), x: Math.round(nw.cx), y: Math.round(nw.cy), dir: nw.dir, w: settings.doorW, t, hinge: -1, fold: 1, ref: "" };
+        setModel((m) => ({ ...m, doors: m.doors.concat([d]) }));
+      } else {
+        const wn = { id: "W" + Date.now(), x: Math.round(nw.cx), y: Math.round(nw.cy), dir: nw.dir, w: settings.winW, t, escape: false, ref: "" };
+        setModel((m) => ({ ...m, windows: m.windows.concat([wn]) }));
+      }
+      return;
+    }
+    if (tool === "dim") {
+      const pp = flags.gridSnap ? { x: snap(raw.x, settings.grid), y: snap(raw.y, settings.grid) } : raw;
+      if (!dimP1) { setDimP1(pp); }
+      else {
+        const horiz = Math.abs(pp.x - dimP1.x) >= Math.abs(pp.y - dimP1.y);
+        const nd = { id: "M" + Date.now(), x1: dimP1.x, y1: dimP1.y, x2: pp.x, y2: pp.y, side: horiz ? "top" : "left", off: 700 };
+        setModel((m) => ({ ...m, dims: m.dims.concat([nd]) }));
+        setDimP1(null);
+      }
+      return;
+    }
+    if (tool === "room" || tool === "text") {
+      const nm = tool === "room" ? (window.prompt("Room name", "New room") || "") : (window.prompt("Note text", "") || "");
+      if (!nm) return;
+      if (tool === "room") setModel((m) => ({ ...m, rooms: m.rooms.concat([{ name: nm, area: 0, x: Math.round(raw.x), y: Math.round(raw.y) }]) }));
+      else setModel((m) => ({ ...m, notes: m.notes.concat([{ text: nm, x: Math.round(raw.x), y: Math.round(raw.y) }]) }));
+      return;
+    }
     if (tool === "select") setSel(hitTest(model.walls, raw.x, raw.y));
   };
   const handleDouble = () => { if (draftPts.length) setDraftPts([]); };
@@ -310,30 +363,39 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       const maj = gy % 1000 === 0;
       grid.push(<line key={"gy" + gy} x1={SHEET.x} y1={gy} x2={SHEET.x + SHEET.w} y2={gy} className={maj ? "cadv-grid-major" : "cadv-grid-minor"} strokeWidth={maj ? 0.8 : 0.5} vectorEffect="non-scaling-stroke" />);
     }
-    g.push(<g key="grid">{grid}</g>);
-    if (model.boundary) g.push(<polyline key="bnd" points={ptStr(model.boundary)} className="cadv-boundary" fill="none" strokeWidth={1.4} strokeDasharray="14 10" vectorEffect="non-scaling-stroke" />);
-    (model.rooflights || []).forEach((rl) => g.push(
+    if (layers.grid) g.push(<g key="grid">{grid}</g>);
+    if (layers.boundary && model.boundary) g.push(<polyline key="bnd" points={ptStr(model.boundary)} className="cadv-boundary" fill="none" strokeWidth={1.4} strokeDasharray="14 10" vectorEffect="non-scaling-stroke" />);
+    if (layers.stairs) (model.rooflights || []).forEach((rl) => g.push(
       <g key={rl.ref}>
         <rect x={rl.x} y={rl.y} width={rl.w} height={rl.h} fill="none" className="cadv-ink" strokeWidth={0.8} strokeDasharray="20 14" vectorEffect="non-scaling-stroke" opacity={0.6} />
         <text x={rl.x + rl.w / 2} y={rl.y + rl.h / 2} className="cadv-note" fontSize={150} textAnchor="middle" fontWeight={600}>{rl.ref}</text>
       </g>));
-    g.push(<g key="walls">{model.walls.map((s) => <WallNode key={s.id} s={s} selected={sel && sel.kind === "wall" && sel.id === s.id} />)}</g>);
-    g.push(<g key="doors">{model.doors.map((d) => <DoorNode key={d.id} d={d} />)}</g>);
-    g.push(<g key="wins">{model.windows.map((wn) => <WindowNode key={wn.id} wn={wn} />)}</g>);
-    if (model.stairs) g.push(<StairNode key="stairs" s={model.stairs} />);
-    g.push(<g key="dims">{model.dims.map((d) => <DimNode key={d.id} d={d} />)}</g>);
-    g.push(<g key="rooms">{model.rooms.map((r, i) => (
-      <g key={"room" + i} className="cadv-room">
-        <text x={r.x} y={r.y} className="nm" fontSize={230} textAnchor="middle">{r.name.toUpperCase()}</text>
-        {r.area ? <text x={r.x} y={r.y + 300} className="ar" fontSize={165} textAnchor="middle">{r.area.toFixed(1) + " m\u00B2"}</text> : null}
-      </g>))}</g>);
-    const tags = [];
-    model.doors.forEach((d) => { if (d.ref) tags.push(<Tag key={"tg" + d.id} refTxt={d.ref} x={d.x + (d.dir === "h" ? 0 : d.fold * 430)} y={d.y + (d.dir === "h" ? d.fold * 430 : 0)} />); });
-    model.windows.forEach((w) => { if (w.ref) tags.push(<Tag key={"tg" + w.id} refTxt={w.ref} x={w.x + (w.dir === "h" ? 0 : (w.x < 1000 ? 430 : -430))} y={w.y + (w.dir === "h" ? (w.y < 1000 ? 360 : -360) : 0)} />); });
-    g.push(<g key="tags">{tags}</g>);
+    if (layers.walls) g.push(<g key="walls">{model.walls.map((s) => <WallNode key={s.id} s={s} selected={sel && sel.kind === "wall" && sel.id === s.id} />)}</g>);
+    if (layers.openings) {
+      g.push(<g key="doors">{model.doors.map((d) => <DoorNode key={d.id} d={d} />)}</g>);
+      g.push(<g key="wins">{model.windows.map((wn) => <WindowNode key={wn.id} wn={wn} />)}</g>);
+    }
+    if (layers.stairs && model.stairs) g.push(<StairNode key="stairs" s={model.stairs} />);
+    if (layers.dims) g.push(<g key="dims">{model.dims.map((d) => <DimNode key={d.id} d={d} />)}</g>);
+    if (layers.rooms) {
+      g.push(<g key="rooms">{model.rooms.map((r, i) => (
+        <g key={"room" + i} className="cadv-room">
+          <text x={r.x} y={r.y} className="nm" fontSize={230} textAnchor="middle">{r.name.toUpperCase()}</text>
+          {r.area ? <text x={r.x} y={r.y + 300} className="ar" fontSize={165} textAnchor="middle">{r.area.toFixed(1) + " m\u00B2"}</text> : null}
+        </g>))}</g>);
+      g.push(<g key="notes">{model.notes.map((n, i) => (
+        <text key={"n" + i} x={n.x} y={n.y} className="cadv-note" fontSize={165} textAnchor="middle">{n.text}</text>))}</g>);
+    }
+    if (layers.openings) {
+      const tags = [];
+      model.doors.forEach((d) => { if (d.ref) tags.push(<Tag key={"tg" + d.id} refTxt={d.ref} x={d.x + (d.dir === "h" ? 0 : d.fold * 430)} y={d.y + (d.dir === "h" ? d.fold * 430 : 0)} />); });
+      model.windows.forEach((w) => { if (w.ref) tags.push(<Tag key={"tg" + w.id} refTxt={w.ref} x={w.x + (w.dir === "h" ? 0 : (w.x < 1000 ? 430 : -430))} y={w.y + (w.dir === "h" ? (w.y < 1000 ? 360 : -360) : 0)} />); });
+      g.push(<g key="tags">{tags}</g>);
+    }
     return g;
-  }, [model, sel]);
+  }, [model, sel, layers]);
 
+  // overlay: draft + rubber-band + vertices + crosshair + snap dot
   const overlay = [];
   if (isWallTool && draftPts.length) {
     for (let i = 0; i < draftPts.length - 1; i++)
@@ -342,18 +404,26 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     overlay.push(<line key="rb" x1={last.x} y1={last.y} x2={cur.x} y2={cur.y} className="cadv-active" strokeWidth={1.6} strokeDasharray="8 6" vectorEffect="non-scaling-stroke" />);
     draftPts.forEach((p, k) => overlay.push(<rect key={"v" + k} x={p.x - 90} y={p.y - 90} width={180} height={180} className="cadv-active" fill="#fff" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />));
   }
+  if (tool === "dim" && dimP1) {
+    overlay.push(<line key="dimrb" x1={dimP1.x} y1={dimP1.y} x2={cur.x} y2={cur.y} className="cadv-active" strokeWidth={1.2} strokeDasharray="8 6" vectorEffect="non-scaling-stroke" />);
+  }
   if (drawingTool && cur.on) {
     overlay.push(<line key="chx" x1={SHEET.x} y1={cur.y} x2={SHEET.x + SHEET.w} y2={cur.y} className="cadv-active" strokeWidth={0.6} opacity={0.4} vectorEffect="non-scaling-stroke" />);
     overlay.push(<line key="chy" x1={cur.x} y1={SHEET.y} x2={cur.x} y2={SHEET.y + SHEET.h} className="cadv-active" strokeWidth={0.6} opacity={0.4} vectorEffect="non-scaling-stroke" />);
     overlay.push(<circle key="cdot" cx={cur.x} cy={cur.y} r={70} className="cadv-active" fill="#fff" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />);
   }
 
+  // length HUD (DOM, at cursor)
   let hud = null;
   if (isWallTool && draftPts.length && cur.on) {
     const lp = draftPts[draftPts.length - 1];
     const L = Math.round(hyp(cur.x - lp.x, cur.y - lp.y));
     const wr = wrapRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
     hud = <div className="cadv__hud" style={{ left: cur.sx - wr.left, top: cur.sy - wr.top }}>Length <b>{fmtMM(L)} mm</b></div>;
+  } else if (tool === "dim" && dimP1 && cur.on) {
+    const L2 = Math.round(hyp(cur.x - dimP1.x, cur.y - dimP1.y));
+    const wr = wrapRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+    hud = <div className="cadv__hud" style={{ left: cur.sx - wr.left, top: cur.sy - wr.top }}><b>{fmtMM(L2)} mm</b></div>;
   }
 
   const selWall = sel && sel.kind === "wall" ? model.walls.find((w) => w.id === sel.id) : null;
@@ -361,6 +431,11 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     select: "Click a wall to select. Hold Shift and drag to pan.",
     ext: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an external wall",
     int: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an internal wall",
+    door: "Click on a wall to place a door",
+    window: "Click on a wall to place a window",
+    dim: dimP1 ? "Click the second measure point" : "Click the first measure point",
+    room: "Click inside a space to drop a room label",
+    text: "Click to place a note",
     pan: "Drag to pan the sheet",
   }[tool];
 
@@ -381,7 +456,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <div className="cadv__rail">
           {TOOLS.map(([id, label, key]) => (
             <button key={id} className={"cadv__tool" + (tool === id ? " on" : "")} title={label + " (" + key + ")"}
-              onClick={() => { setTool(id); setDraftPts([]); }}>
+              onClick={() => { setTool(id); setDraftPts([]); setDimP1(null); }}>
               <Glyph name={id} />
               <span className="key">{key}</span>
             </button>
@@ -436,6 +511,26 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
                   </div>
                 </>
               )}
+              {tool === "door" && (
+                <>
+                  <div className="cadv__sect">Door width</div>
+                  <div className="cadv-seg">
+                    {[760, 850, 960].map((wv) => (
+                      <button key={wv} className={settings.doorW === wv ? "on" : ""} onClick={() => setSettings((s) => ({ ...s, doorW: wv }))}>{wv}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {tool === "window" && (
+                <>
+                  <div className="cadv__sect">Window width</div>
+                  <div className="cadv-seg">
+                    {[600, 900, 1200].map((wv) => (
+                      <button key={wv} className={settings.winW === wv ? "on" : ""} onClick={() => setSettings((s) => ({ ...s, winW: wv }))}>{wv}</button>
+                    ))}
+                  </div>
+                </>
+              )}
               <div className="cadv__sect">Snap grid</div>
               <div className="cadv-seg">
                 {[50, 100, 250].map((gv) => (
@@ -448,6 +543,14 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
                 <button className={flags.gridSnap ? "on" : ""} onClick={() => setFlags((f) => ({ ...f, gridSnap: !f.gridSnap }))}>Snap</button>
               </div>
               <div className="cadv-hint">{hint}</div>
+              <div className="cadv__sect">Layers</div>
+              <div className="cadv-layers">
+                {LAYER_LIST.map(([id, label]) => (
+                  <button key={id} className={"cadv-layer" + (layers[id] ? " on" : "")} onClick={() => setLayers((l) => ({ ...l, [id]: !l[id] }))}>
+                    <span className="dot" />{label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -535,4 +638,10 @@ const CSS = `
 .cadv__status .spacer{flex:1; border:0}
 .cadv__status .toggle{cursor:pointer; color:#8C97A3}
 .cadv__status .toggle.on{color:#1C6F7C; background:rgba(63,183,201,.1)}
+.cadv-layers{padding:2px 12px 14px; display:flex; flex-direction:column; gap:1px}
+.cadv-layer{display:flex; align-items:center; gap:9px; width:100%; text-align:left; padding:7px 8px; border:0; border-radius:8px; background:transparent; font:inherit; font-size:12.5px; color:#8C97A3; cursor:pointer}
+.cadv-layer:hover{background:#F4F6F9}
+.cadv-layer .dot{width:9px; height:9px; border-radius:3px; border:1.5px solid #B5BEC7; background:transparent; flex:0 0 auto}
+.cadv-layer.on{color:#283643}
+.cadv-layer.on .dot{background:#3FB7C9; border-color:#3FB7C9}
 `;
