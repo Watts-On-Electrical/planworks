@@ -182,12 +182,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const svgRef = useRef(null);
   const panRef = useRef(null);
   const viewRef = useRef(null);
-  const ptrs = useRef(new Map());
-  const pinch = useRef(null);
-  const multiTouched = useRef(false);
-  const moveRAF = useRef(null);
-  const lastMove = useRef(null);
-  const tapRef = useRef(null);
 
   const [model, setModel] = useState(() => ({ EXTENT: { w: 8400, h: 8800, margin: 2600 }, walls: [], doors: [], windows: [], dims: [], rooms: [], notes: [], boundary: null, rooflights: [], stairs: null }));
   const [tool, setTool] = useState("select");
@@ -212,7 +206,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [planModal, setPlanModal] = useState(false);
   const [planBusy, setPlanBusy] = useState(null);
   const [nameGate, setNameGate] = useState(true);
-  const [gesturing, setGesturing] = useState(false);
 
   viewRef.current = view;
 
@@ -241,25 +234,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     ro.observe(el);
     return () => ro.disconnect();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => () => { if (moveRAF.current) cancelAnimationFrame(moveRAF.current); }, []);
-
-  useEffect(() => {
-    const settle = () => {
-      if (ptrs.current.size < 2) pinch.current = null;
-      if (ptrs.current.size === 0) { panRef.current = null; setGesturing(false); }
-    };
-    const onUp = (e) => { if (e && e.pointerId != null) ptrs.current.delete(e.pointerId); settle(); };
-    const onCancel = () => { ptrs.current.clear(); pinch.current = null; panRef.current = null; setGesturing(false); };
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onCancel);
-    window.addEventListener("blur", onCancel);
-    return () => {
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onCancel);
-      window.removeEventListener("blur", onCancel);
-    };
-  }, []);
 
   // keyboard shortcuts
   useEffect(() => {
@@ -324,64 +298,22 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const drawingTool = tool !== "select" && tool !== "pan";
 
   const handleMove = (e) => {
-    if (ptrs.current.has(e.pointerId)) ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pinch.current && ptrs.current.size >= 2) {
-      const pts = [...ptrs.current.values()];
-      const a = pts[0], b = pts[1];
-      const r = svgRef.current.getBoundingClientRect();
-      const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
-      const nd = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-      const ns = Math.max(SCALE_MIN, Math.min(SCALE_MAX, pinch.current.startS * (nd / pinch.current.startDist)));
-      setView({ s: ns, tx: mx - pinch.current.wx * ns, ty: my - pinch.current.wy * ns });
-      return;
-    }
     if (panRef.current) {
       setView({ s: viewRef.current.s, tx: panRef.current.tx + (e.clientX - panRef.current.mx), ty: panRef.current.ty + (e.clientY - panRef.current.my) });
       return;
     }
-    lastMove.current = { x: e.clientX, y: e.clientY };
-    if (moveRAF.current == null) {
-      moveRAF.current = requestAnimationFrame(() => {
-        moveRAF.current = null;
-        const mv = lastMove.current;
-        if (!mv) return;
-        const raw = toWorld(mv.x, mv.y);
-        const from = draftPts.length ? draftPts[draftPts.length - 1] : null;
-        const p = isWallTool ? snapPt(raw, from) : (flags.gridSnap ? { x: snap(raw.x, settings.grid), y: snap(raw.y, settings.grid) } : raw);
-        setCur({ x: p.x, y: p.y, sx: mv.x, sy: mv.y, on: true });
-      });
-    }
+    const raw = toWorld(e.clientX, e.clientY);
+    const from = draftPts.length ? draftPts[draftPts.length - 1] : null;
+    const p = isWallTool ? snapPt(raw, from) : (flags.gridSnap ? { x: snap(raw.x, settings.grid), y: snap(raw.y, settings.grid) } : raw);
+    setCur({ x: p.x, y: p.y, sx: e.clientX, sy: e.clientY, on: true });
   };
   const handleDown = (e) => {
-    const svg = svgRef.current;
-    if (ptrs.current.size === 0) multiTouched.current = false;
-    ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (ptrs.current.size >= 2) {
-      panRef.current = null;
-      multiTouched.current = true;
-      setGesturing(true);
-      const pts = [...ptrs.current.values()];
-      const a = pts[0], b = pts[1];
-      const r = svg.getBoundingClientRect();
-      const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
-      const v = viewRef.current;
-      pinch.current = { startDist: Math.hypot(a.x - b.x, a.y - b.y) || 1, startS: v.s, wx: (mx - v.tx) / v.s, wy: (my - v.ty) / v.s };
-      e.preventDefault();
-      return;
-    }
     if (tool === "pan" || e.button === 1 || e.shiftKey) {
-      const v = viewRef.current;
-      multiTouched.current = true;
-      panRef.current = { mx: e.clientX, my: e.clientY, tx: v.tx, ty: v.ty };
-      setGesturing(true);
+      panRef.current = { mx: e.clientX, my: e.clientY, tx: view.tx, ty: view.ty };
       e.preventDefault();
     }
   };
-  const handleUp = (e) => {
-    if (e && e.pointerId != null) ptrs.current.delete(e.pointerId);
-    if (ptrs.current.size < 2) pinch.current = null;
-    if (ptrs.current.size === 0) { panRef.current = null; setGesturing(false); setCur((c) => ({ ...c, on: false })); }
-  };
+  const handleUp = () => { panRef.current = null; };
 
   const commitWallSeg = (a, b) => {
     if (a.x === b.x && a.y === b.y) return;
@@ -389,7 +321,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     setModel((m) => ({ ...m, walls: m.walls.concat([seg]) }));
   };
   const handleClick = (e) => {
-    if (multiTouched.current) return;
     if (panRef.current) return;
     const raw = toWorld(e.clientX, e.clientY);
     if (isWallTool) {
@@ -670,14 +601,14 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const selDoor = sel && sel.kind === "door" ? model.doors.find((d) => d.id === sel.id) : null;
   const selWin = sel && sel.kind === "window" ? model.windows.find((w) => w.id === sel.id) : null;
   const hint = {
-    select: "Tap a wall to select. Two fingers to pan and zoom.",
-    ext: draftPts.length ? "Tap the next corner - double-tap or Esc to finish" : "Tap the start point of an external wall",
-    int: draftPts.length ? "Tap the next corner - double-tap or Esc to finish" : "Tap the start point of an internal wall",
-    door: "Tap on a wall to place a door",
-    window: "Tap on a wall to place a window",
-    dim: dimP1 ? "Tap the second measure point" : "Tap the first measure point",
-    room: "Tap inside a space to drop a room label",
-    text: "Tap to place a note",
+    select: "Click a wall to select. Hold Shift and drag to pan.",
+    ext: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an external wall",
+    int: draftPts.length ? "Click the next corner - double-click or Esc to finish" : "Click the start point of an internal wall",
+    door: "Click on a wall to place a door",
+    window: "Click on a wall to place a window",
+    dim: dimP1 ? "Click the second measure point" : "Click the first measure point",
+    room: "Click inside a space to drop a room label",
+    text: "Click to place a note",
     pan: "Drag to pan the sheet",
   }[tool];
 
@@ -727,11 +658,11 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <div className="cadv__workspace" ref={wrapRef}>
           <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor }}
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
-            onDoubleClick={handleDouble}
-            onPointerLeave={() => { if (ptrs.current.size === 0) setCur((c) => ({ ...c, on: false })); }}>
+            onClick={handleClick} onDoubleClick={handleDouble}
+            onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
             <g transform={`translate(${view.tx} ${view.ty}) scale(${view.s})`}>
               {planEls}
-              {gesturing ? null : overlay}
+              {overlay}
             </g>
           </svg>
           {hud}
@@ -1016,6 +947,3 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
-
-
-
