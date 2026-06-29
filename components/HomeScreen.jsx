@@ -224,7 +224,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
                   <p>Pick up where you left off, or start a new layout. Everything you draw is counted into your bill of quantities automatically.</p>
                 </div>
                 <div className="hero-actions">
-                  <button className="btn btn-ghost" onClick={onSketch}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>Sketch a plan</button><button className="btn btn-ghost" onClick={onImport}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg>Import plan</button>
+                  <button className="btn btn-primary" onClick={onSketch}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>Sketch a plan</button>
                   <button className="btn btn-primary" onClick={() => onNewProject()}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"><path d="M12 5v14M5 12h14"/></svg>New drawing</button>
                 </div>
               </div>
@@ -423,5 +423,7 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .empty{margin-top:18px; padding:30px; text-align:center; color:var(--muted); font-size:13.5px; background:var(--surface); border:1px dashed var(--line); border-radius:14px}
 @media (max-width:720px){.pw-home .rail{width:60px} .pw-home .scroll{padding:24px 18px 50px} .pw-home .hero{padding:24px} .pw-home .hero h1{font-size:24px} .pw-home .stats{gap:22px; flex-wrap:wrap}}
 `;
+
+
 
 

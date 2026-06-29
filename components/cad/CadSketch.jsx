@@ -183,18 +183,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const panRef = useRef(null);
   const viewRef = useRef(null);
 
-  const initial = useMemo(() => ({
-    EXT: SAMPLE_PLAN.EXT, EXTENT: SAMPLE_PLAN.EXTENT,
-    walls: SAMPLE_PLAN.walls.map((w) => ({ ...w })),
-    doors: SAMPLE_PLAN.doors.map((d) => ({ ...d })),
-    windows: SAMPLE_PLAN.windows.map((w) => ({ ...w })),
-    dims: SAMPLE_PLAN.dims.map((d) => ({ ...d })),
-    rooms: SAMPLE_PLAN.rooms.map((r) => ({ ...r })),
-    notes: [],
-    rooflights: SAMPLE_PLAN.rooflights, stairs: SAMPLE_PLAN.stairs, boundary: SAMPLE_PLAN.boundary,
-  }), []);
-
-  const [model, setModel] = useState(initial);
+  const [model, setModel] = useState(() => ({ EXTENT: { w: 8400, h: 8800, margin: 2600 }, walls: [], doors: [], windows: [], dims: [], rooms: [], notes: [], boundary: null, rooflights: [], stairs: null }));
   const [tool, setTool] = useState("select");
   const [view, setView] = useState({ s: 0.08, tx: 200, ty: 200 });
   const [draftPts, setDraftPts] = useState([]);
@@ -206,7 +195,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [layers, setLayers] = useState({ walls: true, openings: true, dims: true, rooms: true, stairs: true, boundary: true, grid: true });
   const [size, setSize] = useState({ w: 900, h: 600 });
   const [sketchId, setSketchId] = useState(null);
-  const [sketchName, setSketchName] = useState("Untitled sketch");
+  const [sketchName, setSketchName] = useState("");
   const [saveState, setSaveState] = useState("idle");
   const [sketches, setSketches] = useState([]);
   const [openPanel, setOpenPanel] = useState(false);
@@ -216,6 +205,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [frame, setFrame] = useState(null);
   const [planModal, setPlanModal] = useState(false);
   const [planBusy, setPlanBusy] = useState(null);
+  const [nameGate, setNameGate] = useState(true);
 
   viewRef.current = view;
 
@@ -423,9 +413,10 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const doNew = () => {
     skipDirty.current = true;
     setModel(blankModel());
-    setSketchId(null); setSketchName("Untitled sketch");
+    setSketchId(null); setSketchName("");
     setLinkProjectId(null); setLinkSheetId(null); setFrame(null);
     setSel(null); setDraftPts([]); setDimP1(null); setTool("select"); setSaveState("idle");
+    setNameGate(true);
     setTimeout(() => fitExtent({ w: 8400, h: 8800, margin: 2600 }), 0);
   };
   const doLoad = async (id) => {
@@ -442,7 +433,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       setSketchId(id); setSketchName(meta?.name || "Untitled sketch");
       setSel(null); setDraftPts([]); setDimP1(null); setTool("select");
       fitExtent(geo.EXTENT);
-      setSaveState("saved"); setOpenPanel(false);
+      setSaveState("saved"); setOpenPanel(false); setNameGate(false);
     } catch (e) { console.error(e); window.alert("Couldn't open: " + (e.message || e)); }
   };
   const doDelete = async (id, e) => {
@@ -506,6 +497,15 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const openUsePlan = () => {
     if (!model.walls || !model.walls.length) { window.alert("Draw at least the outline walls before sending the plan to the editor."); return; }
     setPlanModal(true);
+  };
+  const startNamed = async () => {
+    const nm = sketchName.trim();
+    if (!nm) return;
+    setSketchName(nm);
+    setNameGate(false);
+    setSaveState("saving");
+    try { await persistSketch(null); setSaveState("saved"); }
+    catch (e) { console.error(e); setSaveState("idle"); }
   };
 
   const planEls = useMemo(() => {
@@ -772,6 +772,17 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <span className="cell">{Math.round(view.s / 0.08 * 100)}%</span>
       </div>
 
+      {nameGate && (
+        <div className="cadv__modal-bg">
+          <div className="cadv__modal">
+            <div className="h">Name your drawing</div>
+            <p>Give this plan a name so it's easy to find later and saved safely. You can rename it any time.</p>
+            <input className="cadv__gate-input" autoFocus value={sketchName} placeholder="e.g. 24 High Street - First floor" onChange={(e) => setSketchName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sketchName.trim()) startNamed(); }} />
+            <button className="m-btn primary" disabled={!sketchName.trim()} onClick={startNamed}>Start drawing</button>
+            <button className="m-cancel" onClick={() => { setNameGate(false); toggleOpen(); }}>Open a saved drawing instead</button>
+          </div>
+        </div>
+      )}
       {planModal && (
         <div className="cadv__modal-bg" onClick={() => setPlanModal(false)}>
           <div className="cadv__modal" onClick={(e) => e.stopPropagation()}>
@@ -913,6 +924,9 @@ const CSS = `
 .cadv__modal .m-btn.primary:hover{background:#23808e}
 .cadv__modal .m-cancel{width:100%; height:38px; border:0; background:transparent; font:inherit; font-size:13px; color:#6E7B88; cursor:pointer; margin-top:2px}
 .cadv__modal .m-cancel:hover{color:#18222D}
+.cadv__modal .m-btn:disabled{opacity:.5; cursor:default}
+.cadv__gate-input{width:100%; height:42px; border:1px solid rgba(44,62,80,.18); border-radius:11px; padding:0 14px; font:inherit; font-size:15px; color:#18222D; margin-bottom:14px}
+.cadv__gate-input:focus{outline:none; border-color:#3FB7C9; box-shadow:0 0 0 3px rgba(63,183,201,.18)}
 .cadv__busy{position:fixed; inset:0; background:rgba(16,24,32,.55); display:flex; align-items:center; justify-content:center; z-index:60}
 .cadv__busy .box{display:flex; align-items:center; gap:12px; background:#fff; padding:16px 22px; border-radius:12px; font-size:14px; color:#18222D; font-weight:540}
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
