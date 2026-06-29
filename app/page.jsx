@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import dynamic from "next/dynamic";
@@ -9,7 +9,7 @@ const HomeScreen = dynamic(() => import("@/components/HomeScreen"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-screen flex items-center justify-center bg-[#F4F6F9] dark:bg-[#0B1117]">
-      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">Loading…</div>
+      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">Loadingâ€¦</div>
     </div>
   ),
 });
@@ -22,6 +22,7 @@ export default function DashboardPage() {
       onOpenProject={(id) => router.push(`/drawing?id=${id}`)}
       onNewProject={() => router.push("/new")}
       onImport={() => router.push("/new?import=1")}
+      onSketch={() => router.push("/sketch")}
       theme={theme}
       onToggleTheme={toggleTheme}
       user={user}
@@ -29,3 +30,4 @@ export default function DashboardPage() {
     />
   );
 }
+
