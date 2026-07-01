@@ -176,7 +176,7 @@ const LAYER_LIST = [
 const SAVE_LABEL = { idle: "Not saved", unsaved: "Unsaved changes", saving: "Saving...", saved: "Saved", error: "Save failed" };
 
 // ------------------------- main screen -------------------------
-export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247", openSketchId = null, linkProject = null, linkSheet = null, linkName = null }) {
+export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247", openSketchId = null, linkProject = null, linkSheet = null, linkName = null, embedded = false, onClose = null, onApplyPlan = null }) {
   const router = useRouter();
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
@@ -585,6 +585,17 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     setPlanModal(false);
     setPlanBusy("Preparing plan");
     try {
+      if (embedded && onApplyPlan) {
+        const efr = frame || computeFrame(model);
+        const png = await renderModelToPng(model, efr, 2200);
+        setPlanBusy("Uploading plan");
+        const up = await uploadPlanImage(dataUrlToBlob(png.dataUrl));
+        const skId = await persistSketch({ projectId: linkProjectId, sheetId: linkSheetId, frame: efr });
+        setFrame(efr); setPlanBusy(null);
+        onApplyPlan({ path: up.path, w: png.w, h: png.h, dataUrl: png.dataUrl, sketchId: skId });
+        onClose && onClose();
+        return;
+      }
       const fr = (mode === "update" && frame) ? frame : computeFrame(model);
       const { dataUrl, w, h } = await renderModelToPng(model, fr, 2200);
       setPlanBusy("Uploading plan");
@@ -750,7 +761,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     <div className="cadv">
       <style>{CSS}</style>
       <div className="cadv__top">
-        <button className="cadv__back" onClick={() => router.push("/")} title="Back to dashboard">&#8249;</button>
+        <button className="cadv__back" onClick={() => (embedded ? (onClose && onClose()) : router.push("/"))} title={embedded ? "Back to symbols" : "Back to dashboard"}>&#8249;</button>
         <input className="cadv__name" value={sketchName} onChange={(e) => setSketchName(e.target.value)} spellCheck={false} aria-label="Sketch name" />
         <span className={"cadv__save cadv__save--" + saveState}>{SAVE_LABEL[saveState]}</span>
         <span className="cadv__grow" />
@@ -934,7 +945,12 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         <div className="cadv__modal-bg" onClick={() => setPlanModal(false)}>
           <div className="cadv__modal" onClick={(e) => e.stopPropagation()}>
             <div className="h">Send plan to the editor</div>
-            {linkProjectId ? (
+            {embedded ? (
+              <>
+                <p>Add this plan to your drawing as the background, behind your electrical symbols.</p>
+                <button className="m-btn primary" onClick={() => runUsePlan("apply")}>Add to this drawing<small>Keeps your placed symbols in position</small></button>
+              </>
+            ) : linkProjectId ? (
               <>
                 <p>This sketch is already linked to an electrical drawing. Update that drawing with your latest plan and keep every symbol you have placed, or start a brand-new drawing.</p>
                 <button className="m-btn primary" onClick={() => runUsePlan("update")}>Update existing drawing<small>Keeps your placed symbols in position</small></button>
