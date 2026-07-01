@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
@@ -26,7 +26,7 @@ import { DEFAULT_TITLEBLOCK } from "@/lib/titleBlock";
 import { useEditor } from "@/store/editorStore";
 
 /* ============================================================================
- * PLOTWIRE — Drawing production tool
+ * PLOTWIRE â€” Drawing production tool
  *
  * Sheet-based architecture: the workspace IS an A3 landscape drawing sheet.
  * The sheet contains:
@@ -38,9 +38,9 @@ import { useEditor } from "@/store/editorStore";
  * Print/export uses the browser's native print-to-PDF for full fidelity.
  * ========================================================================= */
 
-// Sheet dimensions — A3 landscape at 96 DPI (web standard)
+// Sheet dimensions â€” A3 landscape at 96 DPI (web standard)
 const SHEET = {
-  width: 1587,   // 420mm at 96dpi  (≈ 16.5")
+  width: 1587,   // 420mm at 96dpi  (â‰ˆ 16.5")
   height: 1123,  // 297mm at 96dpi
   margin: 18,
   legendWidth: 230,
@@ -73,7 +73,7 @@ Refer to Building Regulations Approved Document M for equipment mounting heights
 All switches & sockets in kitchen areas to be installed minimum 300mm clear of any adjacent sink, drainer or hob.
 
 FIRE & SMOKE DETECTION
-Dwelling to be provided with a fire detection and alarm system to Grade D2 Category LD3 standard, in accordance with BS 5839-6 (alarms in hallways and landings — circulation spaces and escape routes), plus alarms in kitchen and living room (high risk areas). Heat detection in kitchens and smoke detectors in circulation spaces.
+Dwelling to be provided with a fire detection and alarm system to Grade D2 Category LD3 standard, in accordance with BS 5839-6 (alarms in hallways and landings â€” circulation spaces and escape routes), plus alarms in kitchen and living room (high risk areas). Heat detection in kitchens and smoke detectors in circulation spaces.
 
 IMPORTANT NOTE
 The electrical layout provided is indicative only and to show locations of client required electrical items. Contractor to confirm all locations, runs and products with the client prior to purchase or installation of goods. All electrical works are to be carried out by a certified electrician and provide completion certificates. All works to be completed in accordance with BS 7671.`;
@@ -131,7 +131,7 @@ function normaliseProject(p) {
     }));
     return { meta, notes: projNotesText, boq: p.boq || null, titleBlock: p.titleBlock || null, colourMode: p.colourMode || "colour", sheets, activeSheetId: sheets.find(s => s.id === p.activeSheetId) ? p.activeSheetId : sheets[0].id };
   }
-  // Legacy flat project → wrap its drawing into a single sheet.
+  // Legacy flat project â†’ wrap its drawing into a single sheet.
   const sheet = {
     id: sid(),
     name: meta.sheetName || "Ground floor",
@@ -160,7 +160,7 @@ function collectImagePaths(p) {
 
 // JSON-safe copy for persistence: drop the transient `src` whenever the image
 // lives in Storage (has a path). Legacy/offline base64 (no path) is kept so the
-// plan is never lost — it migrates to Storage on the next successful save.
+// plan is never lost â€” it migrates to Storage on the next successful save.
 function stripTransientImages(p) {
   if (!p) return p;
   return {
@@ -208,7 +208,7 @@ async function prepareProjectForSave(p) {
         return s; // keep base64 rather than lose the plan
       }
     }
-    // A blob: URL with no path can't be persisted — drop it (shouldn't occur).
+    // A blob: URL with no path can't be persisted â€” drop it (shouldn't occur).
     if (typeof bg.src === "string" && bg.src.startsWith("blob:")) {
       const { src, ...rest } = bg; return { ...s, bgImage: rest };
     }
@@ -235,10 +235,10 @@ function mergeSavedPaths(current, safe) {
 
 // For the local crash-recovery draft: ALWAYS drop the heavy image bytes
 // (base64 / blob / signed url), keeping only lightweight metadata (path + size).
-// The draft only needs to preserve WORK — placed items, notes, walls, lines —
+// The draft only needs to preserve WORK â€” placed items, notes, walls, lines â€”
 // so it must stay a few KB and never blow the browser's localStorage quota.
 // (A freshly-imported plan has no `path` yet, so stripTransientImages above
-// wouldn't strip it — which silently broke the whole safety net.)
+// wouldn't strip it â€” which silently broke the whole safety net.)
 function stripImagesForDraft(p) {
   if (!p) return p;
   return {
@@ -260,7 +260,7 @@ const TOOLS = {
 };
 
 // ============================================================================
-export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null, onProjectId = null }) {
+export default function ElectricalPlanTool({ initialTarget = null, onHome = null, theme = "light", onToggleTheme = null, onProjectId = null, onOpenFloorPlan = null }) {
   // Project state
   const project = useEditor(s => s.project);
   const setProject = useEditor(s => s.setProject);
@@ -309,7 +309,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const updateBoq = useCallback((boq) => {
     setProject(p => ({ ...p, boq }));
   }, []);
-  // Patch arbitrary fields (name, drawingNumber, …) on the active sheet.
+  // Patch arbitrary fields (name, drawingNumber, â€¦) on the active sheet.
   const setActiveSheet = useCallback((patch) => {
     setProject(p => ({ ...p, sheets: p.sheets.map(s => s.id === p.activeSheetId ? { ...s, ...patch } : s) }));
   }, []);
@@ -473,7 +473,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const prevPath = sheetsRef.current.find(s => s.id === targetId)?.bgImage?.path || null;
     const displayUrl = existingObjectUrl || URL.createObjectURL(blob);
     // For PDFs, mint a LOCAL link to the original right away so the crisp windowed
-    // renderer switches on the instant the plan is imported — no save/reopen needed.
+    // renderer switches on the instant the plan is imported â€” no save/reopen needed.
     // This link is transient (blob: URL) and is stripped before any save; the
     // permanent copy is uploaded below and re-linked by hydrateImages on next load.
     const pdfNow = sourcePdf ? { pdfSrc: URL.createObjectURL(sourcePdf), pdfPage: 1 } : {};
@@ -658,7 +658,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
         const panY = midY - worldY * newZoom;
         // Drive the transform straight on the DOM node so the whole sheet
         // (every symbol/wall) isn't re-rendered on each of the ~120 move events
-        // an iPad fires — that re-render is what made the pinch feel slow.
+        // an iPad fires â€” that re-render is what made the pinch feel slow.
         livePinchRef.current = { zoom: newZoom, panX, panY };
         const node = sheetTransformRef.current;
         if (node) node.style.transform = `translate(${panX}px, ${panY}px) scale(${newZoom})`;
@@ -669,7 +669,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     const onUp = (e) => {
       pts.delete(e.pointerId);
       if (pts.size < 2) {
-        // Pinch finished — commit the final zoom/pan to React state once.
+        // Pinch finished â€” commit the final zoom/pan to React state once.
         if (livePinchRef.current) {
           const { zoom: z, panX, panY } = livePinchRef.current;
           livePinchRef.current = null;
@@ -708,7 +708,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   };
 
   // ---------- Drag from palette ----------
-  // ---- Palette → canvas placement -------------------------------------------
+  // ---- Palette â†’ canvas placement -------------------------------------------
   // Pointer-based (not HTML5 drag-and-drop) so it's instant on touch. The tiles
   // use touch-action:none so iOS doesn't claim the gesture for scrolling and
   // cancel the drag; in return we scroll the palette ourselves on a vertical
@@ -719,7 +719,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const onPalettePointerDown = (e, symbolId) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (paletteDragState.current) return;
-    // Reaching for a symbol means you're done drawing link lines — drop back to the
+    // Reaching for a symbol means you're done drawing link lines â€” drop back to the
     // select/place tool so you don't have to manually click off the wire tool first.
     if (tool === "wire") { setTool("select"); setWireStart(null); }
     const pointerId = e.pointerId;
@@ -747,11 +747,11 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           if (Math.hypot(dx, dy) < 6) return;
           state.mode = "drag";
         } else if (dx > 10) {
-          state.mode = "drag";            // moving toward the canvas (to the right) → pick up
+          state.mode = "drag";            // moving toward the canvas (to the right) â†’ pick up
         } else if (Math.abs(dy) > 12) {
-          state.mode = "scroll";          // a clear vertical swipe → scroll the list
+          state.mode = "scroll";          // a clear vertical swipe â†’ scroll the list
         } else {
-          return;                         // ambiguous so far — wait for more movement
+          return;                         // ambiguous so far â€” wait for more movement
         }
       }
       if (ev.cancelable) ev.preventDefault();
@@ -767,7 +767,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       cleanup();
       if (!place || mode !== "drag" || !findSymbol(symbolId)) return;
       const { x, y } = clientToDrawing(ev.clientX, ev.clientY);
-      if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return; // released off the sheet → ignore
+      if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return; // released off the sheet â†’ ignore
       snapshot();
       const newItem = {
         id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
@@ -1036,7 +1036,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       return;
     }
 
-    // Click in drawing area in note mode → create a new annotation
+    // Click in drawing area in note mode â†’ create a new annotation
     if (tool === "note" && e.target.closest?.("[data-drawing-bg]")) {
       const { x, y } = clientToDrawing(e.clientX, e.clientY);
       if (x < 0 || y < 0 || x > DRAW.w || y > DRAW.h) return;
@@ -1111,7 +1111,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       if (!item) return;
       const { x, y } = clientToDrawing(e.clientX, e.clientY);
       // Distance from the piece centre to the pointer. The corner sits at
-      // half*√2 from centre, so newSize = pointerDistance * √2. Rotation-
+      // half*âˆš2 from centre, so newSize = pointerDistance * âˆš2. Rotation-
       // invariant, so it works at any angle.
       const d = Math.hypot(x - item.x, y - item.y);
       const base = 48 * symbolScale;
@@ -1421,7 +1421,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   const [recovery, setRecovery] = useState(null);
   const countPlaced = (p) => (p?.sheets || []).reduce((n, s) => n + ((s.placed && s.placed.length) || 0), 0);
 
-  // Debounced local autosave — survives tab crashes / reloads (esp. on iPad).
+  // Debounced local autosave â€” survives tab crashes / reloads (esp. on iPad).
   useEffect(() => {
     if (!didInit.current) return;
     if (countPlaced(project) === 0 && !bgImage) return;
@@ -1429,7 +1429,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     draftTimer.current = setTimeout(() => {
       try {
         // Strip ALL image bytes (not just migrated ones) so the draft is a few
-        // KB and reliably fits in localStorage — otherwise a freshly-imported
+        // KB and reliably fits in localStorage â€” otherwise a freshly-imported
         // plan made the draft several MB, it silently failed, and a crash then
         // lost the user's work entirely.
         window.localStorage.setItem("planworks:draft:v1", JSON.stringify({
@@ -1569,7 +1569,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       {recovery && (
         <div className="flex items-center flex-wrap gap-x-3 gap-y-1 px-4 py-2 bg-[#FFF7E6] border-b border-amber-300 text-[12px] text-amber-900">
           <span className="font-semibold">Recovered unsaved work</span>
-          <span className="text-amber-700">{countPlaced(recovery.project)} symbols · {new Date(recovery.savedAt).toLocaleString()}</span>
+          <span className="text-amber-700">{countPlaced(recovery.project)} symbols Â· {new Date(recovery.savedAt).toLocaleString()}</span>
           <div className="ml-auto flex gap-2">
             <button onClick={restoreDraft} className="px-3 py-1.5 rounded-md bg-[#3FB7C9] text-[#08313a] text-[11px] font-semibold uppercase tracking-wider hover:bg-[#52C4D5]">Restore</button>
             <button onClick={dismissDraft} className="px-3 py-1.5 rounded-md bg-white/70 text-amber-800 text-[11px] font-semibold uppercase tracking-wider hover:bg-white">Dismiss</button>
@@ -1645,9 +1645,26 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           {/* Floating tool toolbar */}
           <FloatingToolbar tool={tool} setTool={(t) => { setTool(t); setWireStart(null); if (t !== "wall") cancelWall(); }} />
 
-          {/* Wall-type chooser — only while the wall tool is active */}
+          {/* Floor Plan - opens the sketch for this drawing (round-trips back here) */}
+          {currentProjectId && onOpenFloorPlan && (
+            <button
+              onClick={() => {
+                const nm = encodeURIComponent(meta.projectName || "Floor plan");
+                const q = activeSheet?.sketchId
+                  ? `load=${activeSheet.sketchId}&name=${nm}`
+                  : `project=${currentProjectId}&sheet=${activeSheet?.id || ""}&name=${nm}`;
+                onOpenFloorPlan(q);
+              }}
+              title="Draw or edit the floor plan"
+              className="absolute top-4 left-16 z-20 flex items-center gap-1.5 h-9 px-3 bg-white dark:bg-[#16202B] rounded-xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:text-[#22808F] transition-colors">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 9h6V3M21 15h-6v6"/></svg>
+              Floor Plan
+            </button>
+          )}
+
+          {/* Wall-type chooser â€” only while the wall tool is active */}
           {tool === "wall" && (
-            <div className="absolute top-4 left-16 z-20 flex items-center gap-1 bg-white dark:bg-[#16202B] rounded-xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] p-1">
+            <div className="absolute top-4 left-44 z-20 flex items-center gap-1 bg-white dark:bg-[#16202B] rounded-xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] p-1">
               {["external", "internal"].map((t) => (
                 <button key={t} onClick={() => setWallType(t)}
                   className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition-colors ${
@@ -1657,7 +1674,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
                 </button>
               ))}
               <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-0.5"/>
-              <span className="px-1.5 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">click start · click end</span>
+              <span className="px-1.5 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">click start Â· click end</span>
             </div>
           )}
 
@@ -1699,13 +1716,13 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
               <span>WIRES <span className="text-[#22808F] ml-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{wires.length}</span></span>
               <span>NOTES <span className="text-[#22808F] ml-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{annotations.length}</span></span>
               <span>TOOL <span className="text-[#22808F] ml-1">{tool.toUpperCase()}</span></span>
-              {tool === "wire" && wireStart && <span className="text-[#22808F] animate-pulse">→ click target</span>}
+              {tool === "wire" && wireStart && <span className="text-[#22808F] animate-pulse">â†’ click target</span>}
               {tool === "note" && <span className="text-[#22808F]">click drawing area to add</span>}
               {tool === "wall" && <span className="text-[#22808F]">{wallDraft ? "click to set the end point" : "click to start a wall"}</span>}
               {spacePressed && <span className="text-[#22808F]">PAN</span>}
             </div>
             <div className="text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              SHEET A3 · {meta.scale}
+              SHEET A3 Â· {meta.scale}
             </div>
           </div>
           </div>
@@ -1798,3 +1815,4 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     </ProjectTitleBlockContext.Provider>
   );
 }
+

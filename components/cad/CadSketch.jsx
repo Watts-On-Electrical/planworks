@@ -176,7 +176,7 @@ const LAYER_LIST = [
 const SAVE_LABEL = { idle: "Not saved", unsaved: "Unsaved changes", saving: "Saving...", saved: "Saved", error: "Save failed" };
 
 // ------------------------- main screen -------------------------
-export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247" }) {
+export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247", openSketchId = null, linkProject = null, linkSheet = null, linkName = null }) {
   const router = useRouter();
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
@@ -202,17 +202,17 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [layers, setLayers] = useState({ walls: true, openings: true, dims: true, rooms: true, stairs: true, boundary: true, grid: true });
   const [size, setSize] = useState({ w: 900, h: 600 });
   const [sketchId, setSketchId] = useState(null);
-  const [sketchName, setSketchName] = useState("");
+  const [sketchName, setSketchName] = useState(linkName || "");
   const [saveState, setSaveState] = useState("idle");
   const [sketches, setSketches] = useState([]);
   const [openPanel, setOpenPanel] = useState(false);
   const skipDirty = useRef(true);
-  const [linkProjectId, setLinkProjectId] = useState(null);
-  const [linkSheetId, setLinkSheetId] = useState(null);
+  const [linkProjectId, setLinkProjectId] = useState(linkProject || null);
+  const [linkSheetId, setLinkSheetId] = useState(linkSheet || null);
   const [frame, setFrame] = useState(null);
   const [planModal, setPlanModal] = useState(false);
   const [planBusy, setPlanBusy] = useState(null);
-  const [nameGate, setNameGate] = useState(true);
+  const [nameGate, setNameGate] = useState(!(openSketchId || linkProject));
 
   viewRef.current = view;
 
@@ -576,7 +576,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     };
     const newId = await insertProject(name, data);
     setLinkProjectId(newId); setLinkSheetId(sheetId); setFrame(fr);
-    await persistSketch({ projectId: newId, sheetId, frame: fr });
+    const skId = await persistSketch({ projectId: newId, sheetId, frame: fr });
+    try { await updateProjectRow(newId, name, { ...data, sheets: data.sheets.map((s) => s.id === sheetId ? { ...s, sketchId: skId } : s) }); } catch (e) { console.warn(e); }
     setPlanBusy(null);
     router.push("/drawing?id=" + newId);
   };
@@ -593,14 +594,14 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         let proj = null;
         try { proj = await getProjectData(linkProjectId); } catch { proj = null; }
         if (!proj) { await createDrawing(path, w, h, fr); return; }
-        const newSheets = (proj.sheets || []).map((s) => s.id === linkSheetId ? { ...s, bgImage: { path, w, h } } : s);
+        const skId = await persistSketch({ projectId: linkProjectId, sheetId: linkSheetId, frame: fr });
+        const newSheets = (proj.sheets || []).map((s) => s.id === linkSheetId ? { ...s, bgImage: { path, w, h }, sketchId: skId } : s);
         const matched = (proj.sheets || []).some((s) => s.id === linkSheetId);
         if (!matched && newSheets.length) {
           const aid = (proj.activeSheetId && newSheets.find((s) => s.id === proj.activeSheetId)) ? proj.activeSheetId : newSheets[0].id;
-          for (let i = 0; i < newSheets.length; i++) if (newSheets[i].id === aid) newSheets[i] = { ...newSheets[i], bgImage: { path, w, h } };
+          for (let i = 0; i < newSheets.length; i++) if (newSheets[i].id === aid) newSheets[i] = { ...newSheets[i], bgImage: { path, w, h }, sketchId: skId };
         }
         await updateProjectRow(linkProjectId, proj.meta?.projectName || sketchName, { ...proj, sheets: newSheets });
-        await persistSketch({ projectId: linkProjectId, sheetId: linkSheetId, frame: fr });
         setFrame(fr); setPlanBusy(null);
         router.push("/drawing?id=" + linkProjectId);
         return;
@@ -624,6 +625,30 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     try { await persistSketch(null); setSaveState("saved"); }
     catch (e) { console.error(e); setSaveState("idle"); }
   };
+
+  const openLinkedSketch = async (id) => {
+    setPlanBusy("Opening floor plan");
+    try {
+      const data = await getSketchData(id);
+      if (!data) { setNameGate(false); setSaveState("idle"); setPlanBusy(null); return; }
+      const { _link, ...geo } = data;
+      skipDirty.current = true;
+      setModel({ ...blankModel(), ...geo });
+      setLinkProjectId(_link?.projectId || linkProject || null);
+      setLinkSheetId(_link?.sheetId || linkSheet || null);
+      setFrame(_link?.frame || null);
+      setSketchId(id);
+      setSketchName(linkName || "Floor plan");
+      setSel(null); setDraftPts([]); setDimP1(null); setTool("select");
+      fitFrame((geo.walls && geo.walls.length) ? computeFrame(geo, 900) : DEFAULT_FRAME);
+      setSaveState("saved"); setNameGate(false);
+    } catch (e) { console.error(e); setNameGate(false); setSaveState("idle"); }
+    setPlanBusy(null);
+  };
+  useEffect(() => {
+    if (openSketchId) openLinkedSketch(openSketchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const planEls = useMemo(() => {
     const g = [];

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { Suspense, useEffect } from "react";
 import dynamic from "next/dynamic";
@@ -11,7 +11,7 @@ import EditorErrorBoundary from "@/components/EditorErrorBoundary";
 function Loading() {
   return (
     <div className="w-full h-screen flex items-center justify-center bg-[#F4F6F9] dark:bg-[#0B1117]">
-      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">Loading drawing…</div>
+      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">Loading drawingâ€¦</div>
     </div>
   );
 }
@@ -31,6 +31,7 @@ function DrawingInner() {
       key={id}
       initialTarget={{ mode: "open", projectId: id, key: id }}
       onHome={() => router.push("/")}
+      onOpenFloorPlan={(q) => router.push("/sketch?" + q)}
       theme={theme}
       onToggleTheme={toggleTheme}
     />
@@ -45,3 +46,4 @@ export default function DrawingPage() {
     </Suspense>
   );
 }
+
