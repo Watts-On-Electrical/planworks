@@ -179,10 +179,11 @@ const SAVE_LABEL = { idle: "Not saved", unsaved: "Unsaved changes", saving: "Sav
 export default function CadSketch({ title = "Maple House \u2014 First floor", ref: codeRef = "PW-0247" }) {
   const router = useRouter();
   const wrapRef = useRef(null);
+  const hitRef = useRef(null);
+  const sheetRef = useRef(null);
   const svgRef = useRef(null);
   const panRef = useRef(null);
   const viewRef = useRef(null);
-  const gRef = useRef(null);
   const pointersRef = useRef(new Map());
   const pinchRef = useRef(null);
   const pinchActiveRef = useRef(false);
@@ -258,11 +259,11 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 
   // wheel zoom toward cursor (native, non-passive)
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+    const el = hitRef.current;
+    if (!el) return;
     const onWheel = (e) => {
       e.preventDefault();
-      const r = svg.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
       setView((v) => {
         const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
         const ns = Math.max(SCALE_MIN, Math.min(SCALE_MAX, v.s * factor));
@@ -271,15 +272,15 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         return { s: ns, tx: cxp - wx * ns, ty: cyp - wy * ns };
       });
     };
-    svg.addEventListener("wheel", onWheel, { passive: false });
-    return () => svg.removeEventListener("wheel", onWheel);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
   // Two-finger pinch-to-zoom and two-finger pan (touch). Capture-phase listeners,
   // decoupled from the drawing handlers; the transform is driven straight on the
   // <g> node during the gesture and committed to state once on release.
   useEffect(() => {
-    const el = svgRef.current;
+    const el = hitRef.current;
     if (!el) return;
     const pts = pointersRef.current;
     const onDown = (e) => {
@@ -302,7 +303,6 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         pinchActiveRef.current = true;
         suppressClickRef.current = true;
         panRef.current = null;
-        el.style.willChange = "transform";
         try { el.setPointerCapture(e.pointerId); } catch {}
       }
     };
@@ -320,8 +320,10 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         const tx = midX - worldX * newS;
         const ty = midY - worldY * newS;
         livePinchRef.current = { s: newS, tx, ty };
-        const cs = newS / startS;
-        if (svgRef.current) svgRef.current.style.transform = `translate(${tx - startTx * cs}px, ${ty - startTy * cs}px) scale(${cs})`;
+        // Drive the (permanently GPU-composited) transform div straight to the live
+        // view. No per-frame vector repaint; the grid is a CSS background so it rides
+        // along smoothly and stays visible.
+        if (sheetRef.current) sheetRef.current.style.transform = `translate(${tx}px, ${ty}px) scale(${newS})`;
         e.preventDefault();
       }
     };
@@ -333,10 +335,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
           const lp = livePinchRef.current;
           livePinchRef.current = null;
           setView({ s: lp.s, tx: lp.tx, ty: lp.ty });
-        } else if (el) {
-          el.style.transform = "";
         }
-        if (el) el.style.willChange = "";
         pinchRef.current = null;
         pinchActiveRef.current = false;
       }
@@ -357,9 +356,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   // `view` changes, so unrelated re-renders (e.g. the snap cursor) never revert the
   // transform, and it stays out of the way of the imperative pinch updates.
   useLayoutEffect(() => {
-    const n = gRef.current;
-    if (n) n.setAttribute("transform", `translate(${view.tx} ${view.ty}) scale(${view.s})`);
-    if (svgRef.current) svgRef.current.style.transform = "";
+    const n = sheetRef.current;
+    if (n) n.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`;
   }, [view]);
 
   // mark unsaved when the drawing changes (skips initial mount, load and new)
@@ -369,7 +367,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   }, [model]);
 
   const toWorld = (clientX, clientY) => {
-    const r = svgRef.current.getBoundingClientRect();
+    const r = hitRef.current.getBoundingClientRect();
     const v = viewRef.current;
     return { x: (clientX - r.left - v.tx) / v.s, y: (clientY - r.top - v.ty) / v.s };
   };
@@ -621,17 +619,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 
   const planEls = useMemo(() => {
     const g = [];
-    g.push(<rect key="sheet" x={SHEET.x} y={SHEET.y} width={SHEET.w} height={SHEET.h} className="cadv-paper" stroke="#2C97A8" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />);
-    const grid = [];
-    for (let gx = SHEET.x; gx <= SHEET.x + SHEET.w; gx += 500) {
-      const maj = gx % 1000 === 0;
-      grid.push(<line key={"gx" + gx} x1={gx} y1={SHEET.y} x2={gx} y2={SHEET.y + SHEET.h} className={maj ? "cadv-grid-major" : "cadv-grid-minor"} strokeWidth={maj ? 0.8 : 0.5} vectorEffect="non-scaling-stroke" />);
-    }
-    for (let gy = SHEET.y; gy <= SHEET.y + SHEET.h; gy += 500) {
-      const maj = gy % 1000 === 0;
-      grid.push(<line key={"gy" + gy} x1={SHEET.x} y1={gy} x2={SHEET.x + SHEET.w} y2={gy} className={maj ? "cadv-grid-major" : "cadv-grid-minor"} strokeWidth={maj ? 0.8 : 0.5} vectorEffect="non-scaling-stroke" />);
-    }
-    if (layers.grid) g.push(<g key="grid">{grid}</g>);
+    g.push(<rect key="sheet" x={SHEET.x} y={SHEET.y} width={SHEET.w} height={SHEET.h} fill="none" stroke="#2C97A8" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />);
     if (layers.boundary && model.boundary) g.push(<polyline key="bnd" points={ptStr(model.boundary)} className="cadv-boundary" fill="none" strokeWidth={1.4} strokeDasharray="14 10" vectorEffect="non-scaling-stroke" />);
     if (layers.stairs) (model.rooflights || []).forEach((rl) => g.push(
       <g key={rl.ref}>
@@ -710,6 +698,16 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   }[tool];
 
   const svgCursor = tool === "pan" ? "grab" : (drawingTool ? "crosshair" : "default");
+  const gMinor = Math.max(0.6, 1 / view.s);
+  const gMajor = Math.max(1.0, 1.6 / view.s);
+  const gridBg = {
+    backgroundImage:
+      `linear-gradient(to right, rgba(132,174,186,0.55) ${gMajor}px, transparent ${gMajor}px),` +
+      `linear-gradient(to bottom, rgba(132,174,186,0.55) ${gMajor}px, transparent ${gMajor}px),` +
+      `linear-gradient(to right, rgba(170,198,206,0.45) ${gMinor}px, transparent ${gMinor}px),` +
+      `linear-gradient(to bottom, rgba(170,198,206,0.45) ${gMinor}px, transparent ${gMinor}px)`,
+    backgroundSize: "1000px 1000px, 1000px 1000px, 500px 500px, 500px 500px",
+  };
 
   return (
     <div className="cadv">
@@ -753,15 +751,20 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         </div>
 
         <div className="cadv__workspace" ref={wrapRef}>
-          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0" }}
-            onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
-            onClick={handleClick} onDoubleClick={handleDouble}
-            onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
-            <g ref={gRef}>
+          <div ref={sheetRef} className="cadv__sheet" style={{ position: "absolute", left: 0, top: 0, transformOrigin: "0 0", willChange: "transform" }}>
+            {layers.grid && (
+              <div className="cadv__grid" style={{ position: "absolute", left: SHEET.x, top: SHEET.y, width: SHEET.w, height: SHEET.h, pointerEvents: "none", ...gridBg }} />
+            )}
+            <svg ref={svgRef} width={SHEET.w} height={SHEET.h} viewBox={`${SHEET.x} ${SHEET.y} ${SHEET.w} ${SHEET.h}`}
+              style={{ position: "absolute", left: SHEET.x, top: SHEET.y, overflow: "visible", pointerEvents: "none" }}>
               {planEls}
               {overlay}
-            </g>
-          </svg>
+            </svg>
+          </div>
+          <div ref={hitRef} className="cadv__hit" style={{ position: "absolute", inset: 0, cursor: svgCursor, touchAction: "none" }}
+            onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
+            onClick={handleClick} onDoubleClick={handleDouble}
+            onPointerLeave={() => setCur((c) => ({ ...c, on: false }))} />
           {hud}
           <div className="cadv__zoom">
             <button onClick={() => zoomBy(1.2)} title="Zoom in">+</button>
@@ -1044,7 +1047,3 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
-
-
-
-
