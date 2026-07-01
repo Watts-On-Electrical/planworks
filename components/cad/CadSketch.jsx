@@ -180,6 +180,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const router = useRouter();
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
+  const gridRef = useRef(null);
   const panRef = useRef(null);
   const viewRef = useRef(null);
   const gRef = useRef(null);
@@ -323,7 +324,9 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         // view) so the vectors aren't repainted each frame; the sharp <g> transform
         // is restored from state on release.
         const cs = newS / startS;
-        if (svgRef.current) svgRef.current.style.transform = `translate(${tx - startTx * cs}px, ${ty - startTy * cs}px) scale(${cs})`;
+        const tf = `translate(${tx - startTx * cs}px, ${ty - startTy * cs}px) scale(${cs})`;
+        if (svgRef.current) svgRef.current.style.transform = tf;
+        if (gridRef.current) gridRef.current.style.transform = tf;
         e.preventDefault();
       }
     };
@@ -337,6 +340,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
           setView({ s: lp.s, tx: lp.tx, ty: lp.ty });
         } else if (el) {
           el.style.transform = "";
+          if (gridRef.current) gridRef.current.style.transform = "";
         }
         pinchRef.current = null;
         pinchActiveRef.current = false;
@@ -361,6 +365,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
     const n = gRef.current;
     if (n) n.setAttribute("transform", `translate(${view.tx} ${view.ty}) scale(${view.s})`);
     if (svgRef.current) svgRef.current.style.transform = "";
+    if (gridRef.current) gridRef.current.style.transform = "";
   }, [view]);
 
   // mark unsaved when the drawing changes (skips initial mount, load and new)
@@ -702,7 +707,10 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
 
   const svgCursor = tool === "pan" ? "grab" : (drawingTool ? "crosshair" : "default");
   const minorSz = 500 * view.s, majorSz = 1000 * view.s;
-  const gridBg = layers.grid ? {
+  const sL = view.tx + SHEET.x * view.s, sT = view.ty + SHEET.y * view.s;
+  const sR = view.tx + (SHEET.x + SHEET.w) * view.s, sB = view.ty + (SHEET.y + SHEET.h) * view.s;
+  const clipRect = `polygon(${sL}px ${sT}px, ${sR}px ${sT}px, ${sR}px ${sB}px, ${sL}px ${sB}px)`;
+  const gridStyle = layers.grid ? {
     backgroundImage:
       `linear-gradient(to right, rgba(132,174,186,0.55) 1px, transparent 1px),` +
       `linear-gradient(to bottom, rgba(132,174,186,0.55) 1px, transparent 1px),` +
@@ -710,7 +718,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
       `linear-gradient(to bottom, rgba(170,198,206,0.45) 1px, transparent 1px)`,
     backgroundSize: `${majorSz}px ${majorSz}px, ${majorSz}px ${majorSz}px, ${minorSz}px ${minorSz}px, ${minorSz}px ${minorSz}px`,
     backgroundPosition: `${view.tx}px ${view.ty}px`,
-  } : {};
+    clipPath: clipRect, WebkitClipPath: clipRect,
+  } : { display: "none" };
 
   return (
     <div className="cadv">
@@ -754,7 +763,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         </div>
 
         <div className="cadv__workspace" ref={wrapRef}>
-          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0", willChange: "transform", ...gridBg }}
+          <div ref={gridRef} className="cadv__grid" style={{ position: "absolute", inset: 0, pointerEvents: "none", transformOrigin: "0 0", willChange: "transform", ...gridStyle }} />
+          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0", willChange: "transform" }}
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
             onClick={handleClick} onDoubleClick={handleDouble}
             onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>
