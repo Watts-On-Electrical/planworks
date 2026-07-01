@@ -84,7 +84,7 @@ export function TopBar({
         <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947]"/>
         <button
           onClick={onShowMeta}
-          title={`${projectLabel} â€” ${sheetLabel}`}
+          title={`${projectLabel} — ${sheetLabel}`}
           className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#3FB7C9] hover:bg-[#52C4D5] text-[#08313a] transition-colors text-[11px] font-semibold shadow-[#3FB7C9]/30 shadow-md min-w-0">
           <FileText size={13} className="text-[#08313a]/70 shrink-0"/>
           <span className="truncate max-w-[110px] sm:max-w-[220px]">{projectLabel}</span>
@@ -94,18 +94,18 @@ export function TopBar({
 
       <div className="flex items-center gap-1 ml-auto min-w-0 overflow-x-auto flex-nowrap [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
         {/* History */}
-        <ToolbarButton onClick={onUndo} icon={Undo2} label="Undo" hint="âŒ˜Z"/>
-        <ToolbarButton onClick={onRedo} icon={Redo2} label="Redo" hint="âŒ˜â‡§Z"/>
+        <ToolbarButton onClick={onUndo} icon={Undo2} label="Undo" hint="⌘Z"/>
+        <ToolbarButton onClick={onRedo} icon={Redo2} label="Redo" hint="⌘⇧Z"/>
         <Divider />
         {/* File */}
         <ToolbarButton onClick={onImport} icon={Upload} label="Import"/>
-        <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved âœ“" : "Save"} flash={savedFlash} hint="âŒ˜S"/>
+        <ToolbarButton onClick={onSave} icon={Save} label={savedFlash ? "Saved ✓" : "Save"} flash={savedFlash} hint="⌘S"/>
         <ToolbarButton onClick={onPrint} icon={Download} label="Save As"/>
         <Divider />
         {/* View */}
         <ToolbarButton onClick={onToggleSnap} icon={Grid3x3} label="Grid" active={snapEnabled}/>
         <ToolbarButton onClick={onNormalise} icon={Ruler}
-          label={normaliseFlash ? "Reset âœ“" : "Reset sizes"} flash={normaliseFlash}
+          label={normaliseFlash ? "Reset ✓" : "Reset sizes"} flash={normaliseFlash}
           hint="Make all symbols the same size"/>
         <ToolbarButton
           onClick={onToggleColour} icon={PaletteIcon}
@@ -161,7 +161,7 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
 function Divider() { return <div className="w-px h-5 bg-slate-200 dark:bg-[#2A3947] mx-1 shrink-0" />; }
 
 /* ============================================================================
- * SHEET TABS â€” switch between the drawings (floors) in a project
+ * SHEET TABS — switch between the drawings (floors) in a project
  * ========================================================================= */
 export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelete }) {
   const [editingId, setEditingId] = useState(null);
@@ -186,7 +186,7 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
           <div key={s.id}
             onClick={() => !active && onSwitch(s.id)}
             onDoubleClick={() => startRename(s)}
-            title={active ? "Double-click to rename" : "Click to open Â· double-click to rename"}
+            title={active ? "Double-click to rename" : "Click to open · double-click to rename"}
             className={`group relative flex items-center gap-2 px-3 my-1.5 rounded-lg cursor-pointer transition-all shrink-0 ${
               active
                 ? "bg-white ring-1 ring-[#3FB7C9]/60 shadow-sm text-slate-900"
@@ -248,7 +248,7 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
       <div
         onPointerDown={(e) => onPalettePointerDown(e, sym.id)}
         style={{ touchAction: "none" }}
-        title={label + (meta?.height ? ` Â· ${meta.height}` : "")}
+        title={label + (meta?.height ? ` · ${meta.height}` : "")}
         className="group relative bg-white dark:bg-[#22303D] hover:bg-slate-50 dark:hover:bg-[#283643] rounded-xl ring-1 ring-slate-200 dark:ring-[#2A3947] hover:ring-[#3FB7C9]/40 hover:shadow-sm
                    cursor-grab active:cursor-grabbing p-3 flex flex-col items-center gap-2 select-none [&>*]:pointer-events-none
                    transition-all duration-200 hover:-translate-y-0.5">
@@ -283,26 +283,12 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
     </div>
   );
 
-  const floor = mode === "floor";
+  const floor = false; // Floor-plan furniture retired: the sketch is now the floor-plan tool
   return (
     <aside className="w-64 bg-[#EBEFF6] dark:bg-[#1A2530] border-r border-slate-200 dark:border-[#263441] flex flex-col">
       <div className="px-4 h-11 flex items-center justify-between bg-[#2C3E50] border-b border-black/25 shadow-sm">
         <div className="text-[15px] font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{floor ? "Floor Plan" : "Symbols"}</div>
         <div className="text-[9px] tracking-wider text-slate-300/70 font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{floor ? "LAYOUT" : "MEP LEGEND"}</div>
-      </div>
-
-      {/* Mode toggle: Electrical symbols â‡„ Floor Plan furniture */}
-      <div className="px-3 pt-3 pb-1">
-        <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-[#DCE3EE] dark:bg-[#0E141B] ring-1 ring-slate-200 dark:ring-[#2A3947]">
-          <button onClick={() => setMode("electrical")}
-            className={`py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors ${!floor ? "bg-white dark:bg-[#22303D] text-[#22808F] shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-            Electrical
-          </button>
-          <button onClick={() => setMode("floor")}
-            className={`py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors ${floor ? "bg-white dark:bg-[#22303D] text-[#22808F] shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-            Floor Plan
-          </button>
-        </div>
       </div>
 
       {!floor && (
@@ -312,7 +298,7 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search symbolsâ€¦"
+            placeholder="Search symbols…"
             className="w-full pl-9 pr-8 py-2 text-[12.5px] bg-white dark:bg-[#0E141B] rounded-lg ring-1 ring-slate-300 dark:ring-[#2A3947] focus:ring-[#3FB7C9]/50 focus:outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"/>
           {query && (
             <button onClick={() => setQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
@@ -352,7 +338,7 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
               {searchResults.map(({ sym, meta }) => <Tile key={sym.id} sym={sym} meta={meta} />)}
             </div>
           ) : (
-            <div className="text-center text-[12px] text-slate-500 py-8">No symbols match â€œ{query}â€.</div>
+            <div className="text-center text-[12px] text-slate-500 py-8">No symbols match “{query}”.</div>
           )
         ) : (
           groups.map((g) => (
@@ -386,7 +372,7 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
 }
 
 /* ============================================================================
- * WORKSPACE â€” the dark surround + the sheet inside it
+ * WORKSPACE — the dark surround + the sheet inside it
  * ========================================================================= */
 export function Workspace({
   viewportRef, drawingAreaRef, sheetTransformRef, pan, zoom,
@@ -461,16 +447,16 @@ export function Workspace({
 }
 
 /* ============================================================================
- * THE SHEET ITSELF â€” white page rendered at SHEET.width Ã— SHEET.height
+ * THE SHEET ITSELF — white page rendered at SHEET.width × SHEET.height
  * This is what prints. Layout:
- *   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
- *   â”‚ LEGEND  â”‚  DRAWING AREA              â”‚  NOTES           â”‚
- *   â”‚         â”‚                            â”‚                  â”‚
- *   â”‚         â”‚                            â”‚                  â”‚
- *   â”‚         â”‚                            â”‚                  â”‚
- *   â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
- *   â”‚ TITLE BLOCK                                              â”‚
- *   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+ *   ┌────────────────────────────────────────────────────────┐
+ *   │ LEGEND  │  DRAWING AREA              │  NOTES           │
+ *   │         │                            │                  │
+ *   │         │                            │                  │
+ *   │         │                            │                  │
+ *   ├─────────┴────────────────────────────┴──────────────────┤
+ *   │ TITLE BLOCK                                              │
+ *   └──────────────────────────────────────────────────────────┘
  * ========================================================================= */
 export function Sheet({
   drawingAreaRef,
@@ -547,7 +533,7 @@ export function Sheet({
 }
 
 /* ----------------------------------------------------------------------------
- * SHEET COLUMN HEADER â€” a bold teal title bar used at the top of the Legend
+ * SHEET COLUMN HEADER — a bold teal title bar used at the top of the Legend
  * and Notes columns. Bleeds to the column edges (negative margins) so it reads
  * as a section header. Bodies below stay white.
  * ------------------------------------------------------------------------- */
@@ -584,7 +570,7 @@ const NOTE_FMT_BTN = {
 };
 
 // Notes are stored as light HTML. Older plain-text notes are converted on the
-// fly (escaped, newlines â†’ <br>).
+// fly (escaped, newlines → <br>).
 function notesToHtml(n) {
   if (!n) return "";
   if (/<[a-z!/][\s\S]*>/i.test(n)) return n;
@@ -615,7 +601,7 @@ function styleNotesSelection(rootEl, style) {
 }
 
 /* ----------------------------------------------------------------------------
- * LEGEND COLUMN â€” auto-generated from placed symbols
+ * LEGEND COLUMN — auto-generated from placed symbols
  * ------------------------------------------------------------------------- */
 function LegendColumn({ legendItems, colourMode }) {
   return (
@@ -631,12 +617,12 @@ function LegendColumn({ legendItems, colourMode }) {
     }}>
       <SheetColumnHeader padL={14} padR={12} padT={12}>Electrical Legend</SheetColumnHeader>
       <div style={{ fontSize: 8.5, color: "#404040", marginBottom: 10, letterSpacing: "0.06em" }}>
-        UK ARCHITECTURAL Â· TO BE READ IN COLOUR
+        UK ARCHITECTURAL · TO BE READ IN COLOUR
       </div>
 
       {legendItems.length === 0 ? (
         <div style={{ fontSize: 10, color: "#737373", fontStyle: "italic", marginTop: 14 }}>
-          Place symbols on the drawing â€” they'll be listed here automatically with mounting heights.
+          Place symbols on the drawing — they'll be listed here automatically with mounting heights.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -675,7 +661,7 @@ function LegendColumn({ legendItems, colourMode }) {
 }
 
 /* ----------------------------------------------------------------------------
- * NOTES COLUMN â€” editable MEP notes
+ * NOTES COLUMN — editable MEP notes
  * ------------------------------------------------------------------------- */
 function NotesColumn({ notes }) {
   return (
@@ -688,7 +674,7 @@ function NotesColumn({ notes }) {
       borderLeft: "1px solid #0a0a0a",
       padding: "12px 14px",
       overflow: "hidden",
-      pointerEvents: "none",   // display only â€” drags pass through to the sheet
+      pointerEvents: "none",   // display only — drags pass through to the sheet
     }}>
       <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
       <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
@@ -698,7 +684,7 @@ function NotesColumn({ notes }) {
 }
 
 /* ----------------------------------------------------------------------------
- * NOTES EDITOR â€” modal launched from the toolbar. Editing happens here (not on
+ * NOTES EDITOR — modal launched from the toolbar. Editing happens here (not on
  * the canvas) so the drawing stays fully draggable. Supports size/bold/colour.
  * ------------------------------------------------------------------------- */
 export function NotesEditor({ notes, updateNotes, onClose }) {
@@ -712,8 +698,8 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
 
   const push = () => { if (ref.current) updateNotes(ref.current.innerHTML); };
   // Format the current selection with the browser's rich-text engine. The toolbar
-  // buttons preventDefault on mousedown, so the highlight survives â€” you can chain
-  // Bold â†’ Colour on the same selection without re-highlighting.
+  // buttons preventDefault on mousedown, so the highlight survives — you can chain
+  // Bold → Colour on the same selection without re-highlighting.
   const exec = (fn) => {
     if (!ref.current) return;
     ref.current.focus();
@@ -725,7 +711,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
   const setItalic = () => exec(() => document.execCommand("italic"));
   const setColour = (v) => exec(() => document.execCommand("foreColor", false, v));
   const setSize   = (n) => exec(() => document.execCommand("fontSize", false, n));
-  // Start each new line fresh â€” normal weight, default black â€” so a colour or bold
+  // Start each new line fresh — normal weight, default black — so a colour or bold
   // used above doesn't carry onto everything you type next.
   const onEditorKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -749,7 +735,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
           <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors"><X size={18}/></button>
         </div>
 
-        {/* Formatting toolbar â€” preventDefault keeps the text selection */}
+        {/* Formatting toolbar — preventDefault keeps the text selection */}
         <div className="px-5 py-3 border-b border-slate-200 dark:border-[#263441] flex items-center gap-2 flex-wrap shrink-0"
           onMouseDown={(e) => e.preventDefault()}>
           <button onClick={setBold} title="Bold selected text" style={{ ...NOTE_FMT_BTN, fontWeight: 800 }}>B</button>
@@ -771,7 +757,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
           suppressContentEditableWarning
           onInput={push}
           onKeyDown={onEditorKeyDown}
-          data-placeholder="Type notes hereâ€¦ select text to format it"
+          data-placeholder="Type notes here… select text to format it"
           className="notes-editable flex-1 overflow-auto px-5 py-4"
           style={{ background: "#fff", color: "#262626", fontSize: 14, lineHeight: 1.6, outline: "none", minHeight: 260, whiteSpace: "pre-wrap" }}
         />
@@ -789,8 +775,11 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
 }
 
 /* ----------------------------------------------------------------------------
- * DRAWING AREA â€” the main canvas where the plan + symbols + annotations live
+ * DRAWING AREA — the main canvas where the plan + symbols + annotations live
  * ------------------------------------------------------------------------- */
+// Feature flag for the iPad sharp-plan experiment. Off by default (ships dark).
+// Enable per-device without a redeploy by adding ?sharpplan=1 to the URL, or
+// globally via the NEXT_PUBLIC_SHARP_PLAN env var.
 function sharpPlanEnabled() {
   if (typeof window === "undefined") return false;
   try {
@@ -828,7 +817,7 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
   // Re-render the visible window whenever the on-screen geometry SETTLES.
   // We watch the wrapper's real screen rect rather than React zoom/pan props,
   // because pinch-zoom on touch devices is written straight to the DOM and does
-  // NOT update those props until you lift your fingers â€” so a prop-based trigger
+  // NOT update those props until you lift your fingers — so a prop-based trigger
   // redraws at the stale pre-pinch scale and looks blurry. Watching the actual
   // rect catches every case: wheel zoom, imperative pinch, pan and resize. The
   // on-screen canvas never exceeds the viewport, so memory stays flat at any
@@ -858,7 +847,7 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         // Render the visible window ABOVE device resolution (supersample) so fine
         // text stays crisp at maximum zoom, then let the device downsample it.
         // Bounded by both total area and per-side length to stay well under iOS
-        // Safari's canvas ceiling â€” memory stays flat and the iPad never crashes.
+        // Safari's canvas ceiling — memory stays flat and the iPad never crashes.
         const SS = 2;                                      // supersample factor
         const dpr = Math.min(window.devicePixelRatio || 1, 2) * SS;
         let bw = (ix1 - ix0) * dpr, bh = (iy1 - iy0) * dpr;
@@ -885,7 +874,7 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         });
         taskRef.current = task;
         task.promise.catch(() => {});
-      } catch (e) { /* transient during fast moves â€” next settle re-renders */ }
+      } catch (e) { /* transient during fast moves — next settle re-renders */ }
     };
 
     // Poll the wrapper's screen rect; redraw once it has held still ~130ms.
@@ -928,8 +917,8 @@ function DrawingArea({
   onWallMouseDown,
   startRotating,
 }) {
-  // tool + selection come straight from the store now â€” no longer threaded
-  // down through Workspace â†’ Sheet â†’ DrawingArea.
+  // tool + selection come straight from the store now — no longer threaded
+  // down through Workspace → Sheet → DrawingArea.
   const tool = useEditor(s => s.tool);
   const selection = useEditor(s => s.selection);
   const selectedId = selection?.kind === "symbol" ? selection.id : null;
@@ -1011,7 +1000,7 @@ function DrawingArea({
         )
       )}
 
-      {/* Grid overlay â€” drawn above the imported plan, below symbols, so the
+      {/* Grid overlay — drawn above the imported plan, below symbols, so the
           Grid toggle shows alignment lines even when a document is loaded */}
       {showGrid && (
         <div style={{
@@ -1097,7 +1086,7 @@ function DrawingArea({
           );
         })}
 
-        {/* Walls (floor-plan layer) â€” the structural shell, drawn beneath
+        {/* Walls (floor-plan layer) — the structural shell, drawn beneath
             everything else. Thick navy polylines with mitred corners. */}
         {(walls || []).map(wall => {
           if (!wall.points || wall.points.length < 2) return null;
@@ -1122,7 +1111,7 @@ function DrawingArea({
           );
         })}
 
-        {/* Furniture (floor-plan layer) â€” rendered BENEATH the electrical
+        {/* Furniture (floor-plan layer) — rendered BENEATH the electrical
             symbols so the symbols always sit on top. Never billed/legended. */}
         {(furniture || []).map(item => {
           const fsym = findFurniture(item.furnitureId);
@@ -1204,7 +1193,7 @@ function DrawingArea({
                         strokeDasharray={isWireStart ? "4 3" : "none"}/>
                 </>
               )}
-              {/* Transparent hit area â€” whole symbol box is clickable, not
+              {/* Transparent hit area — whole symbol box is clickable, not
                   just the painted strokes. Critical for the wire tool. */}
               <rect x={0} y={0} width={itemSize} height={itemSize} fill="transparent"
                     style={{
@@ -1246,7 +1235,7 @@ function DrawingArea({
         {annotations.map(a => {
           const isSel = a.id === selectedAnnoId;
           const stroke = colourMode === "mono" ? "#0a0a0a" : "#dc2626";
-          // Wrap text by guessing â€” split on newlines first, then split long lines
+          // Wrap text by guessing — split on newlines first, then split long lines
           const lines = a.text.split("\n").flatMap(line => wrapText(line, 22));
           const padding = 4;
           const lineHeight = 11;
@@ -1283,7 +1272,7 @@ function DrawingArea({
             </g>
           );
         })}
-        {/* Wall draft â€” the in-progress polyline + rubber-band to the cursor.
+        {/* Wall draft — the in-progress polyline + rubber-band to the cursor.
             Rendered last so it sits on top while drawing. */}
         {wallDraft && wallDraft.points && wallDraft.points.length > 0 && (() => {
           const pts = wallDraft.points;
@@ -1337,7 +1326,7 @@ function estimateWidth(s, fontSize) {
 }
 
 /* ----------------------------------------------------------------------------
- * TITLE BLOCK â€” bottom strip, editable fields
+ * TITLE BLOCK — bottom strip, editable fields
  * ------------------------------------------------------------------------- */
 function TitleLogos({ logos, maxWidth = 240 }) {
   const list = (logos || []).filter(Boolean);
@@ -1560,13 +1549,13 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
       <div className="grid grid-cols-3 gap-2">
         <Stat label="X" value={Math.round(item.x)}/>
         <Stat label="Y" value={Math.round(item.y)}/>
-        <Stat label="ROT" value={Math.round(item.rotation) + "Â°"}/>
+        <Stat label="ROT" value={Math.round(item.rotation) + "°"}/>
       </div>
 
       <div className="pt-3 border-t border-slate-200">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[9px] tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400">Rotation</span>
-          <span className="tabular-nums text-slate-800 dark:text-slate-200 text-[10px]">{Math.round(item.rotation)}Â°</span>
+          <span className="tabular-nums text-slate-800 dark:text-slate-200 text-[10px]">{Math.round(item.rotation)}°</span>
         </div>
         <input type="range" min="0" max="359" step="1" value={item.rotation}
                onChange={(e) => setRotation(parseInt(e.target.value))}
@@ -1578,7 +1567,7 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
                 Math.round(item.rotation) === deg
                   ? "bg-[#D8F0F4] text-[#22808F] ring-1 ring-[#3FB7C9]/30"
                   : "bg-slate-50 text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 hover:bg-slate-100"
-              }`}>{deg}Â°</button>
+              }`}>{deg}°</button>
           ))}
         </div>
       </div>
@@ -1600,7 +1589,7 @@ function SymbolInspector({ item, updateLabel, setRotation, setItemScale, rotateS
       <div className="flex gap-2 pt-3 border-t border-slate-200">
         <button onClick={rotateSelected}
           className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-slate-100 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
-          <RotateCw size={12}/> +15Â°
+          <RotateCw size={12}/> +15°
         </button>
         <button onClick={deleteSelected}
           className="flex-1 px-3 py-2 bg-slate-50 ring-1 ring-slate-200 hover:bg-red-500/[0.1] hover:text-red-300 text-slate-800 dark:text-slate-200 rounded-md text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
@@ -1702,7 +1691,7 @@ function Stat({ label, value }) {
 export function FloatingToolbar({ tool, setTool }) {
   return (
     <div className="absolute top-4 left-4 z-20 flex flex-col bg-white dark:bg-[#16202B] rounded-2xl ring-1 ring-slate-200/70 dark:ring-[#2A3947] shadow-[0_10px_30px_-10px_rgba(16,28,40,0.22)] overflow-hidden">
-      {Object.entries(TOOLS).filter(([key]) => key === "select" || key === "wire" || key === "wall").map(([key, info]) => {
+      {Object.entries(TOOLS).filter(([key]) => key === "select" || key === "wire").map(([key, info]) => {
         const Icon = info.icon;
         const active = tool === key;
         return (
@@ -1743,7 +1732,7 @@ export function ZoomControls({ zoom, onIn, onOut, onFit }) {
 }
 
 /* ============================================================================
- * PROJECT MANAGER (modal) â€” save, open, and delete named projects
+ * PROJECT MANAGER (modal) — save, open, and delete named projects
  * ========================================================================= */
 export function ProjectManager({
   projectList, currentProjectId, currentName,
@@ -1787,7 +1776,7 @@ export function ProjectManager({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Project name (e.g. Dalton â€” Plot 7)"
+              placeholder="Project name (e.g. Dalton — Plot 7)"
               className="flex-1 px-3 py-2 text-sm bg-white rounded-lg ring-1 ring-slate-200 focus:ring-[#3FB7C9] focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
             />
             <button
@@ -1870,10 +1859,10 @@ export function ProjectManager({
 }
 
 /* ============================================================================
- * BILL OF QUANTITIES (modal) â€” auto-counted schedule of placed symbols
+ * BILL OF QUANTITIES (modal) — auto-counted schedule of placed symbols
  * ========================================================================= */
 // ---- BOQ print layout (paginated A4) ----------------------------------------
-const boqGbp = (n) => "Â£" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const boqGbp = (n) => "£" + (Number(n) || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const boqLine = (it) => (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0);
 const boqSub = (sec) => sec.items.reduce((s, it) => s + boqLine(it), 0);
 
@@ -1928,7 +1917,7 @@ function BoqPrintPages({ boq, projectName, company }) {
   const metaRow = (label, val) => (
     <div style={{ display: "flex", borderBottom: "1px solid #eef2f6", padding: "6px 0" }}>
       <div style={{ width: 110, fontSize: 8.5, letterSpacing: "0.05em", textTransform: "uppercase", color: "#94a3b8" }}>{label}</div>
-      <div style={{ fontSize: 11, color: "#0f172a", fontWeight: 600 }}>{val || "â€”"}</div>
+      <div style={{ fontSize: 11, color: "#0f172a", fontWeight: 600 }}>{val || "—"}</div>
     </div>
   );
   const ColGroup = () => (
@@ -1954,7 +1943,7 @@ function BoqPrintPages({ boq, projectName, company }) {
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "#22808F", fontWeight: 700 }}>Electrical Bill of Quantities</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginTop: 2, lineHeight: 1.1 }}>{m.development || projectName || "Project"}</div>
-                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Issued for pricing Â· ex-VAT, GBP</div>
+                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Issued for pricing · ex-VAT, GBP</div>
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 34, marginBottom: 20 }}>
@@ -1969,7 +1958,7 @@ function BoqPrintPages({ boq, projectName, company }) {
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px", marginBottom: 8, background: "#f8fafc" }}>
                 <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "#22808F", fontWeight: 700, marginBottom: 7 }}>Notes to supplier</div>
                 {(boq.notes || []).map((n, i) => (
-                  <div key={i} style={{ fontSize: 10, color: "#475569", marginBottom: 4, display: "flex", gap: 6 }}><span style={{ color: "#94a3b8" }}>â€¢</span><span>{n}</span></div>
+                  <div key={i} style={{ fontSize: 10, color: "#475569", marginBottom: 4, display: "flex", gap: 6 }}><span style={{ color: "#94a3b8" }}>•</span><span>{n}</span></div>
                 ))}
               </div>
             </>
@@ -1991,9 +1980,9 @@ function BoqPrintPages({ boq, projectName, company }) {
                       <td style={{ ...td, color: "#94a3b8" }}>{ch.startIndex + ii + 1}</td>
                       <td style={{ ...td, fontWeight: 600, color: "#1e293b" }}>{it.item}</td>
                       <td style={{ ...td, color: "#64748b" }}>{it.spec}</td>
-                      <td style={{ ...td, textAlign: "right" }}>{it.qty === "" || it.qty == null ? "â€”" : it.qty}</td>
-                      <td style={{ ...td, textAlign: "right" }}>{Number(it.rate) ? boqGbp(it.rate) : "â€”"}</td>
-                      <td style={{ ...td, textAlign: "right", fontWeight: 600, color: "#0f172a" }}>{boqLine(it) ? boqGbp(boqLine(it)) : "â€”"}</td>
+                      <td style={{ ...td, textAlign: "right" }}>{it.qty === "" || it.qty == null ? "—" : it.qty}</td>
+                      <td style={{ ...td, textAlign: "right" }}>{Number(it.rate) ? boqGbp(it.rate) : "—"}</td>
+                      <td style={{ ...td, textAlign: "right", fontWeight: 600, color: "#0f172a" }}>{boqLine(it) ? boqGbp(boqLine(it)) : "—"}</td>
                     </tr>
                   ))}
                   {ch.subtotal != null && (
@@ -2018,7 +2007,7 @@ function BoqPrintPages({ boq, projectName, company }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 12, paddingTop: 8, borderTop: "2px solid #1e293b" }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Project total</div>
-                  <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em", color: "#94a3b8" }}>Excluding VAT Â· Issued for pricing</div>
+                  <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em", color: "#94a3b8" }}>Excluding VAT · Issued for pricing</div>
                 </div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{boqGbp(projectTotal)}</div>
               </div>
@@ -2028,7 +2017,7 @@ function BoqPrintPages({ boq, projectName, company }) {
           )}
 
           <div style={{ position: "absolute", bottom: 22, left: 46, right: 46, fontSize: 8.5, color: "#94a3b8", display: "flex", justifyContent: "space-between", borderTop: "1px solid #eef2f6", paddingTop: 8 }}>
-            <span>Unit rates and totals to be completed by supplier{company ? ` Â· ${company}` : ""}</span>
+            <span>Unit rates and totals to be completed by supplier{company ? ` · ${company}` : ""}</span>
             <span>Page {pi + 1} of {pages.length}</span>
           </div>
         </div>
@@ -2038,7 +2027,7 @@ function BoqPrintPages({ boq, projectName, company }) {
 }
 
 /* ============================================================================
- * BOQ TEMPLATE EDITOR â€” edit the default items/specs/sections saved per account.
+ * BOQ TEMPLATE EDITOR — edit the default items/specs/sections saved per account.
  * ========================================================================= */
 export function BoqTemplateEditor({ saved, onSave, onClose }) {
   const [tpl, setTpl] = useState(() => templateForEditing(saved));
@@ -2092,7 +2081,7 @@ export function BoqTemplateEditor({ saved, onSave, onClose }) {
                       <td className="py-0.5 text-slate-400 tabular-nums text-[11px]">{ii + 1}</td>
                       <td className="py-0.5 pr-1"><input value={it.item} onChange={(e) => setItem(si, it.id, "item", e.target.value)} className={`${cell} text-[12px] font-medium text-slate-800`} placeholder="Item"/></td>
                       <td className="py-0.5 pr-1"><input value={it.spec} onChange={(e) => setItem(si, it.id, "spec", e.target.value)} className={`${cell} text-[11px] text-slate-500`} placeholder="Spec / notes"/></td>
-                      <td className="py-0.5 text-center">{it.sf ? <span title="Quantity auto-fills from the drawing" className="text-[8px] uppercase tracking-wider text-[#22808F] bg-[#3FB7C9]/15 rounded px-1.5 py-0.5">auto</span> : <span className="text-slate-300 text-[10px]">â€”</span>}</td>
+                      <td className="py-0.5 text-center">{it.sf ? <span title="Quantity auto-fills from the drawing" className="text-[8px] uppercase tracking-wider text-[#22808F] bg-[#3FB7C9]/15 rounded px-1.5 py-0.5">auto</span> : <span className="text-slate-300 text-[10px]">—</span>}</td>
                       <td className="py-0.5 text-center"><button onClick={() => removeItem(si, it.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500"><X size={12}/></button></td>
                     </tr>
                   ))}
@@ -2107,7 +2096,7 @@ export function BoqTemplateEditor({ saved, onSave, onClose }) {
           <div className="flex gap-2">
             <button onClick={onClose} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider">Close</button>
             <button onClick={doSave} disabled={busy} className={`px-4 py-2 rounded-md text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 ${flash ? "bg-emerald-500 text-white" : "bg-[#3FB7C9] text-[#08313a] hover:bg-[#52C4D5]"}`}>
-              {flash ? "Saved âœ“" : busy ? "Savingâ€¦" : "Save presets"}
+              {flash ? "Saved ✓" : busy ? "Saving…" : "Save presets"}
             </button>
           </div>
         </div>
@@ -2208,7 +2197,7 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
     <div className="flex items-center gap-2 border-b border-slate-100 py-1.5">
       <div className="text-[9px] uppercase tracking-wider text-slate-500 w-28 shrink-0">{label}</div>
       <input value={boq.meta[field] || ""} onChange={(e) => setMeta(field, e.target.value)}
-        placeholder="â€”"
+        placeholder="—"
         className={`${cell} text-[12px] ${strong ? "font-semibold text-slate-900" : "text-slate-700"}`}/>
     </div>
   );
@@ -2259,7 +2248,7 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
             <div className="text-[9px] uppercase tracking-wider text-[#22808F] font-semibold mb-2">Notes to supplier</div>
             {boq.notes.map((n, i) => (
               <div key={i} className="group flex items-start gap-2 mb-1">
-                <span className="text-slate-400 text-[11px] mt-1.5">â€¢</span>
+                <span className="text-slate-400 text-[11px] mt-1.5">•</span>
                 <input value={n} onChange={(e) => setNote(i, e.target.value)} className={`${cell} text-[11px] text-slate-600`}/>
                 <button onClick={() => removeNote(i)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 mt-1.5"><X size={12}/></button>
               </div>
@@ -2297,10 +2286,10 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
                       <td className="py-0.5 text-slate-400 tabular-nums text-[11px] align-middle">{ii + 1}</td>
                       <td className="py-0.5 pr-1"><input value={it.item} onChange={(e) => setItem(si, it.id, "item", e.target.value)} className={`${cell} text-[12px] font-medium text-slate-800`} placeholder="Item"/></td>
                       <td className="py-0.5 pr-1"><input value={it.spec} onChange={(e) => setItem(si, it.id, "spec", e.target.value)} className={`${cell} text-[11px] text-slate-500`} placeholder="Spec / notes"/></td>
-                      <td className="py-0.5 pr-1"><input value={it.qty} onChange={(e) => setItem(si, it.id, "qty", e.target.value)} inputMode="decimal" className={`${cell} text-[12px] text-right tabular-nums`} placeholder="â€”"/></td>
+                      <td className="py-0.5 pr-1"><input value={it.qty} onChange={(e) => setItem(si, it.id, "qty", e.target.value)} inputMode="decimal" className={`${cell} text-[12px] text-right tabular-nums`} placeholder="—"/></td>
                       <td className="py-0.5 pr-1">
                         <div className="flex items-center justify-end gap-0.5">
-                          <span className="text-slate-400 text-[11px]">Â£</span>
+                          <span className="text-slate-400 text-[11px]">£</span>
                           <input value={it.rate} onChange={(e) => setItem(si, it.id, "rate", e.target.value)} inputMode="decimal" className={`${cell} text-[12px] text-right tabular-nums`} placeholder="0.00"/>
                         </div>
                       </td>
@@ -2363,7 +2352,7 @@ export function BillOfQuantities({ project, updateBoq, onClose }) {
             <button onClick={downloadCSV} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5"><Download size={12}/> CSV</button>
             <button onClick={downloadPDF} disabled={pdfBusy} style={pdfBusy ? { opacity: 0.6, cursor: "wait" } : undefined}
               className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] flex items-center gap-1.5">
-              <Download size={12}/> {pdfBusy ? "Buildingâ€¦" : "Download PDF"}
+              <Download size={12}/> {pdfBusy ? "Building…" : "Download PDF"}
             </button>
           </div>
         </div>
@@ -2413,7 +2402,7 @@ export function MetaEditor({ meta, updateMeta, onSheetField, onClose }) {
         </div>
 
         <div className="mt-4 pt-4 border-t border-slate-200">
-          <div className="text-[9px] tracking-[0.25em] uppercase text-slate-400 mb-3">Client â€” used for emailing drawings</div>
+          <div className="text-[9px] tracking-[0.25em] uppercase text-slate-400 mb-3">Client — used for emailing drawings</div>
           <div className="grid grid-cols-2 gap-3">
             <MetaField label="Client name"  value={meta.clientName}  onChange={(v) => updateMeta({ clientName: v })} />
             <MetaField label="Client email" value={meta.clientEmail} onChange={(v) => updateMeta({ clientEmail: v })} type="email"/>
@@ -2505,7 +2494,7 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          <p className="text-[12px] text-slate-500 -mt-1">These details and logos appear on this drawing and its PDF. They apply to <span className="font-semibold text-slate-700">this job only</span> â€” other projects keep their own. Project, sheet, scale, date, drawing number and revision stay editable per drawing.</p>
+          <p className="text-[12px] text-slate-500 -mt-1">These details and logos appear on this drawing and its PDF. They apply to <span className="font-semibold text-slate-700">this job only</span> — other projects keep their own. Project, sheet, scale, date, drawing number and revision stay editable per drawing.</p>
 
           {/* Logos */}
           <div>
@@ -2518,7 +2507,7 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPickLogos} className="hidden"/>
             </div>
             {logos.length === 0 ? (
-              <div className="text-[12px] text-slate-400 italic py-3 px-3 rounded-lg bg-slate-50 ring-1 ring-slate-200">No logos yet â€” add your company and accreditation logos.</div>
+              <div className="text-[12px] text-slate-400 italic py-3 px-3 rounded-lg bg-slate-50 ring-1 ring-slate-200">No logos yet — add your company and accreditation logos.</div>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {logos.map((src, i) => (
@@ -2555,7 +2544,7 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
                 </div>
               ))}
               {details.length === 0 && (
-                <div className="text-[12px] text-slate-400 italic">No detail lines â€” add your company name, address, phone, email, registrationâ€¦</div>
+                <div className="text-[12px] text-slate-400 italic">No detail lines — add your company name, address, phone, email, registration…</div>
               )}
             </div>
             <div className="text-[11px] text-slate-400 mt-2">The first line shows largest, as your company name.</div>
@@ -2579,7 +2568,7 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
           <button onClick={onClose} className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">Cancel</button>
           <button onClick={save} disabled={saving}
             className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-60">
-            {saving ? "Savingâ€¦" : "Apply to this job"}
+            {saving ? "Saving…" : "Apply to this job"}
           </button>
         </div>
       </div>
@@ -2665,7 +2654,7 @@ function glyphToJob(glyphEl, DRAW, sx, sy, PAGE_H) {
   const { tx, ty, rot } = parseGroupTransform(g && g.getAttribute ? g.getAttribute("transform") : "");
   const half = size / 2;
   const localX = tx + half, localY = ty + half;      // symbol centre in DRAW space
-  const cx = (DRAW.x + localX) * sx;                  // â†’ PDF points
+  const cx = (DRAW.x + localX) * sx;                  // → PDF points
   const cy = PAGE_H - (DRAW.y + localY) * sy;         // pdf-lib is bottom-left
   return { prims: glyphToPrims(glyphEl), cx, cy, size: size * sx, rotationDeg: rot };
 }
@@ -2683,7 +2672,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
   const pointers = useRef(new Map());
   const pinch = useRef(null);
 
-  // Fit the large A3 page to the screen width â€” essential on iPad, where the
+  // Fit the large A3 page to the screen width — essential on iPad, where the
   // page is far wider than the viewport. Also reused by the "Fit" button.
   const fitWidth = () => {
     const avail = (typeof window !== "undefined" ? window.innerWidth : SHEET.width) - 28;
@@ -2721,8 +2710,8 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 
   // One-click PDF.
   //
-  // The plan itself is embedded as TRUE VECTOR â€” the original imported PDF page,
-  // dropped straight into the output â€” so it stays razor-sharp at any zoom. No
+  // The plan itself is embedded as TRUE VECTOR — the original imported PDF page,
+  // dropped straight into the output — so it stays razor-sharp at any zoom. No
   // raster ceiling, no iOS canvas-size cap (which is why bumping the screenshot
   // scale never helped: Safari silently clamps any canvas over ~16.7MP).
   //
@@ -2760,7 +2749,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
         const bg = (sheets[i] && sheets[i].bgImage) || null;
         const page = out.addPage([PAGE_W, PAGE_H]);
 
-        // 1. Vector plan underlay â€” only if we still hold the source PDF.
+        // 1. Vector plan underlay — only if we still hold the source PDF.
         let vectorOK = false;
         if (bg && bg.pdfSrc && bg.w && bg.h) {
           try {
@@ -2768,7 +2757,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
             const idx = Math.max(0, (bg.pdfPage || 1) - 1);
             const srcDoc = await PDFDocument.load(bytes);
             // Architect PDFs are commonly saved with a /Rotate flag. The on-screen
-            // preview honours it, so the export must too â€” otherwise the plan comes
+            // preview honours it, so the export must too — otherwise the plan comes
             // out turned and stretched and the symbols no longer line up.
             const rot = ((srcDoc.getPage(idx).getRotation().angle % 360) + 360) % 360;
             const [embedded] = await out.embedPdf(srcDoc, [idx]);
@@ -2777,7 +2766,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
             const swap = rot === 90 || rot === 270;
             const dw = swap ? embedded.height : embedded.width;
             const dh = swap ? embedded.width : embedded.height;
-            // Contain inside DRAW, centred â€” identical maths to the on-screen plan,
+            // Contain inside DRAW, centred — identical maths to the on-screen plan,
             // so the vector underlay lands exactly where the raster preview did.
             const fit = Math.min(DRAW.w / dw, DRAW.h / dh);
             const pw = dw * fit, ph = dh * fit;
@@ -2798,7 +2787,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
             page.drawPage(embedded, place);
             vectorOK = true;
           } catch (err) {
-            vectorOK = false; // any trouble â†’ fall back to raster for this page
+            vectorOK = false; // any trouble → fall back to raster for this page
           }
         }
 
@@ -2818,8 +2807,8 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
           if (sheetRoot) { saved.push([sheetRoot, "background", sheetRoot.style.background]); sheetRoot.style.background = "transparent"; }
         }
 
-        // Symbols â†’ true vector. Read each glyph's shapes + placement from the
-        // DOM now, then HIDE the glyphs so html2canvas never rasterises them â€”
+        // Symbols → true vector. Read each glyph's shapes + placement from the
+        // DOM now, then HIDE the glyphs so html2canvas never rasterises them —
         // that raster of many symbols is what exhausts iOS Safari and crashes
         // the export. The symbols are redrawn as crisp vector below.
         const glyphEls = Array.from(el.querySelectorAll('[data-sym-glyph]'));
@@ -2887,7 +2876,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
       "",
       "Any questions, just let me know.",
     ].join("\n");
-    const subject = `Electrical drawings â€” ${meta.projectName || meta.plot || "your project"}`;
+    const subject = `Electrical drawings — ${meta.projectName || meta.plot || "your project"}`;
     const href = `mailto:${meta.clientEmail || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = href;
   };
@@ -2903,18 +2892,18 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
   if (!mounted) return null;
 
   // Rendered as a direct child of <body> so it's clear of the editor's
-  // overflow-hidden / fixed-height shell â€” that's what lets every sheet
+  // overflow-hidden / fixed-height shell — that's what lets every sheet
   // print onto its own page instead of just the first.
   return createPortal(
     <div id="print-root">
       <div className="pp-chrome">
         <div>
           <div className="pp-eyebrow">Save / Print</div>
-          <div className="pp-title">{meta.projectName || "Project"} Â· {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
+          <div className="pp-title">{meta.projectName || "Project"} · {sheets.length} {sheets.length === 1 ? "drawing" : "drawings"}</div>
         </div>
         <div className="pp-actions">
           <div className="pp-zoom">
-            <button onClick={() => adjustZoom(1/1.2)} aria-label="Zoom out">âˆ’</button>
+            <button onClick={() => adjustZoom(1/1.2)} aria-label="Zoom out">−</button>
             <button onClick={fitWidth} aria-label="Fit to screen">Fit</button>
             <button onClick={() => adjustZoom(1.2)} aria-label="Zoom in">+</button>
           </div>
@@ -2924,7 +2913,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
           <button onClick={emailClient} className="pp-btn pp-btn-email"><Mail size={12}/> Email client</button>
           <button onClick={onPrint} className="pp-btn pp-btn-email"><Printer size={12}/> Print</button>
           <button onClick={downloadPDF} disabled={pdfBusy} className="pp-btn pp-btn-primary" style={pdfBusy ? { opacity: 0.6, cursor: "wait" } : undefined}>
-            <Download size={12}/> {pdfBusy ? "Buildingâ€¦" : "Download PDF"}
+            <Download size={12}/> {pdfBusy ? "Building…" : "Download PDF"}
           </button>
         </div>
       </div>
@@ -3040,7 +3029,7 @@ function LegendColumnStatic({ legendItems, colourMode }) {
     }}>
       <SheetColumnHeader padL={14} padR={12} padT={12}>Electrical Legend</SheetColumnHeader>
       <div style={{ fontSize: 8.5, color: "#404040", marginBottom: 10, letterSpacing: "0.06em" }}>
-        UK ARCHITECTURAL Â· TO BE READ IN COLOUR
+        UK ARCHITECTURAL · TO BE READ IN COLOUR
       </div>
       {legendItems.map(({ id, symbol, meta }) => {
         const cols = resolveColours(id, colourMode);
@@ -3230,7 +3219,7 @@ function TitleBlockStatic({ meta }) {
         <TitleDetails details={tb.details} />
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#0a0a0a" }}>{meta.projectName || "â€”"}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#0a0a0a" }}>{meta.projectName || "—"}</div>
           <div style={{ fontSize: 9, color: "#0a0a0a" }}>{meta.plot}</div>
         </div>
       </div>
@@ -3253,7 +3242,7 @@ function TitleBlockStatic({ meta }) {
       <div style={{ padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
         <div>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
-          <div style={{ fontSize: 11, fontWeight: 700 }}>{meta.drawingNumber || "â€”"}</div>
+          <div style={{ fontSize: 11, fontWeight: 700 }}>{meta.drawingNumber || "—"}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
@@ -3267,5 +3256,3 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
-
-
