@@ -1668,7 +1668,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
           <FloatingToolbar tool={tool} setTool={(t) => { setTool(t); setWireStart(null); if (t !== "wall") cancelWall(); }} />
 
           {/* Floor Plan — opens the sketch for this drawing (round-trips back here) */}
-          {currentProjectId && (
+          {(
             <button
               onClick={() => {
                 setFloorPlanArgs({
@@ -1854,3 +1854,4 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     </ProjectTitleBlockContext.Provider>
   );
 }
+

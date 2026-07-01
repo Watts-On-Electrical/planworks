@@ -212,7 +212,7 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
   const [frame, setFrame] = useState(null);
   const [planModal, setPlanModal] = useState(false);
   const [planBusy, setPlanBusy] = useState(null);
-  const [nameGate, setNameGate] = useState(!(openSketchId || linkProject));
+  const [nameGate, setNameGate] = useState(!(openSketchId || linkProject || embedded));
 
   viewRef.current = view;
 
@@ -1096,3 +1096,4 @@ const CSS = `
 .cadv__busy .spin{width:18px; height:18px; border:2.5px solid rgba(44,62,80,.18); border-top-color:#2C97A8; border-radius:50%; animation:cadvspin .8s linear infinite}
 @keyframes cadvspin{to{transform:rotate(360deg)}}
 `;
+
