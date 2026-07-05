@@ -92,34 +92,27 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
   const load = async () => {
     try {
       const rows = await listProjects();
-      // Sign the first-sheet plan image of each project so the preview thumbnail
-      // renders (post-migration these images live in Storage, not in the JSON).
-      const firstPath = (data) => {
-        const s = data?.sheets?.[0]?.bgImage || data?.bgImage;
-        return s?.path || null;
-      };
-      const urls = await signPlanImages(rows.map(r => firstPath(r.data)));
+      // Sign only the small first-sheet plan image referenced by each preview.
+      const urls = await signPlanImages(rows.map(r => r.preview?.bg?.path).filter(Boolean));
       const full = rows.map((r) => {
-        const project = r.data || null;
-        // Inject the signed URL into the first sheet's bgImage for the preview.
-        if (project) {
-          const bg = project.sheets?.[0]?.bgImage || project.bgImage;
-          if (bg && bg.path && urls.get(bg.path)) bg.src = urls.get(bg.path);
-        }
-        const sheets = project?.sheets || null;
-        const firstNumber = sheets ? (sheets[0]?.drawingNumber || "") : (project?.meta?.drawingNumber || "");
-        const itemCount = sheets
-          ? sheets.reduce((n, s) => n + (s.placed?.length || 0), 0)
-          : (project?.placed?.length || 0);
+        const pv = r.preview || {};
+        const bg = pv.bg
+          ? { ...pv.bg, src: pv.bg.src || (pv.bg.path && urls.get(pv.bg.path)) || null }
+          : null;
+        // Minimal project shape the thumbnail understands (first sheet only).
+        const slimProject = {
+          meta: { plot: pv.plot || "", drawingNumber: pv.drawingNumber || "" },
+          sheets: [{ bgImage: bg, placed: pv.dots || [] }],
+        };
         return {
           id: r.id,
-          name: r.name || project?.meta?.projectName || "Untitled drawing",
-          addr: project?.meta?.plot || "",
-          reg: firstNumber || project?.meta?.drawingNumber || "",
-          floors: sheets ? sheets.length : 1,
+          name: r.name || "Untitled drawing",
+          addr: pv.plot || "",
+          reg: pv.drawingNumber || "",
+          floors: pv.floors || 1,
           updatedAt: r.updatedAt,
-          count: itemCount,
-          project,
+          count: pv.count || 0,
+          project: slimProject,
         };
       });
       setCards(full);
@@ -423,6 +416,7 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .empty{margin-top:18px; padding:30px; text-align:center; color:var(--muted); font-size:13.5px; background:var(--surface); border:1px dashed var(--line); border-radius:14px}
 @media (max-width:720px){.pw-home .rail{width:60px} .pw-home .scroll{padding:24px 18px 50px} .pw-home .hero{padding:24px} .pw-home .hero h1{font-size:24px} .pw-home .stats{gap:22px; flex-wrap:wrap}}
 `;
+
 
 
 
