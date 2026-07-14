@@ -7,7 +7,7 @@ const WorkPlanner = dynamic(() => import("@/components/WorkPlanner"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-screen flex items-center justify-center bg-[#e7eceb]">
-      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">Loading planner\u2026</div>
+      <div className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">{"Loading planner\u2026"}</div>
     </div>
   ),
 });
@@ -15,3 +15,4 @@ const WorkPlanner = dynamic(() => import("@/components/WorkPlanner"), {
 export default function PlannerPage() {
   return <WorkPlanner />;
 }
+

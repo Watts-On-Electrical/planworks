@@ -154,7 +154,7 @@ export default function WorkPlanner() {
   const dayFlex = (narrow) => ({ flex: narrow ? ".62 1 0" : "1 1 0" });
 
   if (loading) {
-    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#e7eceb", fontFamily: FONTS, color: "#7a8686", fontSize: 13 }}>Loading planner\u2026</div>;
+    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#e7eceb", fontFamily: FONTS, color: "#7a8686", fontSize: 13 }}>{"Loading planner\u2026"}</div>;
   }
 
   return (
@@ -168,7 +168,7 @@ export default function WorkPlanner() {
       `}</style>
 
       <div style={{ width: 1300, maxWidth: "100%", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14 }}>
-        <span style={{ fontSize: 12.5, color: "#7a8686" }}>Sends a clean image of this week \u2014 pick WhatsApp from the share sheet, or it downloads a PNG.</span>
+        <span style={{ fontSize: 12.5, color: "#7a8686" }}>{"Sends a clean image of this week \u2014 pick WhatsApp from the share sheet, or it downloads a PNG."}</span>
         <button onClick={exportImage} style={{ fontFamily: COND, fontWeight: 700, fontSize: 14, letterSpacing: ".02em", padding: "9px 18px", borderRadius: 8, cursor: "pointer", background: "#0d7a7a", color: "#fff", border: "1px solid #0d7a7a" }}>
           {exporting ? "Preparing image\u2026" : "Share this week as image \u25b8"}
         </button>
@@ -181,9 +181,9 @@ export default function WorkPlanner() {
             <span style={{ fontSize: 13, opacity: 0.85, letterSpacing: ".12em", textTransform: "uppercase" }}>Work Planner</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <button onClick={() => setWeek((w) => Math.max(0, w - 1))} style={navBtn(week === 0)}>\u2039 Prev</button>
+            <button onClick={() => setWeek((w) => Math.max(0, w - 1))} style={navBtn(week === 0)}>{"\u2039 Prev"}</button>
             <div style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 21, textAlign: "center", minWidth: 280 }}>{weekTitle}</div>
-            <button onClick={() => setWeek((w) => Math.min(3, w + 1))} style={navBtn(week === 3)}>Next \u203a</button>
+            <button onClick={() => setWeek((w) => Math.min(3, w + 1))} style={navBtn(week === 3)}>{"Next \u203a"}</button>
           </div>
         </div>
 
@@ -197,7 +197,7 @@ export default function WorkPlanner() {
               </button>
             );
           })}
-          <span style={{ fontSize: 12.5, color: "#8a9797", fontStyle: "italic", marginLeft: 6 }}>Rolls automatically. Tap a cell to add a job \u00b7 tap a job to edit.</span>
+          <span style={{ fontSize: 12.5, color: "#8a9797", fontStyle: "italic", marginLeft: 6 }}>{"Rolls automatically. Tap a cell to add a job \u00b7 tap a job to edit."}</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "stretch", background: "#0d7a7a" }}>
@@ -267,7 +267,7 @@ export default function WorkPlanner() {
                 <Field label="Customer"><input className="wp-field" value={editing.cust} onChange={(e) => setField("cust", e.target.value)} placeholder="e.g. Mrs Patel" /></Field>
               </div>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}><span style={LBL}>Address / postcode</span><input className="wp-field" value={editing.addr} onChange={(e) => setField("addr", e.target.value)} placeholder="e.g. 14 Elm Rd, L23" /></label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 5 }}><span style={LBL}>Notes</span><input className="wp-field" value={editing.notes} onChange={(e) => setField("notes", e.target.value)} placeholder="e.g. Day 1 \u2014 1st fix" /></label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 5 }}><span style={LBL}>Notes</span><input className="wp-field" value={editing.notes} onChange={(e) => setField("notes", e.target.value)} placeholder={"e.g. Day 1 \u2014 1st fix"} /></label>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                 {!editing.isNew && <button onClick={deleteJob} style={{ fontFamily: FONTS, fontWeight: 600, fontSize: 14, padding: "9px 14px", borderRadius: 8, cursor: "pointer", background: "#fff", color: "#c0392b", border: "1px solid #e6b8b8" }}>Delete</button>}
                 <div style={{ flex: 1 }} />
@@ -281,3 +281,4 @@ export default function WorkPlanner() {
     </div>
   );
 }
+
