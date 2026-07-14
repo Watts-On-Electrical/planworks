@@ -23,6 +23,7 @@ export default function DashboardPage() {
       onNewProject={() => router.push("/new")}
       onImport={() => router.push("/new?import=1")}
       onSketch={() => router.push("/sketch")}
+      onPlanner={() => router.push("/planner")}
       theme={theme}
       onToggleTheme={toggleTheme}
       user={user}
@@ -30,4 +31,5 @@ export default function DashboardPage() {
     />
   );
 }
+
 

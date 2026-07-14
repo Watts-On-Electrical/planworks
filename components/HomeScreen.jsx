@@ -83,7 +83,7 @@ function PlanThumb({ project }) {
   );
 }
 
-export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSketch, theme, onToggleTheme, user, onSignOut }) {
+export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSketch, onPlanner, theme, onToggleTheme, user, onSignOut }) {
   const { manageBilling, subscription } = useApp();
   const [cards, setCards] = useState(null);
   const [pending, setPending] = useState(0);   // local jobs awaiting upload
@@ -160,6 +160,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
           <div className="navitem active" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div>
           <div className="navitem" title="All drawings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
           <div className="navitem" title="Symbol library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="3.2"/><rect x="14" y="4" width="6" height="6" rx="1.4"/><path d="M4 15h6v6H4zM14 18h6"/><circle cx="17" cy="18" r="3.2"/></svg></div>
+          <div className="navitem" title="Work planner" onClick={onPlanner} style={{ cursor: "pointer" }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h3M7 17h3M14 13h3"/></svg></div>
           <div className="rail-spacer"></div>
           <div className="navitem" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 0 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9 2 2 0 0 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2 2 2 0 0 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9 2 2 0 0 1 0 4 1.7 1.7 0 0 0-1.5 1z"/></svg></div>
           <div className="rail-avatar">{(displayName(user) || user?.email || "?").slice(0, 2).toUpperCase()}</div>
@@ -229,7 +230,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
             </section>
 
             <div className="sec-head"><h2>Start something new</h2></div>
-            <div className="templates"><div className="tpl" onClick={onSketch}><div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div><div><div className="t">Sketch a floor plan</div><div className="s">Draw the building, then add electrics</div></div></div>
+            <div className="templates"><div className="tpl" onClick={onPlanner}><div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h3M7 17h3M14 13h3"/></svg></div><div><div className="t">Work planner</div><div className="s">Plan your team&apos;s week</div></div></div><div className="tpl" onClick={onSketch}><div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></div><div><div className="t">Sketch a floor plan</div><div className="s">Draw the building, then add electrics</div></div></div>
               <div className="tpl" onClick={() => onNewProject()}>
                 <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 3 5 13h6l-1 8 9-11h-6l1-7z"/></svg></div>
                 <div><div className="t">Blank A3 sheet</div><div className="s">Landscape Â· titled</div></div>
@@ -416,6 +417,7 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .empty{margin-top:18px; padding:30px; text-align:center; color:var(--muted); font-size:13.5px; background:var(--surface); border:1px dashed var(--line); border-radius:14px}
 @media (max-width:720px){.pw-home .rail{width:60px} .pw-home .scroll{padding:24px 18px 50px} .pw-home .hero{padding:24px} .pw-home .hero h1{font-size:24px} .pw-home .stats{gap:22px; flex-wrap:wrap}}
 `;
+
 
 
 
