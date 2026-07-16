@@ -224,11 +224,20 @@ export default function WorkPlanner({ shared = null }) {
     const grid = gridRef.current;
     const prevMax = grid ? grid.style.maxHeight : null;
     const prevOv = grid ? grid.style.overflow : null;
+    // The board is wider/taller than a phone screen and scrolls. For the image
+    // we temporarily un-cap it so the WHOLE board is captured, then restore.
+    const prevCardW = card.style.width;
+    const prevCardOv = card.style.overflow;
+    const restore = () => {
+      if (grid) { grid.style.maxHeight = prevMax; grid.style.overflow = prevOv; }
+      card.style.width = prevCardW; card.style.overflow = prevCardOv;
+    };
     if (grid) { grid.style.maxHeight = "none"; grid.style.overflow = "visible"; }
+    card.style.width = "1300px"; card.style.overflow = "visible";
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(card, { scale: 2, backgroundColor: P.surface, useCORS: true });
-      if (grid) { grid.style.maxHeight = prevMax; grid.style.overflow = prevOv; }
+      const canvas = await html2canvas(card, { scale: 2, backgroundColor: P.surface, useCORS: true, windowWidth: 1400 });
+      restore();
       canvas.toBlob((blob) => {
         setExporting(false);
         if (!blob) { alert("Could not create image."); return; }
@@ -244,7 +253,7 @@ export default function WorkPlanner({ shared = null }) {
           setTimeout(() => URL.revokeObjectURL(url), 3000);
         }
       }, "image/png");
-    } catch (e) { if (grid) { grid.style.maxHeight = prevMax; grid.style.overflow = prevOv; } setExporting(false); alert("Could not create image: " + (e && e.message ? e.message : e)); }
+    } catch (e) { restore(); setExporting(false); alert("Could not create image: " + (e && e.message ? e.message : e)); }
   };
 
   const navBtn = (disabled) => ({ fontFamily: COND, fontWeight: 600, fontSize: 14, padding: "6px 12px", borderRadius: 6, cursor: "pointer", background: "rgba(255,255,255,.14)", color: P.headerText, border: "1px solid rgba(255,255,255,.35)", opacity: disabled ? 0.35 : 1, pointerEvents: disabled ? "none" : "auto" });
@@ -267,9 +276,21 @@ export default function WorkPlanner({ shared = null }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", padding: "32px 30px 44px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, fontFamily: FONTS, background: P.page }}>
+    <div className="wp-page" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, fontFamily: FONTS, background: P.page }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap');
+        .wp-page{padding:32px 30px 44px}
+        .wp-cname{width:186px;flex:none}
+        .wp-row{min-width:940px}
+        .wp-wt{min-width:280px}
+        .wp-swipe{display:none}
+        @media (max-width:900px){
+          .wp-page{padding:12px 8px 30px}
+          .wp-cname{width:112px}
+          .wp-row{min-width:820px}
+          .wp-wt{min-width:auto;font-size:17px !important}
+          .wp-swipe{display:block}
+        }
         .wp-cell .wp-add{opacity:0;transition:opacity .12s}
         .wp-cell:hover .wp-add{opacity:1}
         .wp-field:focus{outline:none;border-color:${P.accent2};box-shadow:0 0 0 3px ${dark ? "rgba(63,183,201,.22)" : "rgba(44,151,168,.16)"}}
@@ -302,7 +323,7 @@ export default function WorkPlanner({ shared = null }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <button onClick={() => setWeek((w) => Math.max(0, w - 1))} style={navBtn(week === 0)}>{"\u2039 Prev"}</button>
-            <div style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 21, textAlign: "center", minWidth: 280 }}>{weekTitle}</div>
+            <div className="wp-wt" style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 21, textAlign: "center" }}>{weekTitle}</div>
             <button onClick={() => setWeek((w) => Math.min(3, w + 1))} style={navBtn(week === 3)}>{"Next \u203a"}</button>
           </div>
         </div>
@@ -318,11 +339,12 @@ export default function WorkPlanner({ shared = null }) {
             );
           })}
           <span style={{ fontSize: 12.5, color: P.muted, fontStyle: "italic", marginLeft: 6 }}>{readOnly ? "Rolls automatically \u00b7 view only" : "Rolls automatically. Tap a cell to add a job \u00b7 tap a job to edit."}</span>
+          <span className="wp-swipe" style={{ width: "100%", fontSize: 12, color: P.accent2, fontWeight: 600, marginTop: 2 }}>{"\u2194 Swipe the board sideways to see all days"}</span>
         </div>
 
         <div ref={gridRef} style={{ maxHeight: "62vh", overflow: "auto", position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "stretch", background: P.colHead, position: "sticky", top: 0, zIndex: 3 }}>
-          <div style={{ width: 186, flex: "none", padding: "12px 16px", color: P.headerSub, position: "sticky", left: 0, zIndex: 4, background: P.colHead, fontFamily: COND, fontWeight: 600, fontSize: 13, letterSpacing: ".09em", textTransform: "uppercase", borderRight: "2px solid rgba(255,255,255,.22)" }}>Contractor</div>
+        <div className="wp-row" style={{ display: "flex", alignItems: "stretch", background: P.colHead, position: "sticky", top: 0, zIndex: 3 }}>
+          <div className="wp-cname" style={{ padding: "12px 16px", color: P.headerSub, position: "sticky", left: 0, zIndex: 4, background: P.colHead, fontFamily: COND, fontWeight: 600, fontSize: 13, letterSpacing: ".09em", textTransform: "uppercase", borderRight: "2px solid rgba(255,255,255,.22)" }}>Contractor</div>
           {days.map((d, i) => (
             <div key={i} style={{ ...dayFlex(d.narrow), padding: "9px 13px", color: P.headerText, borderRight: "1px solid rgba(255,255,255,.18)", background: d.isToday ? "rgba(63,183,201,.28)" : d.narrow ? "rgba(255,255,255,.08)" : "transparent" }}>
               <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 17, letterSpacing: ".03em" }}>{d.name}</div>
@@ -333,8 +355,8 @@ export default function WorkPlanner({ shared = null }) {
         </div>
 
         {roster.map((c) => (
-          <div key={c.id} style={{ display: "flex", alignItems: "stretch", borderTop: "1px solid " + P.rowSep }}>
-            <div style={{ width: 186, flex: "none", padding: "11px 14px", background: dark ? P.surfaceAlt : (c.color + "14"), borderRight: "2px solid " + P.line, display: "flex", alignItems: "center", gap: 9, position: "sticky", left: 0, zIndex: 2 }}>
+          <div key={c.id} className="wp-row" style={{ display: "flex", alignItems: "stretch", borderTop: "1px solid " + P.rowSep }}>
+            <div className="wp-cname" style={{ padding: "11px 14px", background: dark ? P.surfaceAlt : (c.color + "14"), borderRight: "2px solid " + P.line, display: "flex", alignItems: "center", gap: 9, position: "sticky", left: 0, zIndex: 2 }}>
               <span style={{ width: 11, height: 11, borderRadius: 3, background: c.color, flex: "none" }} />
               <span style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 15, lineHeight: 1.1, color: P.ink }}>{c.name}</span>
             </div>
