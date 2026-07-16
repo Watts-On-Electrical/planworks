@@ -100,6 +100,8 @@ export default function WorkPlanner({ shared = null }) {
   const [duplicating, setDuplicating] = useState(null);
   const [sharePanel, setSharePanel] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [mDay, setMDay] = useState(() => { const d = (new Date().getDay() + 6) % 7; return d > 5 ? 0 : d; });
+  const [mWho, setMWho] = useState("all");
   const cardRef = useRef(null);
   const gridRef = useRef(null);
 
@@ -228,12 +230,25 @@ export default function WorkPlanner({ shared = null }) {
     // we temporarily un-cap it so the WHOLE board is captured, then restore.
     const prevCardW = card.style.width;
     const prevCardOv = card.style.overflow;
+    const prevDisp = card.style.display;
+    const prevPos = card.style.position;
+    const prevLeft = card.style.left;
+    const prevTop = card.style.top;
     const restore = () => {
       if (grid) { grid.style.maxHeight = prevMax; grid.style.overflow = prevOv; }
       card.style.width = prevCardW; card.style.overflow = prevCardOv;
+      card.style.display = prevDisp; card.style.position = prevPos;
+      card.style.left = prevLeft; card.style.top = prevTop;
     };
     if (grid) { grid.style.maxHeight = "none"; grid.style.overflow = "visible"; }
-    card.style.width = "1300px"; card.style.overflow = "visible";
+    // On phones the full board is hidden (the list view is shown instead), so
+    // reveal it off-screen at full size just long enough to photograph it.
+    card.style.display = "block";
+    card.style.position = "fixed";
+    card.style.left = "-10000px";
+    card.style.top = "0";
+    card.style.width = "1300px";
+    card.style.overflow = "visible";
     try {
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(card, { scale: 2, backgroundColor: P.surface, useCORS: true, windowWidth: 1400 });
@@ -284,12 +299,14 @@ export default function WorkPlanner({ shared = null }) {
         .wp-row{min-width:940px}
         .wp-wt{min-width:280px}
         .wp-swipe{display:none}
+        .wp-mobile{display:none;width:100%;max-width:640px}
         @media (max-width:900px){
           .wp-page{padding:12px 8px 30px}
           .wp-cname{width:112px}
           .wp-row{min-width:820px}
           .wp-wt{min-width:auto;font-size:17px !important}
-          .wp-swipe{display:block}
+          .wp-board{display:none}
+          .wp-mobile{display:block}
         }
         .wp-cell .wp-add{opacity:0;transition:opacity .12s}
         .wp-cell:hover .wp-add{opacity:1}
@@ -312,7 +329,7 @@ export default function WorkPlanner({ shared = null }) {
         </button>
       </div>
 
-      <div ref={cardRef} style={{ width: 1300, maxWidth: "100%", background: P.surface, border: "1px solid " + P.line, borderRadius: 14, overflow: "hidden", boxShadow: dark ? "0 16px 44px -22px rgba(0,0,0,.6)" : "0 16px 44px -22px rgba(20,40,50,.35)" }}>
+      <div ref={cardRef} className="wp-board" style={{ width: 1300, maxWidth: "100%", background: P.surface, border: "1px solid " + P.line, borderRadius: 14, overflow: "hidden", boxShadow: dark ? "0 16px 44px -22px rgba(0,0,0,.6)" : "0 16px 44px -22px rgba(20,40,50,.35)" }}>
         <div style={{ background: P.header, color: P.headerText, padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 13 }}>
             <span style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: ".02em", textTransform: "uppercase" }}>{settings.company || "Your Company"}</span>
@@ -385,6 +402,64 @@ export default function WorkPlanner({ shared = null }) {
           <span style={{ width: 1, height: 16, background: P.line }} />
           {["booked", "done", "cancelled"].map((k) => <Pill key={k} k={k} dark={dark} />)}
           <span style={{ font: "700 9px/1 " + FONTS, letterSpacing: ".08em", textTransform: "uppercase", padding: "3px 5px", borderRadius: 3, background: dark ? "#e05563" : "#c0392b", color: "#fff" }}>{"Important"}</span>
+        </div>
+      </div>
+
+      {/* Mobile view — phones get a readable, tappable list instead of the grid */}
+      <div className="wp-mobile">
+        <div style={{ background: P.header, color: P.headerText, borderRadius: "14px 14px 0 0", padding: "14px 16px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: COND, fontWeight: 700, fontSize: 20, letterSpacing: ".02em", textTransform: "uppercase" }}>{settings.company || "Your Company"}</span>
+            <span style={{ fontSize: 11.5, color: P.headerSub, letterSpacing: ".12em", textTransform: "uppercase" }}>{settings.title || "Work Planner"}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10 }}>
+            <button onClick={() => setWeek((w) => Math.max(0, w - 1))} style={navBtn(week === 0)}>{"\u2039"}</button>
+            <div style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 16 }}>{weekTitle}</div>
+            <button onClick={() => setWeek((w) => Math.min(3, w + 1))} style={navBtn(week === 3)}>{"\u203a"}</button>
+          </div>
+        </div>
+
+        <div style={{ background: P.surfaceAlt, borderLeft: "1px solid " + P.line, borderRight: "1px solid " + P.line, padding: "10px 12px", display: "flex", gap: 7, overflowX: "auto" }}>
+          {days.map((d, i) => {
+            const on = i === mDay;
+            return (
+              <button key={i} onClick={() => setMDay(i)} style={{ flex: "none", fontFamily: COND, fontWeight: 700, fontSize: 13, padding: "7px 12px", borderRadius: 8, cursor: "pointer", lineHeight: 1.25, textAlign: "center", background: on ? P.activeTabBg : P.surface, color: on ? P.activeTabInk : P.ink2, border: "1px solid " + (on ? P.activeTabBg : P.line) }}>
+                <div>{d.name.slice(0, 3)}</div>
+                <div style={{ fontSize: 10.5, opacity: .85 }}>{d.date}</div>
+                {d.isToday && <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginTop: 1 }}>Today</div>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ background: P.surface, borderLeft: "1px solid " + P.line, borderRight: "1px solid " + P.line, borderBottom: "1px solid " + P.line, borderRadius: "0 0 14px 14px", padding: "12px" }}>
+          <select value={mWho} onChange={(e) => setMWho(e.target.value)} className="wp-field" style={{ ...fieldStyle, marginBottom: 12 }}>
+            <option value="all">All operatives</option>
+            {roster.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+
+          {roster.filter((c) => mWho === "all" || c.id === mWho).map((c) => {
+            const list = jobs.filter((j) => j.w === week && j.c === c.id && j.d === mDay);
+            if (mWho === "all" && !list.length) return null;
+            return (
+              <div key={c.id} style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: c.color, flex: "none" }} />
+                  <span style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 15, color: P.ink }}>{c.name}</span>
+                  {!readOnly && <button onClick={() => openNew(c.id, mDay)} style={{ marginLeft: "auto", fontFamily: COND, fontWeight: 600, fontSize: 12, padding: "4px 9px", borderRadius: 6, cursor: "pointer", background: P.surfaceAlt, color: P.accent2, border: "1px solid " + P.line }}>+ add</button>}
+                </div>
+                {list.length ? list.map((j) => (
+                  <JobCard key={j.id} j={j} cdef={CDEF} P={P} dark={dark} onClick={() => openEdit(j.id)} />
+                )) : (
+                  <div style={{ fontSize: 12.5, color: P.muted, fontStyle: "italic", padding: "6px 2px" }}>Nothing booked</div>
+                )}
+              </div>
+            );
+          })}
+
+          {mWho === "all" && !jobs.some((j) => j.w === week && j.d === mDay) && (
+            <div style={{ textAlign: "center", color: P.muted, fontSize: 13, padding: "18px 0" }}>Nothing booked this day.</div>
+          )}
         </div>
       </div>
 
