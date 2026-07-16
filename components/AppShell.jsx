@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import LoginScreen from "@/components/LoginScreen";
 import Paywall from "@/components/Paywall";
 import { supabase, isConfigured } from "@/lib/supabase";
@@ -21,6 +22,10 @@ function Splash({ label = "Loading Plotwire…" }) {
 }
 
 export default function AppShell({ children }) {
+  const pathname = usePathname();
+  // Public, read-only pages that must NOT be behind the login gate (e.g. the
+  // planner share link contractors open without a Plotwire account).
+  const isPublic = typeof pathname === "string" && pathname.startsWith("/planner/view");
   const [theme, setTheme] = useState(() => {
     if (typeof window === "undefined") return "light";
     try { return localStorage.getItem("planworks:theme") || "light"; } catch { return "light"; }
@@ -136,6 +141,14 @@ export default function AppShell({ children }) {
     await saveSettings(settingsRef.current);
     setBoqTemplate(tpl);
   }, []);
+
+  if (isPublic) {
+    return (
+      <AppCtx.Provider value={{ theme, toggleTheme, user: null }}>
+        {children}
+      </AppCtx.Provider>
+    );
+  }
 
   if (checking) return <Splash />;
   if (recovery) return <LoginScreen recovery onRecovered={() => setRecovery(false)} />;

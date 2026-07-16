@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   loadPlannerJobs, savePlannerJob, deletePlannerJob,
   loadPlannerSettings, savePlannerSettings,
+  ensureShareToken, regenerateShareToken, loadSharedPlanner,
 } from "@/lib/planner";
 import { useApp } from "@/components/AppShell";
 
@@ -83,9 +84,10 @@ function JobCard({ j, cdef, P, dark, onClick }) {
 
 const lbl = (P) => ({ fontFamily: COND, fontWeight: 600, fontSize: 12, letterSpacing: ".05em", textTransform: "uppercase", color: P.muted });
 
-export default function WorkPlanner() {
+export default function WorkPlanner({ shared = null }) {
   const { theme } = useApp();
   const dark = theme === "dark";
+  const readOnly = Boolean(shared);
   const P = palette(dark);
 
   const [week, setWeek] = useState(0);
@@ -96,6 +98,8 @@ export default function WorkPlanner() {
   const [settings, setSettings] = useState({ company: "Watts On", title: "Work Planner", contractors: DEFAULT_CONTRACTORS });
   const [settingsDraft, setSettingsDraft] = useState(null);
   const [duplicating, setDuplicating] = useState(null);
+  const [sharePanel, setSharePanel] = useState(null);
+  const [notFound, setNotFound] = useState(false);
   const cardRef = useRef(null);
   const gridRef = useRef(null);
 
@@ -107,15 +111,26 @@ export default function WorkPlanner() {
     let alive = true;
     (async () => {
       try {
-        const [rows, s] = await Promise.all([loadPlannerJobs(), loadPlannerSettings()]);
-        if (!alive) return;
-        setJobs(rows || []);
-        if (s) setSettings({ company: s.company || "Watts On", title: s.title || "Work Planner", contractors: (s.contractors && s.contractors.length) ? s.contractors : DEFAULT_CONTRACTORS });
-      } catch (e) { console.error(e); if (alive) setJobs([]); }
+        if (shared) {
+          const res = await loadSharedPlanner(shared);
+          if (!alive) return;
+          if (!res) { setNotFound(true); setJobs([]); }
+          else {
+            const s = res.settings || {};
+            setJobs(res.jobs || []);
+            setSettings({ company: s.company || "Work Planner", title: s.title || "Work Planner", contractors: (s.contractors && s.contractors.length) ? s.contractors : DEFAULT_CONTRACTORS });
+          }
+        } else {
+          const [rows, s] = await Promise.all([loadPlannerJobs(), loadPlannerSettings()]);
+          if (!alive) return;
+          setJobs(rows || []);
+          if (s) setSettings({ company: s.company || "Watts On", title: s.title || "Work Planner", contractors: (s.contractors && s.contractors.length) ? s.contractors : DEFAULT_CONTRACTORS });
+        }
+      } catch (e) { console.error(e); if (alive) { setJobs([]); if (shared) setNotFound(true); } }
       finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [shared]);
 
   const reload = async () => { try { setJobs(await loadPlannerJobs()); } catch (e) { console.error(e); } };
 
@@ -127,8 +142,8 @@ export default function WorkPlanner() {
     return { name: nm, date: fmt(dt), narrow: i === 5, isToday: dt.getTime() === today.getTime() };
   });
 
-  const openNew = (c, di) => setEditing({ id: uid(), w: week, c, d: di, t: "08:00", site: "", type: "Rewire", addr: "", cust: "", st: "booked", notes: "", imp: false, isNew: true });
-  const openEdit = (id) => { const j = jobs.find((x) => x.id === id); if (j) setEditing({ ...j, isNew: false }); };
+  const openNew = (c, di) => readOnly ? null : setEditing({ id: uid(), w: week, c, d: di, t: "08:00", site: "", type: "Rewire", addr: "", cust: "", st: "booked", notes: "", imp: false, isNew: true });
+  const openEdit = (id) => { if (readOnly) return; const j = jobs.find((x) => x.id === id); if (j) setEditing({ ...j, isNew: false }); };
   const setField = (f, v) => setEditing((e) => ({ ...e, [f]: f === "d" ? Number(v) : v }));
 
   const commitEdit = async () => {
@@ -179,6 +194,29 @@ export default function WorkPlanner() {
     try { await savePlannerSettings(clean); } catch (err) { alert("Could not save settings: " + (err && err.message ? err.message : err)); }
   };
 
+  const openShare = async () => {
+    setSharePanel({ loading: true, url: "", copied: false });
+    try {
+      const token = await ensureShareToken();
+      setSharePanel({ loading: false, url: window.location.origin + "/planner/view?t=" + token, copied: false });
+    } catch (err) {
+      setSharePanel(null);
+      alert("Could not create the share link: " + (err && err.message ? err.message : err));
+    }
+  };
+  const copyShare = async () => {
+    try { await navigator.clipboard.writeText(sharePanel.url); setSharePanel((p) => ({ ...p, copied: true })); }
+    catch { alert("Copy failed \u2014 select the link and copy it manually."); }
+  };
+  const newShareLink = async () => {
+    if (!confirm("Create a new link? Anyone using the old link will lose access.")) return;
+    setSharePanel((p) => ({ ...p, loading: true }));
+    try {
+      const token = await regenerateShareToken();
+      setSharePanel({ loading: false, url: window.location.origin + "/planner/view?t=" + token, copied: false });
+    } catch (err) { alert("Could not regenerate: " + (err && err.message ? err.message : err)); setSharePanel(null); }
+  };
+
   const exportImage = async () => {
     const card = cardRef.current;
     if (!card || exporting) return;
@@ -217,6 +255,17 @@ export default function WorkPlanner() {
     return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: P.page, fontFamily: FONTS, color: P.muted, fontSize: 13 }}>{"Loading planner\u2026"}</div>;
   }
 
+  if (notFound) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: P.page, fontFamily: FONTS, padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: "center", background: P.surface, border: "1px solid " + P.line, borderRadius: 14, padding: "28px 26px" }}>
+          <div style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 20, color: P.ink, marginBottom: 8 }}>{"This link isn\u2019t working"}</div>
+          <div style={{ fontSize: 13.5, color: P.ink2, lineHeight: 1.5 }}>{"It may have been replaced with a newer one. Ask the office to send you the current link."}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", padding: "32px 30px 44px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, fontFamily: FONTS, background: P.page }}>
       <style>{`
@@ -226,8 +275,17 @@ export default function WorkPlanner() {
         .wp-field:focus{outline:none;border-color:${P.accent2};box-shadow:0 0 0 3px ${dark ? "rgba(63,183,201,.22)" : "rgba(44,151,168,.16)"}}
       `}</style>
 
-      <div style={{ width: 1300, maxWidth: "100%", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14 }}>
-        <span style={{ fontSize: 12.5, color: P.muted }}>{"Sends a clean image of this week \u2014 pick WhatsApp from the share sheet, or it downloads a PNG."}</span>
+      <div style={{ width: 1300, maxWidth: "100%", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        {readOnly ? (
+          <span style={{ fontSize: 12.5, color: P.muted }}>{"Viewing only \u2014 this diary updates automatically when the office changes it."}</span>
+        ) : (
+          <>
+            <span style={{ fontSize: 12.5, color: P.muted }}>{"Send the lads a view-only link, or share this week as an image."}</span>
+            <button onClick={openShare} style={{ fontFamily: COND, fontWeight: 700, fontSize: 14, letterSpacing: ".02em", padding: "9px 18px", borderRadius: 8, cursor: "pointer", background: P.surface, color: P.accent2, border: "1px solid " + P.accent2 }}>
+              {"Get view-only link \u25b8"}
+            </button>
+          </>
+        )}
         <button onClick={exportImage} style={{ fontFamily: COND, fontWeight: 700, fontSize: 14, letterSpacing: ".02em", padding: "9px 18px", borderRadius: 8, cursor: "pointer", background: P.accent2, color: "#fff", border: "1px solid " + P.accent2 }}>
           {exporting ? "Preparing image\u2026" : "Share this week as image \u25b8"}
         </button>
@@ -238,9 +296,9 @@ export default function WorkPlanner() {
           <div style={{ display: "flex", alignItems: "baseline", gap: 13 }}>
             <span style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: ".02em", textTransform: "uppercase" }}>{settings.company || "Your Company"}</span>
             <span style={{ fontSize: 13, color: P.headerSub, letterSpacing: ".12em", textTransform: "uppercase" }}>{settings.title || "Work Planner"}</span>
-            <button onClick={openSettings} title="Planner settings" style={{ marginLeft: 4, width: 28, height: 28, borderRadius: 7, cursor: "pointer", background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.28)", color: P.headerText, display: "grid", placeItems: "center" }}>
+            {!readOnly && <button onClick={openSettings} title="Planner settings" style={{ marginLeft: 4, width: 28, height: 28, borderRadius: 7, cursor: "pointer", background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.28)", color: P.headerText, display: "grid", placeItems: "center" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3" /><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 0 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9 2 2 0 0 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2 2 2 0 0 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
-            </button>
+            </button>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <button onClick={() => setWeek((w) => Math.max(0, w - 1))} style={navBtn(week === 0)}>{"\u2039 Prev"}</button>
@@ -259,7 +317,7 @@ export default function WorkPlanner() {
               </button>
             );
           })}
-          <span style={{ fontSize: 12.5, color: P.muted, fontStyle: "italic", marginLeft: 6 }}>{"Rolls automatically. Tap a cell to add a job \u00b7 tap a job to edit."}</span>
+          <span style={{ fontSize: 12.5, color: P.muted, fontStyle: "italic", marginLeft: 6 }}>{readOnly ? "Rolls automatically \u00b7 view only" : "Rolls automatically. Tap a cell to add a job \u00b7 tap a job to edit."}</span>
         </div>
 
         <div ref={gridRef} style={{ maxHeight: "62vh", overflow: "auto", position: "relative" }}>
@@ -284,9 +342,9 @@ export default function WorkPlanner() {
               const list = jobs.filter((j) => j.w === week && j.c === c.id && j.d === di);
               return (
                 <div key={di} className="wp-cell" onClick={(ev) => { if (ev.target.closest("[data-job]")) return; openNew(c.id, di); }}
-                  style={{ ...dayFlex(d.narrow), padding: "7px 7px 2px", borderRight: "2px solid " + P.rowSep, minHeight: 82, cursor: "pointer", background: d.isToday ? P.today : d.narrow ? P.cellNarrow : P.cell }}>
+                  style={{ ...dayFlex(d.narrow), padding: "7px 7px 2px", borderRight: "2px solid " + P.rowSep, minHeight: 82, cursor: readOnly ? "default" : "pointer", background: d.isToday ? P.today : d.narrow ? P.cellNarrow : P.cell }}>
                   {list.map((j) => (<div data-job key={j.id}><JobCard j={j} cdef={CDEF} P={P} dark={dark} onClick={(ev) => { ev.stopPropagation(); openEdit(j.id); }} /></div>))}
-                  <div className="wp-add" style={{ textAlign: "center", color: P.muted, fontFamily: COND, fontWeight: 600, fontSize: 13, padding: "2px 0 4px" }}>+ add job</div>
+                  {!readOnly && <div className="wp-add" style={{ textAlign: "center", color: P.muted, fontFamily: COND, fontWeight: 600, fontSize: 13, padding: "2px 0 4px" }}>+ add job</div>}
                 </div>
               );
             })}
@@ -402,6 +460,37 @@ export default function WorkPlanner() {
                 <div style={{ flex: 1 }} />
                 <button onClick={() => setDuplicating(null)} style={{ fontFamily: FONTS, fontWeight: 600, fontSize: 14, padding: "9px 16px", borderRadius: 8, cursor: "pointer", background: dark ? P.surfaceAlt : "#eef1f1", color: P.ink2, border: "1px solid " + P.line }}>Cancel</button>
                 <button onClick={runDuplicate} style={{ fontFamily: FONTS, fontWeight: 700, fontSize: 14, padding: "9px 18px", borderRadius: 8, cursor: "pointer", background: P.accent2, color: "#fff", border: "1px solid " + P.accent2 }}>Create copies</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share: view-only link */}
+      {sharePanel && (
+        <div onClick={(ev) => { if (ev.target === ev.currentTarget) setSharePanel(null); }} style={{ position: "fixed", inset: 0, background: "rgba(10,20,25,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 }}>
+          <div style={{ width: 480, maxWidth: "100%", background: P.surface, borderRadius: 14, boxShadow: "0 24px 60px -20px rgba(0,0,0,.55)" }}>
+            <div style={{ background: P.header, color: P.headerText, padding: "16px 20px" }}>
+              <span style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 19 }}>{"View-only link"}</span>
+              <div style={{ fontSize: 12.5, color: P.headerSub, marginTop: 2 }}>{"Send this to your operatives \u2014 they can see the diary, not change it."}</div>
+            </div>
+            <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {sharePanel.loading ? (
+                <div style={{ fontSize: 13.5, color: P.muted }}>{"Preparing link\u2026"}</div>
+              ) : (
+                <>
+                  <input readOnly value={sharePanel.url} onFocus={(e) => e.target.select()} className="wp-field" style={{ ...fieldStyle, fontFamily: "monospace", fontSize: 12.5 }} />
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button onClick={copyShare} style={{ fontFamily: FONTS, fontWeight: 700, fontSize: 14, padding: "9px 18px", borderRadius: 8, cursor: "pointer", background: P.accent2, color: "#fff", border: "1px solid " + P.accent2 }}>{sharePanel.copied ? "Copied \u2713" : "Copy link"}</button>
+                    <a href={"https://wa.me/?text=" + encodeURIComponent("This week's work planner: " + sharePanel.url)} target="_blank" rel="noreferrer" style={{ fontFamily: FONTS, fontWeight: 600, fontSize: 14, padding: "9px 16px", borderRadius: 8, textDecoration: "none", background: P.surfaceAlt, color: P.ink2, border: "1px solid " + P.line }}>{"Send on WhatsApp"}</a>
+                    <div style={{ flex: 1 }} />
+                    <button onClick={newShareLink} style={{ fontFamily: FONTS, fontWeight: 600, fontSize: 13.5, padding: "9px 14px", borderRadius: 8, cursor: "pointer", background: P.surface, color: "#c0392b", border: "1px solid " + (dark ? "#5a2a2e" : "#e6b8b8") }}>{"New link"}</button>
+                  </div>
+                  <div style={{ fontSize: 12, color: P.muted, lineHeight: 1.5 }}>{"Anyone with this link can view the diary \u2014 treat it like a key. \u201cNew link\u201d replaces it and stops the old one working."}</div>
+                </>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => setSharePanel(null)} style={{ fontFamily: FONTS, fontWeight: 600, fontSize: 14, padding: "9px 16px", borderRadius: 8, cursor: "pointer", background: dark ? P.surfaceAlt : "#eef1f1", color: P.ink2, border: "1px solid " + P.line }}>Close</button>
               </div>
             </div>
           </div>
