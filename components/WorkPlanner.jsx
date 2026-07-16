@@ -361,7 +361,7 @@ export default function WorkPlanner({ shared = null }) {
 
         <div ref={gridRef} style={{ maxHeight: "62vh", overflow: "auto", position: "relative" }}>
         <div className="wp-row" style={{ display: "flex", alignItems: "stretch", background: P.colHead, position: "sticky", top: 0, zIndex: 3 }}>
-          <div className="wp-cname" style={{ padding: "12px 16px", color: P.headerSub, position: "sticky", left: 0, zIndex: 4, background: P.colHead, fontFamily: COND, fontWeight: 600, fontSize: 13, letterSpacing: ".09em", textTransform: "uppercase", borderRight: "2px solid rgba(255,255,255,.22)" }}>Contractor</div>
+          <div className="wp-cname" style={{ padding: "12px 16px", color: P.headerSub, position: "sticky", left: 0, zIndex: 4, backgroundColor: P.colHead, boxShadow: "3px 0 6px -3px rgba(10,25,35,.35)", fontFamily: COND, fontWeight: 600, fontSize: 13, letterSpacing: ".09em", textTransform: "uppercase", borderRight: "2px solid rgba(255,255,255,.22)" }}>Contractor</div>
           {days.map((d, i) => (
             <div key={i} style={{ ...dayFlex(d.narrow), padding: "9px 13px", color: P.headerText, borderRight: "1px solid rgba(255,255,255,.18)", background: d.isToday ? "rgba(63,183,201,.28)" : d.narrow ? "rgba(255,255,255,.08)" : "transparent" }}>
               <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 17, letterSpacing: ".03em" }}>{d.name}</div>
@@ -373,7 +373,7 @@ export default function WorkPlanner({ shared = null }) {
 
         {roster.map((c) => (
           <div key={c.id} className="wp-row" style={{ display: "flex", alignItems: "stretch", borderTop: "1px solid " + P.rowSep }}>
-            <div className="wp-cname" style={{ padding: "11px 14px", background: dark ? P.surfaceAlt : (c.color + "14"), borderRight: "2px solid " + P.line, display: "flex", alignItems: "center", gap: 9, position: "sticky", left: 0, zIndex: 2 }}>
+            <div className="wp-cname" style={{ padding: "11px 14px", backgroundColor: dark ? P.surfaceAlt : P.surface, backgroundImage: dark ? "none" : "linear-gradient(" + c.color + "14, " + c.color + "14)", borderRight: "2px solid " + P.line, boxShadow: "3px 0 6px -3px rgba(10,25,35,.25)", display: "flex", alignItems: "center", gap: 9, position: "sticky", left: 0, zIndex: 2 }}>
               <span style={{ width: 11, height: 11, borderRadius: 3, background: c.color, flex: "none" }} />
               <span style={{ fontFamily: SEMI, fontWeight: 700, fontSize: 15, lineHeight: 1.1, color: P.ink }}>{c.name}</span>
             </div>
