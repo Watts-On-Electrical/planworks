@@ -2791,7 +2791,37 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
           }
         }
 
-        // 2. Overlay capture. When the plan is vector, hide the raster plan image
+        // 1b. Raster plan fallback — when we no longer hold the source PDF (e.g.
+        //     a reopened drawing), embed the STORED plan image directly, using the
+        //     SAME contain-and-centre maths as the on-screen plan. That stored
+        //     image already has any /Rotate baked into its pixels (it's exactly
+        //     what the editor shows), so it needs no rotation here. Drawing it by
+        //     explicit maths — instead of leaving it to the screen snapshot —
+        //     makes the plan land precisely where the symbols are positioned, so
+        //     rotated architect PDFs line up on export.
+        let rasterPlanOK = false;
+        if (!vectorOK && bg && bg.src && bg.w && bg.h) {
+          try {
+            const fit = Math.min(DRAW.w / bg.w, DRAW.h / bg.h);
+            const pw = bg.w * fit, ph = bg.h * fit;
+            const planX = DRAW.x + (DRAW.w - pw) / 2;
+            const planY = DRAW.y + (DRAW.h - ph) / 2;
+            const X = planX * sx, Wt = pw * sx, Ht = ph * sy;
+            const Yb = PAGE_H - (planY + ph) * sy; // pdf-lib is bottom-left
+            const pbytes = new Uint8Array(await (await fetch(bg.src)).arrayBuffer());
+            const isPng = pbytes[0] === 0x89 && pbytes[1] === 0x50 &&
+                          pbytes[2] === 0x4e && pbytes[3] === 0x47;
+            const pimg = isPng ? await out.embedPng(pbytes) : await out.embedJpg(pbytes);
+            page.drawImage(pimg, { x: X, y: Yb, width: Wt, height: Ht });
+            rasterPlanOK = true;
+          } catch (err) {
+            rasterPlanOK = false; // fall back to the old snapshot behaviour
+          }
+        }
+
+        const planDrawn = vectorOK || rasterPlanOK;
+
+        // 2. Overlay capture. When the plan is drawn separately, hide the raster plan image
         //    and make the plan-area + sheet backgrounds transparent so the vector
         //    shows through; restore the DOM straight after.
         const planImg = el.querySelector('img[alt="plan"]');
@@ -2824,7 +2854,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
         try {
           overlayCanvas = await html2canvas(el, {
             scale: shotScale,
-            backgroundColor: vectorOK ? null : "#ffffff",
+            backgroundColor: planDrawn ? null : "#ffffff",
             useCORS: true,
             logging: false,
           });
@@ -3256,3 +3286,4 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
+
