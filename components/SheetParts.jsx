@@ -2726,6 +2726,13 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
       const [{ PDFDocument, degrees, rgb }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
       const pageEls = document.querySelectorAll("#print-root .print-page");
+      // Preview is scaled to fit the screen (.pp-scale). html2canvas measures the
+      // page THROUGH that transform, so at any zoom other than 100% the captured
+      // plan lands at a different scale/offset than the symbols (which use
+      // zoom-independent transforms). Neutralise it for the export, restore after.
+      const scaleEl = document.querySelector("#print-root .pp-scale");
+      const savedScaleTransform = scaleEl ? scaleEl.style.transform : null;
+      if (scaleEl) scaleEl.style.transform = "none";
       if (!pageEls.length) { setPdfBusy(false); return; }
 
       // A3 landscape in PDF points (1mm = 72/25.4 pt). The SHEET fills the page.
@@ -2827,6 +2834,8 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
             backgroundColor: vectorOK ? null : "#ffffff",
             useCORS: true,
             logging: false,
+            width: el.offsetWidth,
+            height: el.offsetHeight,
           });
         } finally {
           saved.forEach(([node, prop, val]) => { node.style[prop] = val || ""; });
@@ -2851,6 +2860,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
     } catch (e) {
       alert("PDF export failed: " + (e?.message || e));
     } finally {
+      if (scaleEl) scaleEl.style.transform = savedScaleTransform;
       setPdfBusy(false);
     }
   };
@@ -3256,3 +3266,6 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
+
+
+
