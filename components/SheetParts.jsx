@@ -2636,7 +2636,7 @@ function glyphToPrims(glyphEl) {
     const num = (a) => parseFloat(el.getAttribute(a)) || 0;
     if (tag === "path") prims.push({ ...base, kind: "path", d: el.getAttribute("d") || "" });
     else if (tag === "line") prims.push({ ...base, kind: "line", x1: num("x1"), y1: num("y1"), x2: num("x2"), y2: num("y2") });
-    else if (tag === "rect") prims.push({ ...base, kind: "rect", x: num("x"), y: num("y"), w: num("width"), h: num("height") });
+    else if (tag === "rect") prims.push({ ...base, kind: "rect", x: num("x"), y: num("y"), w: num("width"), h: num("height"), rx: num("rx"), ry: num("ry") });
     else if (tag === "circle") prims.push({ ...base, kind: "circle", cx: num("cx"), cy: num("cy"), r: num("r") });
     else if (tag === "polyline" || tag === "polygon") {
       const pts = (el.getAttribute("points") || "").trim().split(/\s+/).map((p) => p.split(",").map(Number)).filter((p) => p.length === 2);
@@ -3266,6 +3266,7 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
+
 
 
 
