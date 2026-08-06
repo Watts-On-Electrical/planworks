@@ -16,7 +16,7 @@ import {
 } from "@/lib/symbols.jsx";
 import { findFurniture, FURNITURE, FURNITURE_VIEWBOX, FURNITURE_COLOUR } from "@/lib/furniture.jsx";
 import { drawSymbol } from "@/lib/symbolPdf";
-import { buildInitialBoq, refreshQuantities, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
+import { buildInitialBoq, refreshQuantities, reconcileBoq, newBoqItem, templateForEditing, templateForSaving, newTemplateItem } from "@/lib/boqTemplate";
 import { useApp } from "@/components/AppShell";
 import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 import { ensurePdfjs } from "@/lib/pdfjs";
@@ -2108,7 +2108,10 @@ export function BoqTemplateEditor({ saved, onSave, onClose }) {
 export function BillOfQuantities({ project, updateBoq, onClose }) {
   const { boqTemplate, saveBoqTemplate } = useApp();
   const meta = project.meta || {};
-  const [boq, setBoq] = useState(() => project.boq || buildInitialBoq(project, SYMBOL_META, findSymbol, boqTemplate));
+  const [boq, setBoq] = useState(() => {
+    const base = project.boq || buildInitialBoq(project, SYMBOL_META, findSymbol, boqTemplate);
+    return reconcileBoq(base, project, SYMBOL_META, findSymbol);
+  });
   const [showTemplate, setShowTemplate] = useState(false);
 
   // Persist edits to the project (saved with the project on Save).
@@ -3266,6 +3269,7 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
+
 
 
 
