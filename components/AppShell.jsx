@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import LoginScreen from "@/components/LoginScreen";
+import ComingSoon from "@/components/ComingSoon";
 import Paywall from "@/components/Paywall";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { getSettings, saveSettings } from "@/lib/db";
@@ -31,6 +32,11 @@ export default function AppShell({ children }) {
     try { return localStorage.getItem("planworks:theme") || "light"; } catch { return "light"; }
   });
   const [session, setSession] = useState(null);
+  // Coming Soon holding page. While true, visitors who are not logged in see the
+  // "Coming Soon" page instead of the login. Flip to false to launch publicly.
+  const COMING_SOON = true;
+  // Owner route past the holding page: the discreet "Sign in" link, or ?login=1.
+  const [showLogin, setShowLogin] = useState(false);
   const [recovery, setRecovery] = useState(false);
   const [checking, setChecking] = useState(true);
   const [titleBlock, setTitleBlock] = useState(null); // null until loaded → default in the meantime
@@ -152,7 +158,12 @@ export default function AppShell({ children }) {
 
   if (checking) return <Splash />;
   if (recovery) return <LoginScreen recovery onRecovered={() => setRecovery(false)} />;
-  if (!session) return <LoginScreen />;
+  if (!session) {
+    const wantLogin = showLogin ||
+      (typeof window !== "undefined" && /[?&#]login(=1)?\b/.test(window.location.search + window.location.hash));
+    if (COMING_SOON && !wantLogin) return <ComingSoon onSignIn={() => setShowLogin(true)} />;
+    return <LoginScreen />;
+  }
 
   // Signed in — enforce billing access only when billing is switched on.
   if (BILLING_ENABLED) {
@@ -182,3 +193,4 @@ export default function AppShell({ children }) {
     </AppCtx.Provider>
   );
 }
+
