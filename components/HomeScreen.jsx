@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { listProjects, localProjectsPending, migrateLocalProjects } from "@/lib/db";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { listProjects, localProjectsPending, migrateLocalProjects, deleteProjectRow, verifyPassword } from "@/lib/db";
 import { signPlanImages } from "@/lib/planImages";
 import { useApp } from "@/components/AppShell";
 
@@ -87,6 +87,10 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
   const { manageBilling, subscription } = useApp();
   const [cards, setCards] = useState(null);
   const [pending, setPending] = useState(0);   // local jobs awaiting upload
+  // The one drawing awaiting a confirmed delete (null = dialog closed). This
+  // holds the whole card, not just an id, so the dialog names exactly what goes.
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [toast, setToast] = useState("");
   const [migrating, setMigrating] = useState(false);
 
   const load = async () => {
@@ -136,6 +140,22 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
     if (n > 0) alert(`Uploaded ${n} drawing${n === 1 ? "" : "s"} to your account.`);
   };
   const dismissMigration = () => setPending(0);
+
+  // Called only after the dialog has confirmed the password AND the row is
+  // gone from Supabase. Drops just that card from the list -- no reload, so a
+  // stale fetch can't resurrect it.
+  const onDeleted = (card) => {
+    setCards(cs => (cs || []).filter(c => c.id !== card.id));
+    setPendingDelete(null);
+    setToast(`Deleted "${card.name}"`);
+  };
+
+  // Auto-dismiss the confirmation toast.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const stats = useMemo(() => {
     const list = cards || [];
@@ -266,6 +286,16 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
                       <span className="badge">{c.reg || "A3"}</span>
                       {c.floors > 1 && <span className="badge badge-floors">{c.floors} floors</span>}
                       <PlanThumb project={c.project} />
+                      <button
+                        type="button"
+                        className="card-del"
+                        title={`Delete "${c.name}"`}
+                        aria-label={`Delete ${c.name}`}
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete(c); }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                          <path d="M4 7h16M10 4h4M9 7v12M15 7v12M6 7l1 13h10l1-13"/>
+                        </svg>
+                      </button>
                     </div>
                     <div className="card-body">
                       <div className="card-title">{c.name}</div>
@@ -291,6 +321,91 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
             )}
           </div>
         </div>
+      </div>
+
+      {pendingDelete && (
+        <DeleteDrawingDialog
+          card={pendingDelete}
+          onCancel={() => setPendingDelete(null)}
+          onDeleted={onDeleted}
+        />
+      )}
+      {toast && <div className="pw-toast" role="status">{toast}</div>}
+    </div>
+  );
+}
+
+/* ============================================================================
+ * DELETE CONFIRMATION
+ * Deleting a drawing is permanent, so it asks for the account password before
+ * it will touch anything. Nothing is deleted until verifyPassword() succeeds,
+ * and only ever the single drawing named in the dialog.
+ * ========================================================================= */
+function DeleteDrawingDialog({ card, onCancel, onDeleted }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Escape cancels -- but not mid-delete, when it is too late to stop.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape" && !busy) onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onCancel]);
+
+  const submit = async (e) => {
+    e?.preventDefault();
+    if (busy) return;
+    setBusy(true); setError("");
+    // 1. Password first. A wrong one never reaches the delete.
+    const check = await verifyPassword(password);
+    if (!check.ok) {
+      setBusy(false); setPassword(""); setError(check.message);
+      inputRef.current?.focus();
+      return;
+    }
+    // 2. Then delete exactly the drawing this dialog named.
+    try {
+      await deleteProjectRow(card.id);
+      setPassword("");
+      onDeleted(card);
+    } catch (err) {
+      setBusy(false); setPassword("");
+      setError(err?.message || "Couldn't delete that drawing. Nothing was changed.");
+    }
+  };
+
+  return (
+    <div className="pw-modal-back" onClick={() => { if (!busy) onCancel(); }}>
+      <div className="pw-modal" role="dialog" aria-modal="true" aria-labelledby="del-title"
+           onClick={(e) => e.stopPropagation()}>
+        <h3 id="del-title" className="pw-modal-title">Delete &ldquo;{card.name}&rdquo;?</h3>
+        <p className="pw-modal-warn">
+          This permanently deletes this drawing and everything on it. <b>This can&rsquo;t be undone.</b>
+        </p>
+        <form onSubmit={submit}>
+          <label className="pw-modal-label" htmlFor="del-pw">Enter your account password to confirm</label>
+          <input
+            id="del-pw"
+            ref={inputRef}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            disabled={busy}
+            onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
+            className="pw-modal-input"
+          />
+          {error && <div className="pw-modal-error" role="alert">{error}</div>}
+          <div className="pw-modal-actions">
+            <button type="button" className="pw-btn-cancel" onClick={onCancel} disabled={busy}>Cancel</button>
+            <button type="submit" className="pw-btn-danger" disabled={busy || !password}>
+              {busy ? "Deleting…" : "Delete drawing"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -396,6 +511,37 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .thumb::before{content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(44,62,80,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(44,62,80,.05) 1px,transparent 1px); background-size:16px 16px}
 .pw-home .thumb svg{position:absolute; inset:0; width:100%; height:100%}
 .pw-home .badge{position:absolute; top:11px; left:11px; z-index:2; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; padding:3px 8px; border-radius:6px; background:rgba(26,37,48,.85); color:#cfeef3; letter-spacing:.02em}
+/* Delete control: tucked into the thumb's bottom-right, away from the badges.
+   Hidden until the card is hovered or the button is focused, so it can't be hit
+   by accident; on touch (no hover) it stays faintly visible instead. */
+.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:28px; height:28px; padding:0; border-radius:8px; display:grid; place-items:center; background:rgba(255,255,255,.9); border:1px solid var(--line); color:#8b97a4; cursor:pointer; opacity:0; transition:opacity .15s ease, color .15s ease, border-color .15s ease}
+.pw-home .card-del svg{width:15px; height:15px}
+.pw-home .card:hover .card-del{opacity:1}
+.pw-home .card-del:focus-visible{opacity:1; outline:2px solid var(--teal); outline-offset:1px}
+.pw-home .card-del:hover{color:#c0392b; border-color:#e3b1ab}
+@media (hover:none){ .pw-home .card-del{opacity:.5} }
+html.dark .pw-home .card-del{background:rgba(22,32,43,.92); border-color:var(--line)}
+
+/* Delete confirmation dialog */
+.pw-modal-back{position:fixed; inset:0; z-index:60; background:rgba(11,17,23,.55); display:grid; place-items:center; padding:20px}
+.pw-modal{width:100%; max-width:420px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 24px 60px -12px rgba(11,17,23,.45)}
+.pw-modal-title{font-family:'Space Grotesk',system-ui,sans-serif; font-size:17px; font-weight:600; line-height:1.3; margin-bottom:8px; word-break:break-word}
+.pw-modal-warn{font-size:13px; line-height:1.5; color:var(--muted); margin-bottom:16px}
+.pw-modal-warn b{color:#c0392b; font-weight:600}
+.pw-modal-label{display:block; font-size:12px; font-weight:500; color:var(--ink-2); margin-bottom:6px}
+.pw-modal-input{width:100%; height:40px; padding:0 12px; font-size:14px; font-family:inherit; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:10px; outline:none}
+.pw-modal-input:focus{border-color:var(--teal); box-shadow:0 0 0 3px rgba(63,183,201,.18)}
+.pw-modal-error{margin-top:8px; font-size:12.5px; color:#c0392b}
+.pw-modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px}
+.pw-modal-actions button{height:38px; padding:0 16px; font-size:13px; font-weight:600; font-family:inherit; border-radius:10px; cursor:pointer; border:1px solid transparent}
+.pw-btn-cancel{background:transparent; border-color:var(--line); color:var(--ink-2)}
+.pw-btn-cancel:hover:not(:disabled){background:var(--line-2)}
+.pw-btn-danger{background:#c0392b; color:#fff}
+.pw-btn-danger:hover:not(:disabled){background:#a93226}
+.pw-modal-actions button:disabled{opacity:.5; cursor:not-allowed}
+
+/* Post-delete confirmation */
+.pw-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:70; background:var(--navy); color:#eaf6f8; font-size:13px; font-weight:500; padding:10px 18px; border-radius:10px; box-shadow:0 10px 30px -8px rgba(11,17,23,.5)}
 .pw-home .badge-floors{left:auto; right:11px; background:rgba(63,183,201,.92); color:#08313a; font-weight:600}
 .pw-home .card-body{padding:14px 16px 15px}
 .pw-home .card-title{font-size:14.5px; font-weight:600; letter-spacing:-.01em; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
