@@ -515,7 +515,7 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
    Hidden until the card is hovered or the button is focused, so it can't be hit
    by accident; on touch (no hover) it stays faintly visible instead. */
 .pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:36px; height:36px; padding:0; border-radius:10px; display:grid; place-items:center; background:var(--teal-600); border:none; color:var(--navy); cursor:pointer; opacity:0; box-shadow:0 4px 12px -2px rgba(11,17,23,.35); transition:opacity .15s ease, background .15s ease, transform .15s ease}
-.pw-home .card-del svg{width:18px; height:18px}
+.pw-home .card-del svg{width:24px; height:24px; display:block}
 .pw-home .card:hover .card-del{opacity:1}
 .pw-home .card-del:focus-visible{opacity:1; outline:2px solid var(--navy); outline-offset:2px}
 .pw-home .card-del:hover{background:var(--teal-700); transform:translateY(-1px)}
