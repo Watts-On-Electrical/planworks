@@ -109,6 +109,8 @@ export interface Project {
   notes: string;
   boq: Boq | null;
   titleBlock: TitleBlock | null;  // null = use the account default
+  /** Drawing-wide symbol colour. New drawings start on 'red'. */
+  colourMode?: 'colour' | 'red' | 'mono' | 'navy';
   sheets: Sheet[];
   activeSheetId: ID;
 }

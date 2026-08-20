@@ -61,6 +61,7 @@ export function freshProject(): Project {
     notes: DEFAULT_NOTES,
     boq: null,
     titleBlock: null,
+    colourMode: 'red',
     sheets: [sheet],
     activeSheetId: sheet.id,
   };
