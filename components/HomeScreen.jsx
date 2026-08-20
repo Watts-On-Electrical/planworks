@@ -546,14 +546,24 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 /* Post-delete confirmation */
 .pw-toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:70; background:var(--navy); color:#eaf6f8; font-size:13px; font-weight:500; padding:10px 18px; border-radius:10px; box-shadow:0 10px 30px -8px rgba(11,17,23,.5)}
 .pw-home .badge-floors{left:auto; right:11px; background:rgba(63,183,201,.92); color:#08313a; font-weight:600}
-.pw-home .card-body{padding:14px 16px 15px}
-.pw-home .card-title{font-size:14.5px; font-weight:600; letter-spacing:-.01em; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.pw-home .card-addr{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pw-home .card-body{padding:14px 16px 15px; transition:background .2s cubic-bezier(.2,.7,.3,1)}
+.pw-home .card-title{font-size:14.5px; font-weight:600; letter-spacing:-.01em; margin-bottom:3px; transition:color .2s cubic-bezier(.2,.7,.3,1); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pw-home .card-addr{font-size:12.5px; color:var(--muted); transition:color .2s cubic-bezier(.2,.7,.3,1); display:flex; align-items:center; gap:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .pw-home .card-addr svg{width:13px; height:13px; flex-shrink:0; opacity:.7}
-.pw-home .card-foot{margin-top:13px; padding-top:12px; border-top:1px solid var(--line-2); display:flex; align-items:center; justify-content:space-between}
-.pw-home .card-foot .dt{font-size:11.5px; color:var(--muted-2); display:flex; align-items:center; gap:5px}
+.pw-home .card-foot{margin-top:13px; padding-top:12px; border-top:1px solid var(--line-2); transition:border-color .2s cubic-bezier(.2,.7,.3,1); display:flex; align-items:center; justify-content:space-between}
+.pw-home .card-foot .dt{font-size:11.5px; color:var(--muted-2); transition:color .2s cubic-bezier(.2,.7,.3,1); display:flex; align-items:center; gap:5px}
 .pw-home .card-foot .dt svg{width:13px; height:13px}
-.pw-home .card-foot .ct{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-2); background:var(--paper); padding:3px 7px; border-radius:6px}
+.pw-home .card-foot .ct{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-2); background:var(--paper); padding:3px 7px; border-radius:6px; transition:color .2s cubic-bezier(.2,.7,.3,1), background .2s cubic-bezier(.2,.7,.3,1)}
+
+/* Hover: the info strip turns Plotwire teal, and everything in it is lifted to
+   white / near-white so the name, date and item count stay readable. Resting
+   state is untouched; only these colours change. */
+.pw-home .card:hover .card-body{background:var(--teal-600)}
+.pw-home .card:hover .card-title{color:#fff}
+.pw-home .card:hover .card-addr{color:rgba(255,255,255,.88)}
+.pw-home .card:hover .card-foot{border-top-color:rgba(255,255,255,.3)}
+.pw-home .card:hover .card-foot .dt{color:rgba(255,255,255,.85)}
+.pw-home .card:hover .card-foot .ct{color:var(--navy); background:rgba(255,255,255,.92)}
 .pw-home .new-card{border:1.5px dashed #cdd7e0; background:transparent; box-shadow:none; align-items:center; justify-content:center; min-height:230px; color:var(--muted); gap:12px}
 .pw-home .new-card:hover{border-color:var(--teal); color:var(--teal-700); background:rgba(63,183,201,.04); transform:translateY(-4px)}
 .pw-home .new-card .plus{width:50px; height:50px; border-radius:14px; background:rgba(63,183,201,.1); display:grid; place-items:center; color:var(--teal-700)}
