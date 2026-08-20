@@ -92,6 +92,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
   // holds the whole card, not just an id, so the dialog names exactly what goes.
   const [pendingDelete, setPendingDelete] = useState(null);
   const [toast, setToast] = useState("");
+  const [query, setQuery] = useState("");
   const [migrating, setMigrating] = useState(false);
 
   const load = async () => {
@@ -158,6 +159,18 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Live filter over the drawings already fetched -- no extra query, and no
+  // change to how they're loaded. Matches the same fields the cards show:
+  // name, plot/address and drawing number.
+  const q = query.trim().toLowerCase();
+  const visible = useMemo(() => {
+    if (!cards) return null;
+    if (!q) return cards;
+    return cards.filter((c) =>
+      [c.name, c.addr, c.reg].some((v) => (v || "").toLowerCase().includes(q))
+    );
+  }, [cards, q]);
+
   const stats = useMemo(() => {
     const list = cards || [];
     const symbols = list.reduce((s, c) => s + c.count, 0);
@@ -190,7 +203,16 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
         <div className="main">
           <header className="topbar">
             <span className="wordmark">Plot<b>wire</b></span>
-            <div className="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>Search drawings, plots, drawing numbersâ€¦</div>
+            <div className="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search drawings, plots, drawing numbers..."
+                aria-label="Search drawings"
+              />
+            </div>
             <div className="topbar-right">
               <button className="theme-toggle" onClick={onToggleTheme} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label="Toggle theme">
                 {theme === "dark" ? (
@@ -273,7 +295,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
               </div>
             ) : (
               <div className="grid">
-                {cards.map(c => (
+                {visible.map(c => (
                   <div key={c.id} className="card" onClick={() => onOpenProject(c.id)}>
                     <div className="thumb">
                       <span className="badge">{c.reg || "A3"}</span>
@@ -300,11 +322,15 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
                     </div>
                   </div>
                 ))}
-                <div className="card new-card" onClick={() => onNewProject()}>
+                {!q && <div className="card new-card" onClick={() => onNewProject()}>
                   <div className="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></div>
                   <span>New drawing</span>
-                </div>
+                </div>}
               </div>
+            )}
+
+            {cards && cards.length > 0 && visible.length === 0 && (
+              <div className="empty">No drawings match &ldquo;{query.trim()}&rdquo;.</div>
             )}
 
             {cards && cards.length === 0 && (
@@ -428,6 +454,9 @@ const CSS = `
 .pw-home .wordmark b{color:var(--teal-600)}
 .pw-home .search{margin-left:8px; flex:1; max-width:380px; height:38px; border-radius:10px; background:var(--paper); border:1px solid var(--line); display:flex; align-items:center; gap:9px; padding:0 13px; color:var(--muted); font-size:13.5px}
 .pw-home .search svg{width:16px; height:16px; flex-shrink:0}
+.pw-home .search input{flex:1; min-width:0; height:100%; padding:0; border:none; outline:none; background:transparent; font-family:inherit; font-size:inherit; color:var(--ink)}
+.pw-home .search input::placeholder{color:var(--muted)}
+.pw-home .search input::-webkit-search-cancel-button{cursor:pointer}
 .pw-home .topbar-right{margin-left:auto; display:flex; align-items:center; gap:14px}
 .pw-home .account{display:flex; align-items:center; gap:10px; padding:5px 6px 5px 12px; border-radius:11px; cursor:pointer; transition:background .16s}
 .pw-home .account:hover{background:var(--paper)}
