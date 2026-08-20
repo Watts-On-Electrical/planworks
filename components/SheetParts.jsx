@@ -3003,13 +3003,12 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
         #print-root .pp-actions{display:flex; align-items:center; gap:12px}
         #print-root .pp-hint{font-size:10px; color:#64748b}
         #print-root .pp-hint b{color:#0f172a}
-        #print-root .pp-btn{display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:7px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; border:none; cursor:pointer}
-        #print-root .pp-btn-ghost{background:#f1f5f9; color:#1e293b}
-        #print-root .pp-btn-ghost:hover{background:#e2e8f0}
-        #print-root .pp-btn-primary{background:#3FB7C9; color:#08313a}
-        #print-root .pp-btn-primary:hover{background:#52C4D5}
-        #print-root .pp-btn-email{background:#fff; color:#22808F; box-shadow:inset 0 0 0 1px #3FB7C9}
-        #print-root .pp-btn-email:hover{background:#ECF8FA}
+        /* One treatment for every button in this bar, matching the editor toolbar
+           and the dashboard nav: neutral at rest, solid teal with a dark navy
+           label on hover. The -ghost / -email / -primary classes are kept on the
+           markup but all share this now, so the bar reads as one set. */
+        #print-root .pp-btn{display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:7px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; border:none; cursor:pointer; background:#f1f5f9; color:#1e293b; transition:background .15s ease, color .15s ease}
+        #print-root .pp-btn:hover:not(:disabled){background:#2C97A8; color:#1A2530}
         #print-root .pp-pages{display:flex; flex-direction:column; align-items:center; padding:32px}
         #print-root .pp-scale{display:flex; flex-direction:column; align-items:center; gap:32px; will-change:transform}
         #print-root .pp-zoom{display:flex; align-items:center; gap:2px; background:#f1f5f9; border-radius:7px; padding:2px}
