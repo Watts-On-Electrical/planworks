@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import LoginScreen from "@/components/LoginScreen";
 import ComingSoon from "@/components/ComingSoon";
 import Paywall from "@/components/Paywall";
+import BusinessInfo from "@/components/BusinessInfo";
+import { hasCompanyProfile } from "@/lib/companyProfile";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { getSettings, saveSettings } from "@/lib/db";
 import { DEFAULT_TITLEBLOCK, normaliseTitleBlock } from "@/lib/titleBlock";
@@ -51,6 +53,15 @@ export default function AppShell({ children }) {
   const BILLING_ENABLED = process.env.NEXT_PUBLIC_BILLING_ENABLED === "true";
   const subscription = useSubscription(BILLING_ENABLED ? session : null);
   const [activating, setActivating] = useState(false); // returning from Stripe Checkout
+
+  // ---- First-login company details ----------------------------------------
+  // "unknown" until we know whether this account has a company_profile row;
+  // "needed" shows the one-screen onboarding; "ok" means carry on into the app.
+  const [profileStep, setProfileStep] = useState("unknown");
+  // Skipping is remembered HERE, on the device, not by writing a placeholder
+  // row. Writing an empty row to suppress the prompt would leave a junk record
+  // that makes "have they filled this in?" unanswerable ever after.
+  const skipKey = (uid) => "plotwire:onboardingSkipped:" + uid;
   const [billingNotice, setBillingNotice] = useState("");
 
   useEffect(() => {
@@ -135,6 +146,26 @@ export default function AppShell({ children }) {
     return () => { active = false; };
   }, [session]);
 
+  // Runs once per signed-in session, alongside the settings load above.
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) { setProfileStep("unknown"); return; }
+    let active = true;
+    try {
+      if (localStorage.getItem(skipKey(uid))) { setProfileStep("ok"); return; }
+    } catch { /* storage unavailable -- fall through to the query */ }
+    hasCompanyProfile().then(has => {
+      if (active) setProfileStep(has ? "ok" : "needed");
+    });
+    return () => { active = false; };
+  }, [session]);
+
+  const skipOnboarding = useCallback(() => {
+    const uid = session?.user?.id;
+    try { if (uid) localStorage.setItem(skipKey(uid), "1"); } catch { /* not fatal */ }
+    setProfileStep("ok");
+  }, [session]);
+
   const saveTitleBlock = useCallback(async (tb) => {
     const next = normaliseTitleBlock(tb);
     settingsRef.current = { ...settingsRef.current, titleBlock: next };
@@ -182,6 +213,9 @@ export default function AppShell({ children }) {
     }
   }
 
+  // Waiting on the profile check -- brief, and only on a fresh sign-in.
+  if (profileStep === "unknown") return <Splash />;
+
   return (
     <AppCtx.Provider value={{
       theme, toggleTheme, user: session?.user || null, signOut,
@@ -189,7 +223,13 @@ export default function AppShell({ children }) {
       boqTemplate, saveBoqTemplate,
       subscription, manageBilling,
     }}>
-      {children}
+      {profileStep === "needed" ? (
+        <BusinessInfo
+          onboarding
+          onSkip={skipOnboarding}
+          onClose={() => setProfileStep("ok")}
+        />
+      ) : children}
     </AppCtx.Provider>
   );
 }

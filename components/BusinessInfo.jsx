@@ -24,7 +24,16 @@ const FIELDS = [
   { key: "website", label: "Website", placeholder: "www.example.co.uk", type: "text" },
 ];
 
-export default function BusinessInfo({ onClose }) {
+export default function BusinessInfo({ onClose, onSkip, onboarding = false }) {
+  // Same fields, same save path -- only the framing changes when this is the
+  // first-login step. leave() is what the X and the left-hand button do:
+  // skipping in onboarding, closing everywhere else.
+  const leave = onboarding ? (onSkip || onClose) : onClose;
+  const heading  = onboarding ? "Welcome to Plotwire" : "Business information";
+  const subtitle = onboarding
+    ? "Add your company details — these go on your drawings. You can change them any time."
+    : "Your company details, saved to your account.";
+  const leaveLabel = onboarding ? "Skip for now" : "Close";
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [logoUrl, setLogoUrl] = useState(null);   // signed URL, or a local preview
   const [loading, setLoading] = useState(true);
@@ -106,11 +115,11 @@ export default function BusinessInfo({ onClose }) {
           <div className="biz-head-l">
             <span className="biz-ic"><Building2 size={19} strokeWidth={1.8}/></span>
             <div>
-              <h1>Business information</h1>
-              <p>Your company details, saved to your account.</p>
+              <h1>{heading}</h1>
+              <p>{subtitle}</p>
             </div>
           </div>
-          <button type="button" className="biz-close" onClick={onClose} title="Close without saving" aria-label="Close without saving">
+          <button type="button" className="biz-close" onClick={leave} title={leaveLabel} aria-label={leaveLabel}>
             <X size={19} strokeWidth={2}/>
           </button>
         </header>
@@ -162,10 +171,10 @@ export default function BusinessInfo({ onClose }) {
             {error && <div className="biz-error" role="alert">{error}</div>}
 
             <div className="biz-actions">
-              <button type="button" className="pw-btn-plain" onClick={onClose} disabled={busy}>Close</button>
+              <button type="button" className="pw-btn-plain" onClick={leave} disabled={busy}>{leaveLabel}</button>
               <button type="submit" className="pw-btn-teal" disabled={busy}>
                 <Save size={17} strokeWidth={1.9}/>
-                <span>{saved ? "Saved ✓" : busy ? "Saving…" : "Save"}</span>
+                <span>{saved ? "Saved ✓" : busy ? "Saving…" : (onboarding ? "Save and continue" : "Save")}</span>
               </button>
             </div>
           </form>
