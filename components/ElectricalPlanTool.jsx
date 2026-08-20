@@ -104,7 +104,8 @@ function freshProject() {
     notes: DEFAULT_NOTES_TEXT,
     boq: null,
     titleBlock: null, // null = use the account default; set = job-specific
-    colourMode: "colour",
+    colourMode: "red",     // new drawings start on PB Red; the toolbar palette
+                           // button still cycles red -> mono -> navy -> colour
     sheets: [sheet],
     activeSheetId: sheet.id,
   };
