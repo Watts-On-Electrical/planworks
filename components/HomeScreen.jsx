@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Trash2 } from "lucide-react";
 import { listProjects, localProjectsPending, migrateLocalProjects, deleteProjectRow, verifyPassword } from "@/lib/db";
 import { signPlanImages } from "@/lib/planImages";
 import { useApp } from "@/components/AppShell";
@@ -292,9 +293,7 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
                         title={`Delete "${c.name}"`}
                         aria-label={`Delete ${c.name}`}
                         onClick={(e) => { e.stopPropagation(); setPendingDelete(c); }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                          <path d="M4 7h16M10 4h4M9 7v12M15 7v12M6 7l1 13h10l1-13"/>
-                        </svg>
+                        <Trash2 strokeWidth={1.8} aria-hidden="true" />
                       </button>
                     </div>
                     <div className="card-body">
@@ -514,8 +513,9 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 /* Delete control: tucked into the thumb's bottom-right, away from the badges.
    Hidden until the card is hovered or the button is focused, so it can't be hit
    by accident; on touch (no hover) it stays faintly visible instead. */
-.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:36px; height:36px; padding:0; border-radius:10px; display:grid; place-items:center; background:var(--teal-600); border:none; color:var(--navy); cursor:pointer; opacity:0; box-shadow:0 4px 12px -2px rgba(11,17,23,.35); transition:opacity .15s ease, background .15s ease, transform .15s ease}
-.pw-home .card-del svg{width:24px; height:24px; display:block}
+.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:36px; height:36px; padding:0; border:none; line-height:0; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--teal-600); color:var(--navy); cursor:pointer; opacity:0; box-shadow:0 4px 12px -2px rgba(11,17,23,.35); transition:opacity .15s ease, background .15s ease, transform .15s ease}
+/* 21px is exactly the left-rail icon size (.navitem svg). */
+.pw-home .card-del svg{width:21px; height:21px; display:block; flex:none}
 .pw-home .card:hover .card-del{opacity:1}
 .pw-home .card-del:focus-visible{opacity:1; outline:2px solid var(--navy); outline-offset:2px}
 .pw-home .card-del:hover{background:var(--teal-700); transform:translateY(-1px)}
