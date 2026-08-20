@@ -1362,14 +1362,14 @@ function estimateWidth(s, fontSize) {
 /* ----------------------------------------------------------------------------
  * TITLE BLOCK — bottom strip, editable fields
  * ------------------------------------------------------------------------- */
-function TitleLogos({ logos, maxWidth = 240 }) {
+function TitleLogos({ logos, maxWidth = 300 }) {
   const list = (logos || []).filter(Boolean);
   if (!list.length) return <div style={{ width: 6 }} />;
   return (
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center",
-                  gap: 10, padding: "8px 12px", maxWidth }}>
+                  gap: 14, padding: "6px 16px", maxWidth }}>
       {list.map((src, i) => (
-        <img key={i} src={src} alt="" style={{ height: 40, width: "auto", maxWidth: 120, objectFit: "contain", display: "block" }} />
+        <img key={i} src={src} alt="" style={{ height: 74, width: "auto", maxWidth: 230, objectFit: "contain", display: "block" }} />
       ))}
     </div>
   );
@@ -1378,16 +1378,16 @@ function TitleLogos({ logos, maxWidth = 240 }) {
 function TitleDetails({ details }) {
   const list = (details || []).filter(d => d && (d.label || d.value));
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {list.map((d, i) => (
         <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 5, lineHeight: 1.15, minWidth: 0 }}>
           {d.label ? (
-            <span style={{ fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", whiteSpace: "nowrap", flexShrink: 0 }}>{d.label}</span>
+            <span style={{ fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", whiteSpace: "nowrap", flexShrink: 0 }}>{d.label}</span>
           ) : null}
           {/* minWidth:0 lets the value shrink to the cell; wrapping (incl. long
               emails with no spaces) keeps the full value visible instead of the
               end being clipped off the page. */}
-          <span style={{ fontSize: i === 0 ? 13 : 9, fontWeight: i === 0 ? 700 : 500, color: "#0a0a0a", minWidth: 0, flex: "1 1 auto", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word" }}>{d.value}</span>
+          <span style={{ fontSize: i === 0 ? 18 : 10.5, fontWeight: i === 0 ? 800 : 500, color: "#0a0a0a", minWidth: 0, flex: "1 1 auto", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word" }}>{d.value}</span>
         </div>
       ))}
     </div>
@@ -1408,7 +1408,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "auto 1.7fr 0.85fr 1fr",
+      gridTemplateColumns: "minmax(150px, auto) 1.6fr 0.8fr 1fr",
       fontSize: 10,
     }}>
       {/* Logos (account template) */}
@@ -1417,61 +1417,61 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       </div>
 
       {/* Company details (account template) + project (per drawing) */}
-      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a",
-                    display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 7, overflow: "hidden" }}>
+      <div style={{ padding: "11px 16px", borderRight: "1px solid #0a0a0a",
+                    display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
         <TitleDetails details={tb.details} />
         <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
           <EditableField value={meta.projectName} onChange={(v) => updateMeta({ projectName: v })}
-                         fontSize={11} weight={600} placeholder="Project name"/>
+                         fontSize={16} weight={700} placeholder="Project name"/>
           <EditableField value={meta.plot} onChange={(v) => updateMeta({ plot: v })}
-                         fontSize={9} weight={500} placeholder="Plot / address"/>
+                         fontSize={10.5} weight={500} placeholder="Plot / address"/>
         </div>
       </div>
 
       {/* Middle: sheet info */}
       <div style={{
-        padding: "10px 14px",
+        padding: "11px 16px",
         borderRight: "1px solid #0a0a0a",
-        display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 9,
+        display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6,
       }}>
         <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
           <EditableField value={meta.sheetName} onChange={(v) => setSheet({ name: v })}
-                         fontSize={12} weight={700} />
+                         fontSize={15} weight={700} />
         </div>
         <div style={{ display: "flex", gap: 14 }}>
           <div>
-            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
+            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
             <EditableField value={meta.scale} onChange={(v) => updateMeta({ scale: v })}
-                           fontSize={10} weight={600} />
+                           fontSize={11.5} weight={600} />
           </div>
           <div>
-            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
+            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
             <EditableField value={meta.date} onChange={(v) => updateMeta({ date: v })}
-                           fontSize={10} weight={600} />
+                           fontSize={11.5} weight={600} />
           </div>
         </div>
       </div>
 
       {/* Right: drawing number & revision */}
       <div style={{
-        padding: "10px 14px",
+        padding: "11px 16px",
         display: "grid", gridTemplateColumns: "1fr auto",
         columnGap: 14, rowGap: 6,
       }}>
         <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
           <EditableField value={meta.drawingNumber} onChange={(v) => setSheet({ drawingNumber: v })}
-                         fontSize={11} weight={700} placeholder="e.g. WOE-PB-XX-00-D-A-010401"/>
+                         fontSize={13.5} weight={700} placeholder="e.g. WOE-PB-XX-00-D-A-010401"/>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
           <EditableField value={meta.revision} onChange={(v) => updateMeta({ revision: v })}
                          fontSize={18} weight={800} align="right"/>
         </div>
         <div style={{ gridColumn: "1 / span 2" }}>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
           <EditableField value={meta.revNote} onChange={(v) => updateMeta({ revNote: v })}
                          fontSize={9} weight={500} placeholder="First issue"/>
         </div>
@@ -3256,48 +3256,48 @@ function TitleBlockStatic({ meta }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "auto 1.7fr 0.85fr 1fr",
+      gridTemplateColumns: "minmax(150px, auto) 1.6fr 0.8fr 1fr",
       fontSize: 10,
     }}>
       <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <TitleLogos logos={tb.logos} />
       </div>
-      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 7, overflow: "hidden" }}>
+      <div style={{ padding: "11px 16px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
         <TitleDetails details={tb.details} />
         <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#0a0a0a" }}>{meta.projectName || "—"}</div>
-          <div style={{ fontSize: 9, color: "#0a0a0a" }}>{meta.plot}</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#0a0a0a" }}>{meta.projectName || "—"}</div>
+          <div style={{ fontSize: 10.5, color: "#0a0a0a" }}>{meta.plot}</div>
         </div>
       </div>
-      <div style={{ padding: "10px 14px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 9 }}>
+      <div style={{ padding: "11px 16px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6 }}>
         <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0a0a0a" }}>{meta.sheetName}</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#0a0a0a" }}>{meta.sheetName}</div>
         </div>
         <div style={{ display: "flex", gap: 14 }}>
           <div>
-            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
-            <div style={{ fontSize: 10, fontWeight: 600 }}>{meta.scale}</div>
+            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
+            <div style={{ fontSize: 11.5, fontWeight: 600 }}>{meta.scale}</div>
           </div>
           <div>
-            <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
-            <div style={{ fontSize: 10, fontWeight: 600 }}>{meta.date}</div>
+            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
+            <div style={{ fontSize: 11.5, fontWeight: 600 }}>{meta.date}</div>
           </div>
         </div>
       </div>
-      <div style={{ padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
+      <div style={{ padding: "11px 16px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
         <div>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
-          <div style={{ fontSize: 11, fontWeight: 700 }}>{meta.drawingNumber || "—"}</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700 }}>{meta.drawingNumber || "—"}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
           <div style={{ fontSize: 18, fontWeight: 800 }}>{meta.revision}</div>
         </div>
         <div style={{ gridColumn: "1 / span 2" }}>
-          <div style={{ fontSize: 8, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
-          <div style={{ fontSize: 9 }}>{meta.revNote}</div>
+          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
+          <div style={{ fontSize: 10 }}>{meta.revNote}</div>
         </div>
       </div>
     </div>
