@@ -514,13 +514,13 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 /* Delete control: tucked into the thumb's bottom-right, away from the badges.
    Hidden until the card is hovered or the button is focused, so it can't be hit
    by accident; on touch (no hover) it stays faintly visible instead. */
-.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:28px; height:28px; padding:0; border-radius:8px; display:grid; place-items:center; background:rgba(255,255,255,.9); border:1px solid var(--line); color:#8b97a4; cursor:pointer; opacity:0; transition:opacity .15s ease, color .15s ease, border-color .15s ease}
-.pw-home .card-del svg{width:15px; height:15px}
+.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:36px; height:36px; padding:0; border-radius:10px; display:grid; place-items:center; background:var(--teal-600); border:none; color:var(--navy); cursor:pointer; opacity:0; box-shadow:0 4px 12px -2px rgba(11,17,23,.35); transition:opacity .15s ease, background .15s ease, transform .15s ease}
+.pw-home .card-del svg{width:18px; height:18px}
 .pw-home .card:hover .card-del{opacity:1}
-.pw-home .card-del:focus-visible{opacity:1; outline:2px solid var(--teal); outline-offset:1px}
-.pw-home .card-del:hover{color:#c0392b; border-color:#e3b1ab}
-@media (hover:none){ .pw-home .card-del{opacity:.5} }
-html.dark .pw-home .card-del{background:rgba(22,32,43,.92); border-color:var(--line)}
+.pw-home .card-del:focus-visible{opacity:1; outline:2px solid var(--navy); outline-offset:2px}
+.pw-home .card-del:hover{background:var(--teal-700); transform:translateY(-1px)}
+/* No hover on touch, so the button simply stays visible there. */
+@media (hover:none){ .pw-home .card-del{opacity:1} }
 
 /* Delete confirmation dialog */
 .pw-modal-back{position:fixed; inset:0; z-index:60; background:rgba(11,17,23,.55); display:grid; place-items:center; padding:20px}
