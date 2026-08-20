@@ -113,7 +113,7 @@ export function TopBar({
           active={colourMode === "navy"}/>
         <Divider />
         {/* Panels */}
-        <ToolbarButton onClick={onShowNotes} icon={Type} label="Notes"/>
+        <ToolbarButton onClick={onShowNotes} icon={Type} label="Installation Notes"/>
         <ToolbarButton onClick={onShowBoq} icon={ClipboardList} label="BOQ"/>
         <ToolbarButton onClick={onShowTitleBlock} icon={LayoutPanelTop} label="Title block"/>
         <Divider />
@@ -151,7 +151,7 @@ function ToolbarButton({ onClick, icon: Icon, label, primary, active, hint, flas
           ? "bg-[#3FB7C9]/15 text-[#1C6E7B] dark:text-[#7fd6e3] ring-[1.5px] ring-[#3FB7C9]/70 hover:bg-[#3FB7C9]/25"
           : active
           ? "bg-[#3FB7C9]/15 text-[#1C6E7B] ring-1 ring-[#3FB7C9]/45"
-          : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white"
+          : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-[#2C97A8] hover:text-[#1A2530] dark:hover:bg-[#2C97A8] dark:hover:text-[#1A2530]"
       }`}>
       <Icon size={15} /> <span className="hidden lg:inline">{label}</span>
     </button>
@@ -676,7 +676,7 @@ function NotesColumn({ notes }) {
       overflow: "hidden",
       pointerEvents: "none",   // display only — drags pass through to the sheet
     }}>
-      <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
+      <SheetColumnHeader padL={14} padR={14} padT={12}>Installation Notes</SheetColumnHeader>
       <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
            dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
@@ -731,7 +731,7 @@ export function NotesEditor({ notes, updateNotes, onClose }) {
         onMouseDown={(e) => e.stopPropagation()}>
 
         <div className="flex items-center justify-between px-5 h-12 bg-[#2C3E50] shrink-0">
-          <div className="text-white font-semibold tracking-wide" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Drawing Notes</div>
+          <div className="text-white font-semibold tracking-wide" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Installation Notes</div>
           <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors"><X size={18}/></button>
         </div>
 
@@ -3080,7 +3080,7 @@ function NotesColumnStatic({ notes }) {
       padding: "12px 14px",
       overflow: "hidden",
     }}>
-      <SheetColumnHeader padL={14} padR={14} padT={12}>Notes</SheetColumnHeader>
+      <SheetColumnHeader padL={14} padR={14} padT={12}>Installation Notes</SheetColumnHeader>
       <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
            dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
@@ -3269,6 +3269,7 @@ function TitleBlockStatic({ meta }) {
     </div>
   );
 }
+
 
 
 
