@@ -1359,8 +1359,10 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       }
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1500);
+      return true;
     } catch (err) {
       alert("Save failed: " + (err.message || err));
+      return false;
     }
   };
 
@@ -1551,6 +1553,25 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
   }, [placed]);
 
   // Title-block view: sheet name + drawing number come from the active sheet.
+  // Leaving the editor must never lose a drawing. One that already has a cloud
+  // row is saved on the way out, so the dashboard is always safe to click. One
+  // that has never been saved has no row to write to, so it asks first rather
+  // than silently creating or discarding anything.
+  const leaveToDashboard = async () => {
+    if (!onHome) return;
+    const p = projectRef.current;
+    const hasWork = countPlaced(p) > 0 || (p?.sheets || []).some(s => s && s.bgImage);
+    if (hasWork) {
+      if (currentProjectIdRef.current) {
+        const ok = await saveProject();
+        if (ok === false && !confirm("Your changes couldn't be saved. Leave anyway?")) return;
+      } else if (!confirm("This drawing hasn't been saved yet. Leave without saving?")) {
+        return;
+      }
+    }
+    onHome();
+  };
+
   const displayMeta = useMemo(
     () => ({ ...meta, sheetName: activeSheet.name, drawingNumber: activeSheet.drawingNumber || "" }),
     [meta, activeSheet.name, activeSheet.drawingNumber]
@@ -1564,7 +1585,7 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
       {/* ==================== TOP BAR ==================== */}
       <TopBar
         meta={meta}
-        onHome={onHome}
+        onHome={leaveToDashboard}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onShowMeta={() => setShowMeta(true)}

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   loadPlannerJobs, savePlannerJob, deletePlannerJob,
   loadPlannerSettings, savePlannerSettings,
@@ -85,6 +86,7 @@ function JobCard({ j, cdef, P, dark, onClick }) {
 const lbl = (P) => ({ fontFamily: COND, fontWeight: 600, fontSize: 12, letterSpacing: ".05em", textTransform: "uppercase", color: P.muted });
 
 export default function WorkPlanner({ shared = null }) {
+  const router = useRouter();
   const { theme } = useApp();
   const dark = theme === "dark";
   const readOnly = Boolean(shared);
@@ -311,9 +313,18 @@ export default function WorkPlanner({ shared = null }) {
         .wp-cell .wp-add{opacity:0;transition:opacity .12s}
         .wp-cell:hover .wp-add{opacity:1}
         .wp-field:focus{outline:none;border-color:${P.accent2};box-shadow:0 0 0 3px ${dark ? "rgba(63,183,201,.22)" : "rgba(44,151,168,.16)"}}
+        .wp-home{display:inline-flex;align-items:center;gap:7px;font-family:${COND};font-weight:700;font-size:14px;letter-spacing:.02em;padding:9px 16px;border-radius:8px;cursor:pointer;background:${P.surface};color:${P.ink};border:1px solid ${P.line};transition:background .15s ease,color .15s ease,border-color .15s ease}
+        .wp-home:hover{background:#2C97A8;color:#1A2530;border-color:#2C97A8}
+        .wp-home svg{display:block}
       `}</style>
 
       <div style={{ width: 1300, maxWidth: "100%", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        {!readOnly && (
+          <button className="wp-home" onClick={() => router.push("/")} title="Back to dashboard" style={{ marginRight: "auto" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Dashboard
+          </button>
+        )}
         {readOnly ? (
           <span style={{ fontSize: 12.5, color: P.muted }}>{"Viewing only \u2014 this diary updates automatically when the office changes it."}</span>
         ) : (
