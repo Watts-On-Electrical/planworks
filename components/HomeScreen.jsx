@@ -513,9 +513,12 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 /* Delete control: tucked into the thumb's bottom-right, away from the badges.
    Hidden until the card is hovered or the button is focused, so it can't be hit
    by accident; on touch (no hover) it stays faintly visible instead. */
-.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:36px; height:36px; padding:0; border:none; line-height:0; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--teal-600); color:var(--navy); cursor:pointer; opacity:0; box-shadow:0 4px 12px -2px rgba(11,17,23,.35); transition:opacity .15s ease, background .15s ease, transform .15s ease}
-/* 21px is exactly the left-rail icon size (.navitem svg). */
-.pw-home .card-del svg{width:21px; height:21px; display:block; flex:none}
+.pw-home .card-del{position:absolute; bottom:10px; right:10px; z-index:3; width:40px; height:40px; min-width:40px; min-height:40px; padding:0; border:0; line-height:0; font-size:0; border-radius:10px; display:flex; align-items:center; justify-content:center; text-align:center; background:var(--teal-600); color:var(--navy); cursor:pointer; opacity:0; box-shadow:0 4px 12px -2px rgba(11,17,23,.35); transition:opacity .15s ease, background .15s ease, transform .15s ease}
+/* 21px is exactly the left-rail icon size (.navitem svg).
+   Centring is belt-and-braces: the flex rules above centre it, margin:auto
+   centres it again if those are ever overridden, and position:static/inset:auto
+   guarantee nothing can absolutely position it into a corner. */
+.pw-home .card-del svg{width:21px; height:21px; display:block; flex:none; position:static; inset:auto; margin:auto}
 .pw-home .card:hover .card-del{opacity:1}
 .pw-home .card-del:focus-visible{opacity:1; outline:2px solid var(--navy); outline-offset:2px}
 .pw-home .card-del:hover{background:var(--teal-700); transform:translateY(-1px)}
