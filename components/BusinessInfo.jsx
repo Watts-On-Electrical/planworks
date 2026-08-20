@@ -32,6 +32,8 @@ export default function BusinessInfo({ onClose }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef(null);
+  const leaveTimer = useRef(null);
+  useEffect(() => () => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
 
   // Load whatever was saved before, and mint a URL for the stored logo.
   useEffect(() => {
@@ -85,11 +87,13 @@ export default function BusinessInfo({ onClose }) {
     setBusy(true); setError("");
     try {
       await saveCompanyProfile(profile);
+      // Saved: confirm briefly, then hand the user back to the dashboard. Stays
+      // busy meanwhile so the form can't be submitted twice on the way out.
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      leaveTimer.current = setTimeout(() => onClose?.(), 900);
     } catch (err) {
+      // Failed: stay here, show why, and let them try again.
       setError(err?.message || "Couldn't save. Nothing was changed.");
-    } finally {
       setBusy(false);
     }
   };
