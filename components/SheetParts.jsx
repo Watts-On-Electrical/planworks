@@ -1362,14 +1362,20 @@ function estimateWidth(s, fontSize) {
 /* ----------------------------------------------------------------------------
  * TITLE BLOCK — bottom strip, editable fields
  * ------------------------------------------------------------------------- */
-function TitleLogos({ logos, maxWidth = 300 }) {
+function TitleLogos({ logos, maxWidth = 380 }) {
   const list = (logos || []).filter(Boolean);
   if (!list.length) return <div style={{ width: 6 }} />;
+  // The title block is a fixed 110px tall, so the logo height depends on how
+  // many there are: a single logo takes nearly the whole panel, while two or
+  // three step down and stay on ONE row instead of wrapping onto a second line
+  // the panel would clip.
+  const h    = list.length >= 3 ? 48  : list.length === 2 ? 68  : 94;
+  const wMax = list.length >= 3 ? 110 : list.length === 2 ? 165 : 320;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center",
-                  gap: 14, padding: "6px 16px", maxWidth }}>
+    <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "center",
+                  gap: 12, padding: "3px 12px", maxWidth }}>
       {list.map((src, i) => (
-        <img key={i} src={src} alt="" style={{ height: 74, width: "auto", maxWidth: 230, objectFit: "contain", display: "block" }} />
+        <img key={i} src={src} alt="" style={{ height: h, width: "auto", maxWidth: wMax, objectFit: "contain", display: "block" }} />
       ))}
     </div>
   );
@@ -1408,7 +1414,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "minmax(150px, auto) 1.6fr 0.8fr 1fr",
+      gridTemplateColumns: "minmax(200px, auto) 1.55fr 0.8fr 1fr",
       fontSize: 10,
     }}>
       {/* Logos (account template) */}
@@ -1417,7 +1423,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
       </div>
 
       {/* Company details (account template) + project (per drawing) */}
-      <div style={{ padding: "11px 16px", borderRight: "1px solid #0a0a0a",
+      <div style={{ padding: "9px 15px", borderRight: "1px solid #0a0a0a",
                     display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
         <TitleDetails details={tb.details} />
         <div>
@@ -1431,7 +1437,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
 
       {/* Middle: sheet info */}
       <div style={{
-        padding: "11px 16px",
+        padding: "9px 15px",
         borderRight: "1px solid #0a0a0a",
         display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6,
       }}>
@@ -1456,7 +1462,7 @@ function TitleBlock({ meta, updateMeta, onSheetField }) {
 
       {/* Right: drawing number & revision */}
       <div style={{
-        padding: "11px 16px",
+        padding: "9px 15px",
         display: "grid", gridTemplateColumns: "1fr auto",
         columnGap: 14, rowGap: 6,
       }}>
@@ -3256,13 +3262,13 @@ function TitleBlockStatic({ meta }) {
       height: SHEET.titleHeight,
       borderTop: "1px solid #0a0a0a",
       display: "grid",
-      gridTemplateColumns: "minmax(150px, auto) 1.6fr 0.8fr 1fr",
+      gridTemplateColumns: "minmax(200px, auto) 1.55fr 0.8fr 1fr",
       fontSize: 10,
     }}>
       <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <TitleLogos logos={tb.logos} />
       </div>
-      <div style={{ padding: "11px 16px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
+      <div style={{ padding: "9px 15px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
         <TitleDetails details={tb.details} />
         <div>
           <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
@@ -3270,7 +3276,7 @@ function TitleBlockStatic({ meta }) {
           <div style={{ fontSize: 10.5, color: "#0a0a0a" }}>{meta.plot}</div>
         </div>
       </div>
-      <div style={{ padding: "11px 16px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6 }}>
+      <div style={{ padding: "9px 15px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6 }}>
         <div>
           <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#0a0a0a" }}>{meta.sheetName}</div>
@@ -3286,7 +3292,7 @@ function TitleBlockStatic({ meta }) {
           </div>
         </div>
       </div>
-      <div style={{ padding: "11px 16px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
+      <div style={{ padding: "9px 15px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
         <div>
           <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
           <div style={{ fontSize: 13.5, fontWeight: 700 }}>{meta.drawingNumber || "—"}</div>
