@@ -311,7 +311,7 @@ const CSS = `
 .pw-home .brandmark svg{width:22px; height:22px}
 .pw-home .navitem{width:46px; height:46px; border-radius:12px; display:grid; place-items:center; color:#8190a0; cursor:pointer; transition:all .18s ease; position:relative}
 .pw-home .navitem svg{width:21px; height:21px}
-.pw-home .navitem:hover{color:#cfd8e2; background:rgba(255,255,255,.05)}
+.pw-home .navitem:hover{color:var(--teal); background:rgba(63,183,201,.12)}
 .pw-home .navitem.active{color:#fff; background:rgba(63,183,201,.16)}
 .pw-home .navitem.active::before{content:""; position:absolute; left:-18px; top:11px; bottom:11px; width:3px; border-radius:0 3px 3px 0; background:var(--teal)}
 .pw-home .rail-spacer{flex:1}
@@ -417,6 +417,8 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .empty{margin-top:18px; padding:30px; text-align:center; color:var(--muted); font-size:13.5px; background:var(--surface); border:1px dashed var(--line); border-radius:14px}
 @media (max-width:720px){.pw-home .rail{width:60px} .pw-home .scroll{padding:24px 18px 50px} .pw-home .hero{padding:24px} .pw-home .hero h1{font-size:24px} .pw-home .stats{gap:22px; flex-wrap:wrap}}
 `;
+
+
 
 
 
