@@ -166,11 +166,34 @@ function Divider() { return <div className="w-px h-5 bg-slate-200 dark:bg-[#2A39
 export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelete }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
+  // Escape closes the input, and some browsers fire blur when a focused element
+  // is removed -- which would commit the very edit we just cancelled. The flag
+  // lets commit() know the edit was abandoned.
+  const cancelledRef = useRef(false);
+  // Double-TAP detection. A plain <div> doesn't reliably get a dblclick on iOS /
+  // Android, so touch gets its own "two taps in a row" check; mouse keeps the
+  // native onDoubleClick.
+  const lastTapRef = useRef({ id: null, at: 0 });
 
-  const startRename = (s) => { setEditingId(s.id); setDraft(s.name); };
+  const startRename = (s) => { cancelledRef.current = false; setDraft(s.name); setEditingId(s.id); };
   const commit = () => {
-    if (editingId && draft.trim()) onRename(editingId, draft.trim());
+    if (cancelledRef.current) { cancelledRef.current = false; setEditingId(null); return; }
+    const name = draft.trim();
+    if (editingId && name) onRename(editingId, name); // a blank name keeps the old one
     setEditingId(null);
+  };
+  const cancel = () => { cancelledRef.current = true; setEditingId(null); };
+
+  const onTabPointerUp = (s, e) => {
+    if (e.pointerType !== "touch" || editingId === s.id) return;
+    const now = Date.now();
+    const prev = lastTapRef.current;
+    if (prev.id === s.id && now - prev.at < 400) {
+      lastTapRef.current = { id: null, at: 0 };
+      startRename(s);
+    } else {
+      lastTapRef.current = { id: s.id, at: now };
+    }
   };
 
   return (
@@ -186,7 +209,11 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
           <div key={s.id}
             onClick={() => !active && onSwitch(s.id)}
             onDoubleClick={() => startRename(s)}
-            title={active ? "Double-click to rename" : "Click to open · double-click to rename"}
+            onPointerUp={(e) => onTabPointerUp(s, e)}
+            title={active ? "Double-click (or double-tap) to rename" : "Click to open - double-click or double-tap to rename"}
+            // touch-action: manipulation stops iOS treating the second tap as
+            // zoom-the-page, so the double-tap reaches us as a rename.
+            style={{ touchAction: "manipulation" }}
             className={`group relative flex items-center gap-2 px-3 my-1.5 rounded-lg cursor-pointer transition-all shrink-0 ${
               active
                 ? "bg-white ring-1 ring-[#3FB7C9]/60 shadow-sm text-slate-900"
@@ -196,19 +223,26 @@ export function SheetTabs({ sheets, activeId, onSwitch, onAdd, onRename, onDelet
             {editingId === s.id ? (
               <input
                 autoFocus value={draft}
+                // Focusing selects the whole name, so typing replaces it.
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commit}
-                onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditingId(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") cancel(); }}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[12px] font-medium bg-transparent outline-none border-b border-[#3FB7C9] w-24 text-slate-900"/>
+                onPointerUp={(e) => e.stopPropagation()}
+                aria-label="Drawing name"
+                // Grows with the name so a longer one stays readable while typing.
+                style={{ width: Math.min(260, Math.max(96, (draft.length + 1) * 7.5)) }}
+                className="text-[12px] font-medium bg-transparent outline-none border-b border-[#3FB7C9] text-slate-900"/>
             ) : (
-              <span className={`text-[12px] whitespace-nowrap ${active ? "font-semibold text-slate-900" : "font-medium"}`}>
+              <span className={`text-[12px] whitespace-nowrap select-none ${active ? "font-semibold text-slate-900" : "font-medium"}`}>
                 {s.name}
               </span>
             )}
             {sheets.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${s.name}"? This removes that drawing and everything on it.`)) onDelete(s.id); }}
+                onPointerUp={(e) => e.stopPropagation()}
                 title="Delete drawing"
                 className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity shrink-0">
                 <X size={12}/>

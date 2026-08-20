@@ -452,8 +452,33 @@ export default function ElectricalPlanTool({ initialTarget = null, onHome = null
     setTimeout(fitToScreen, 60);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const renameSheet = useCallback((id, name) => {
-    setProject(p => ({ ...p, sheets: p.sheets.map(s => s.id === id ? { ...s, name } : s) }));
+  // Renaming a drawing tab persists straight away, so a tab renamed on a tablet
+  // survives the drawing being closed without the user thinking to hit Save.
+  // Same on-the-spot save as applyFloorPlan below: patch state, then write the
+  // whole project to its existing row. A drawing that has never been saved has
+  // no row yet, so it just keeps the name in state until the first Save.
+  const renameSheet = useCallback(async (id, name) => {
+    let updated = null;
+    setProject(p => {
+      const current = p.sheets.find(s => s.id === id);
+      if (!current || current.name === name) return p; // no change -- no write
+      updated = { ...p, sheets: p.sheets.map(s => s.id === id ? { ...s, name } : s) };
+      return updated;
+    });
+    if (currentProjectIdRef.current && updated) {
+      try {
+        const safe = await prepareProjectForSave(updated);
+        await updateProjectRow(currentProjectIdRef.current, updated.meta?.projectName || "Untitled drawing", safe);
+        setProject(prev => mergeSavedPaths(prev, safe));
+        // Same confirmation the Save button gives, so the rename visibly sticks.
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 1500);
+      } catch (err) {
+        // Keep the new name on screen -- it is still in state and goes up with
+        // the next Save; only the immediate write failed.
+        console.error("Rename save failed:", err);
+      }
+    }
   }, []);
 
   const deleteSheet = useCallback((id) => {
