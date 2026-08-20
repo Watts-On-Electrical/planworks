@@ -17,7 +17,7 @@ import { resizeImageToDataUrl } from "@/lib/titleBlock";
 import { dataUrlToBlob } from "@/lib/planImages";
 
 const FIELDS = [
-  { key: "company_name", label: "Company name", placeholder: "Watts On Electrical Ltd", type: "text" },
+  { key: "company_name", label: "Company name", placeholder: "e.g. Your Company Ltd", type: "text" },
   { key: "address", label: "Address", placeholder: "Unit 4, Example Way\nLeeds LS1 1AA", type: "textarea" },
   { key: "phone", label: "Phone", placeholder: "01234 567890", type: "tel" },
   { key: "email", label: "Email", placeholder: "office@example.co.uk", type: "email" },

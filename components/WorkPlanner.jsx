@@ -14,16 +14,11 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const TYPES = ["Rewire", "EICR", "Fault", "Consumer Unit", "EV Charger", "Lighting", "Heating", "Solar / Battery", "Inspection", "Snagging", "Callout", "Holiday", "Other"];
 const OP_COLORS = ["#2C97A8", "#2f6fed", "#c9721a", "#7c4dd6", "#d23f6a", "#2ca05a", "#b8455f", "#4a6da7", "#c98f1a", "#0e8a8a", "#8a5cd6", "#c0392b"];
 
-const DEFAULT_CONTRACTORS = [
-  { id: "joe", name: "Joe Brown", color: "#0e8a8a" },
-  { id: "and", name: "Andrew Shepard", color: "#2f6fed" },
-  { id: "jack", name: "Jack Edwards", color: "#c9721a" },
-  { id: "sam", name: "Sam Ward", color: "#7c4dd6" },
-  { id: "ant", name: "Anthony Wildman", color: "#d23f6a" },
-  { id: "s1", name: "Available", color: "#9aa5a5" },
-  { id: "s2", name: "Available", color: "#9aa5a5" },
-  { id: "s3", name: "Available", color: "#9aa5a5" },
-];
+const DEFAULT_CONTRACTORS = Array.from({ length: 8 }, (_, i) => ({
+  id: `op${i + 1}`,
+  name: `Operative ${i + 1}`,
+  color: OP_COLORS[i % OP_COLORS.length],
+}));
 
 const STATUS_TEXT = { booked: "Booked", done: "Done", cancelled: "Cancelled" };
 function statusStyle(k, dark) {
@@ -97,7 +92,7 @@ export default function WorkPlanner({ shared = null }) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [settings, setSettings] = useState({ company: "Watts On", title: "Work Planner", contractors: DEFAULT_CONTRACTORS });
+  const [settings, setSettings] = useState({ company: "Your company", title: "Work Planner", contractors: DEFAULT_CONTRACTORS });
   const [settingsDraft, setSettingsDraft] = useState(null);
   const [duplicating, setDuplicating] = useState(null);
   const [sharePanel, setSharePanel] = useState(null);
@@ -128,7 +123,7 @@ export default function WorkPlanner({ shared = null }) {
           const [rows, s] = await Promise.all([loadPlannerJobs(), loadPlannerSettings()]);
           if (!alive) return;
           setJobs(rows || []);
-          if (s) setSettings({ company: s.company || "Watts On", title: s.title || "Work Planner", contractors: (s.contractors && s.contractors.length) ? s.contractors : DEFAULT_CONTRACTORS });
+          if (s) setSettings({ company: s.company || "Your company", title: s.title || "Work Planner", contractors: (s.contractors && s.contractors.length) ? s.contractors : DEFAULT_CONTRACTORS });
         }
       } catch (e) { console.error(e); if (alive) { setJobs([]); if (shared) setNotFound(true); } }
       finally { if (alive) setLoading(false); }
@@ -193,7 +188,11 @@ export default function WorkPlanner({ shared = null }) {
   const opRemove = (idx) => setSettingsDraft((s) => ({ ...s, contractors: s.contractors.filter((_, i) => i !== idx) }));
   const saveSettings = async () => {
     const clean = { company: settingsDraft.company || "", title: settingsDraft.title || "Work Planner", contractors: settingsDraft.contractors.filter((c) => c.name && c.name.trim()).map((c) => ({ id: c.id, name: c.name.trim(), color: c.color || "#9aa5a5" })) };
-    if (!clean.contractors.length) clean.contractors = DEFAULT_CONTRACTORS;
+    // Deliberately NOT falling back to DEFAULT_CONTRACTORS here: what gets
+    // saved is what this account actually chose. Writing the defaults in would
+    // put the app's placeholder team into someone's own settings row. The board
+    // still falls back to the neutral placeholders for DISPLAY (see `roster`),
+    // so an empty roster is shown usefully without being persisted as theirs.
     setSettings(clean); setSettingsDraft(null);
     try { await savePlannerSettings(clean); } catch (err) { alert("Could not save settings: " + (err && err.message ? err.message : err)); }
   };
@@ -614,7 +613,7 @@ export default function WorkPlanner({ shared = null }) {
             </div>
             <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", gap: 12 }}>
-                <label style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}><span style={lbl(P)}>Company name</span><input className="wp-field" style={fieldStyle} value={settingsDraft.company} onChange={(e) => setSettingsDraft((s) => ({ ...s, company: e.target.value }))} placeholder="e.g. Watts On" /></label>
+                <label style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}><span style={lbl(P)}>Company name</span><input className="wp-field" style={fieldStyle} value={settingsDraft.company} onChange={(e) => setSettingsDraft((s) => ({ ...s, company: e.target.value }))} placeholder="e.g. Your Company Ltd" /></label>
                 <label style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}><span style={lbl(P)}>Planner title</span><input className="wp-field" style={fieldStyle} value={settingsDraft.title} onChange={(e) => setSettingsDraft((s) => ({ ...s, title: e.target.value }))} placeholder="Work Planner" /></label>
               </div>
               <div>
