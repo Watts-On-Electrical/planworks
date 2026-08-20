@@ -256,14 +256,6 @@ export default function HomeScreen({ onOpenProject, onNewProject, onImport, onSk
                 <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 3 5 13h6l-1 8 9-11h-6l1-7z"/></svg></div>
                 <div><div className="t">Blank A3 sheet</div><div className="s">Landscape Â· titled</div></div>
               </div>
-              <div className="tpl" onClick={() => onNewProject("lighting")}>
-                <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="10" r="5"/><path d="M9 19h6M10 22h4"/></svg></div>
-                <div><div className="t">Lighting layout</div><div className="s">Lighting symbols ready</div></div>
-              </div>
-              <div className="tpl" onClick={() => onNewProject("sockets")}>
-                <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg></div>
-                <div><div className="t">Power &amp; sockets</div><div className="s">Socket symbols ready</div></div>
-              </div>
               <div className="tpl" onClick={onImport}>
                 <div className="tpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg></div>
                 <div><div className="t">Import a PDF plan</div><div className="s">Trace over it</div></div>
@@ -471,7 +463,7 @@ html.dark .pw-home .card{box-shadow:0 1px 2px rgba(0,0,0,.4)}
 html.dark .pw-home .card:hover{box-shadow:0 18px 40px -12px rgba(0,0,0,.6)}
 html.dark .pw-home .thumb{background:#0E141B}
 html.dark .pw-home .thumb::before{background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px)}
-html.dark .pw-home .tpl:hover{border-color:#2C5C66}
+html.dark .pw-home .tpl:hover{border-color:var(--teal-600)}
 html.dark .pw-home .new-card{border-color:#2A3947}
 html.dark .pw-home .card-foot .ct{background:#0E141B}
 html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#152832); border-color:#235662}
@@ -499,10 +491,18 @@ html.dark .pw-home .migrate-banner{background:linear-gradient(120deg,#13343b,#15
 .pw-home .templates{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-bottom:38px}
 .pw-home .tpl{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; cursor:pointer; transition:all .18s ease; display:flex; align-items:center; gap:13px}
 .pw-home .tpl:hover{border-color:#cfe7ec; box-shadow:0 4px 14px rgba(16,28,40,.07); transform:translateY(-2px)}
-.pw-home .tpl-ic{width:40px; height:40px; border-radius:10px; display:grid; place-items:center; flex-shrink:0; background:rgba(63,183,201,.12); color:var(--teal-700)}
+.pw-home .tpl-ic{width:40px; height:40px; border-radius:10px; display:grid; place-items:center; flex-shrink:0; background:rgba(63,183,201,.12); color:var(--teal-700); transition:background .18s ease, color .18s ease}
 .pw-home .tpl-ic svg{width:20px; height:20px}
-.pw-home .tpl .t{font-size:13.5px; font-weight:500}
-.pw-home .tpl .s{font-size:11.5px; color:var(--muted); margin-top:1px}
+.pw-home .tpl .t{font-size:13.5px; font-weight:500; transition:color .18s ease}
+.pw-home .tpl .s{font-size:11.5px; color:var(--muted); margin-top:1px; transition:color .18s ease}
+
+/* Hover: the whole tile goes Plotwire teal, matching the card info strip and
+   the nav rail. The icon chip flips to a light square with a navy glyph so it
+   stays readable against the teal. */
+.pw-home .tpl:hover{background:var(--teal-600); border-color:var(--teal-600)}
+.pw-home .tpl:hover .t{color:#fff}
+.pw-home .tpl:hover .s{color:rgba(255,255,255,.85)}
+.pw-home .tpl:hover .tpl-ic{background:rgba(255,255,255,.92); color:var(--navy)}
 .pw-home .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(252px,1fr)); gap:18px}
 .pw-home .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; transition:all .2s cubic-bezier(.2,.7,.3,1); box-shadow:0 1px 2px rgba(16,28,40,.04),0 1px 3px rgba(16,28,40,.06); display:flex; flex-direction:column}
 .pw-home .card:hover{transform:translateY(-4px); box-shadow:0 18px 40px -12px rgba(16,28,40,.22); border-color:#d3dde6}
