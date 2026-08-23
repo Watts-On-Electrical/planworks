@@ -2455,7 +2455,7 @@ function parseGroupTransform(str) {
 // Walk a glyph <svg> and turn its primitive children into engine prims.
 function glyphToPrims(glyphEl) {
   const prims = [];
-  const nodes = glyphEl.querySelectorAll("path, line, rect, circle, polyline, polygon");
+  const nodes = glyphEl.querySelectorAll("path, line, rect, circle, polyline, polygon, text");
   nodes.forEach((el) => {
     const cs = window.getComputedStyle(el);
     const fill = cssColorToHex(cs.fill);
@@ -2480,6 +2480,22 @@ function glyphToPrims(glyphEl) {
     else if (tag === "line") prims.push({ ...base, kind: "line", x1: num("x1"), y1: num("y1"), x2: num("x2"), y2: num("y2") });
     else if (tag === "rect") prims.push({ ...base, kind: "rect", x: num("x"), y: num("y"), w: num("width"), h: num("height"), rx: num("rx"), ry: num("ry") });
     else if (tag === "circle") prims.push({ ...base, kind: "circle", cx: num("cx"), cy: num("cy"), r: num("r") });
+    else if (tag === "text") {
+      // Read the attributes, not the computed style: font-size resolves in the
+      // element's own user units here, and the attribute is what the symbol
+      // library actually authored. No symbol sets dominant-baseline, so the
+      // y attribute is the baseline, which is what pdf-lib wants.
+      const weight = parseInt(el.getAttribute("font-weight") || cs.fontWeight, 10) || 400;
+      prims.push({
+        ...base,
+        kind: "text",
+        text: el.textContent || "",
+        x: num("x"), y: num("y"),
+        fontSize: parseFloat(el.getAttribute("font-size")) || parseFloat(cs.fontSize) || 6,
+        anchor: el.getAttribute("text-anchor") || cs.textAnchor || "start",
+        bold: weight >= 600,
+      });
+    }
     else if (tag === "polyline" || tag === "polygon") {
       const pts = (el.getAttribute("points") || "").trim().split(/\s+/).map((p) => p.split(",").map(Number)).filter((p) => p.length === 2);
       prims.push({ ...base, kind: tag, points: pts });
@@ -2570,7 +2586,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
     let scaleEl = null;
     let savedScaleTransform = null;
     try {
-      const [{ PDFDocument, degrees, rgb }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
+      const [{ PDFDocument, StandardFonts, degrees, rgb }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
       const pageEls = document.querySelectorAll("#print-root .print-page");
       // Preview is scaled to fit the screen (.pp-scale). html2canvas measures the
@@ -2594,6 +2610,12 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
       const shotScale = isTouchDevice() ? 2 : 3;
 
       const out = await PDFDocument.create();
+
+      // Embedded ONCE for the whole document, not per symbol. The symbol
+      // library sets a generic sans stack and weight 600/700, so Helvetica and
+      // Helvetica-Bold are the standard-font equivalents.
+      const font = await out.embedFont(StandardFonts.Helvetica);
+      const fontBold = await out.embedFont(StandardFonts.HelveticaBold);
 
       for (let i = 0; i < pageEls.length; i++) {
         const el = pageEls[i];
@@ -2690,7 +2712,14 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 
         // Draw the symbols on top, as vector, exactly where they sit on screen.
         for (const job of symbolJobs) {
-          try { drawSymbol(page, job, { rgb, degrees }); } catch (e) { /* skip a bad glyph, never fail the export */ }
+          // Never fail the whole export over one glyph -- but say so. This
+          // catch silently hid every missing <text> for as long as they were
+          // unsupported; the next unhandled tag should be noisy.
+          try {
+            drawSymbol(page, job, { rgb, degrees, font, fontBold });
+          } catch (e) {
+            console.warn("PDF export: skipped a symbol —", e && e.message, job && job.prims);
+          }
         }
       }
 
