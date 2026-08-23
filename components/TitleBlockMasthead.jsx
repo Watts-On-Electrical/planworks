@@ -105,14 +105,15 @@ function MastheadCompany({ tb }) {
                   flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
         {mark && (
-          <div style={{ background: "#FFFFFF", borderRadius: 5, padding: 3, flex: "none",
+          <div style={{ width: 50, height: 50, flex: "none", background: "#FFFFFF",
+                        borderRadius: 11, overflow: "hidden",
                         display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src={mark} alt="" style={{ height: 28, width: "auto", maxWidth: 68,
+            <img src={mark} alt="" style={{ maxWidth: "100%", maxHeight: "100%",
                                             objectFit: "contain", display: "block" }} />
           </div>
         )}
-        <div style={{ fontFamily: MH_GROTESK, fontSize: 17, fontWeight: 700, color: MH.ink,
-                      letterSpacing: "-0.01em", lineHeight: 1.05, minWidth: 0,
+        <div style={{ fontFamily: MH_GROTESK, fontSize: 19, fontWeight: 700, color: MH.ink,
+                      letterSpacing: "-0.015em", lineHeight: 1.02, minWidth: 0,
                       overflowWrap: "anywhere" }}>{name}</div>
       </div>
 
@@ -139,11 +140,16 @@ function MastheadAccreditations({ logos }) {
   const marks = (logos || []).filter(Boolean).slice(1);
   return (
     <div style={{ ...MH_RULE, background: "#FFFFFF", display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 10, padding: "0 12px" }}>
+                  gap: 10, padding: "0 16px" }}>
       {marks.map((src, i) => (
-        <img key={i} src={src} alt="" style={{ height: 42, width: "auto", maxWidth: 60,
-                                               borderRadius: MH.chipRadius,
-                                               objectFit: "contain", display: "block" }} />
+        // Fixed tile, sized the same whether there are one or two. objectFit
+        // contain letterboxes a real logo inside rather than stretching it.
+        <div key={i} style={{ width: 100, height: 70, flex: "none", background: "#FFFFFF",
+                              border: "1px solid #E3E9ED", borderRadius: 8, overflow: "hidden",
+                              display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <img src={src} alt="" style={{ maxWidth: "100%", maxHeight: "100%",
+                                         objectFit: "contain", display: "block" }} />
+        </div>
       ))}
     </div>
   );
@@ -179,7 +185,10 @@ export function Masthead({ tb, meta, editable = false, updateMeta, setSheet }) {
       display: "grid",
       // With no accreditations the column collapses entirely rather than
       // leaving a blank cell, which on a drawing reads as a mistake.
-      gridTemplateColumns: hasMarks ? "1.5fr 0.72fr 0.95fr 0.85fr" : "1.5fr 0.95fr 0.85fr",
+      // auto, not a fixed fraction: at 0.72fr a single mark sat centred in a
+      // cell built for two and looked adrift. The cell now sizes to whatever
+      // it holds, and the marks themselves never change size with the count.
+      gridTemplateColumns: hasMarks ? "1.5fr auto 0.95fr 0.85fr" : "1.5fr 0.95fr 0.85fr",
       padding: "7px 9px",
       columnGap: 4,
       boxSizing: "border-box",
