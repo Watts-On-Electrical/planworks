@@ -1258,14 +1258,26 @@ function estimateWidth(s, fontSize) {
  * only switch.
  * ------------------------------------------------------------------------- */
 const MH = {
-  navy: "#2C3E50",
-  teal: "#2C97A8",
+  navy: "#2C3E50",      // columns 3 and 4 body text
+  teal: "#2C97A8",      // --teal-600, the panel and the chip. No other teal.
+  ink: "#0E141B",       // everything ON the teal, panel and chip alike
   rule: "#DCE2E8",
-  onNavySoft: "#C4CFD8",   // address
-  onNavyFaint: "#8FA1B1",  // email / registration
-  chipLabel: "#CDEBF1",
   bodySoft: "#55636F",
   revLabel: "#8A94A0",
+  radius: 9,            // the panel, as an inset card
+  chipRadius: 7,        // chip and accreditation tiles
+  ruleInset: 13,        // hairlines stop 13px short, top and bottom
+};
+
+/* Column rules are hairlines that stop short of the strip edges rather than
+ * full-height borders, so the panel reads as a card sitting on the sheet. A
+ * border can't be inset, so it's painted as a 1px background gradient. */
+const MH_RULE = {
+  backgroundImage: "linear-gradient(to bottom, transparent " + 13 + "px, " +
+    "#DCE2E8 13px, #DCE2E8 calc(100% - 13px), transparent calc(100% - 13px))",
+  backgroundSize: "1px 100%",
+  backgroundPosition: "right center",
+  backgroundRepeat: "no-repeat",
 };
 const MH_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const MH_MONO = "'JetBrains Mono', ui-monospace, monospace";
@@ -1313,7 +1325,7 @@ function MastheadCompany({ tb }) {
     ({ fontSize: size, fontWeight: weight, color: colour, lineHeight: size <= 8 ? 1.3 : 1.35 });
 
   return (
-    <div style={{ background: MH.navy, padding: "11px 18px", display: "flex",
+    <div style={{ background: MH.teal, borderRadius: MH.radius, padding: "9px 16px", display: "flex",
                   flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
         {mark && (
@@ -1323,22 +1335,22 @@ function MastheadCompany({ tb }) {
                                             objectFit: "contain", display: "block" }} />
           </div>
         )}
-        <div style={{ fontFamily: MH_GROTESK, fontSize: 17, fontWeight: 700, color: "#FFFFFF",
+        <div style={{ fontFamily: MH_GROTESK, fontSize: 17, fontWeight: 700, color: MH.ink,
                       letterSpacing: "-0.01em", lineHeight: 1.05, minWidth: 0,
                       overflowWrap: "anywhere" }}>{name}</div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        {address && <div style={line(9, 400, MH.onNavySoft)}>{address}</div>}
+        {address && <div style={line(9, 400, MH.ink)}>{address}</div>}
         {(phone || web) && (
-          <div style={line(9, 500, "#FFFFFF")}>{[phone, web].filter(Boolean).join("  ·  ")}</div>
+          <div style={line(9, 600, MH.ink)}>{[phone, web].filter(Boolean).join("  ·  ")}</div>
         )}
         {(email || reg) && (
-          <div style={line(8, 400, MH.onNavyFaint)}>
+          <div style={line(8, 400, MH.ink)}>
             {[email, reg && (/^reg/i.test(reg) ? reg : "Reg. " + reg)].filter(Boolean).join("  ·  ")}
           </div>
         )}
-        {extras.map((t, i) => <div key={i} style={line(8, 400, MH.onNavyFaint)}>{t}</div>)}
+        {extras.map((t, i) => <div key={i} style={line(8, 400, MH.ink)}>{t}</div>)}
       </div>
     </div>
   );
@@ -1350,10 +1362,11 @@ function MastheadCompany({ tb }) {
 function MastheadAccreditations({ logos }) {
   const marks = (logos || []).filter(Boolean).slice(1);
   return (
-    <div style={{ borderRight: "1px solid " + MH.rule, background: "#FFFFFF", display: "flex",
-                  alignItems: "center", justifyContent: "center", gap: 10, padding: "0 12px" }}>
+    <div style={{ ...MH_RULE, background: "#FFFFFF", display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 10, padding: "0 12px" }}>
       {marks.map((src, i) => (
         <img key={i} src={src} alt="" style={{ height: 42, width: "auto", maxWidth: 60,
+                                               borderRadius: MH.chipRadius,
                                                objectFit: "contain", display: "block" }} />
       ))}
     </div>
@@ -1366,6 +1379,9 @@ function MastheadAccreditations({ logos }) {
  */
 function Masthead({ meta, editable = false, updateMeta, setSheet }) {
   const tb = useProjectTitleBlock() || DEFAULT_TITLEBLOCK;
+  // Index 0 is the company mark, on the panel. Anything after it is an
+  // accreditation, and only those decide whether column 2 exists at all.
+  const hasMarks = (tb.logos || []).filter(Boolean).length > 1;
   const upMeta = updateMeta || (() => {});
   const upSheet = setSheet || (() => {});
 
@@ -1384,15 +1400,22 @@ function Masthead({ meta, editable = false, updateMeta, setSheet }) {
       width: SHEET.width - SHEET.margin * 2,
       height: SHEET.titleHeight,
       background: "#FFFFFF",
+      // The 1px rule under the drawing area stays square -- it is the sheet's
+      // own edge, not part of this card.
       borderTop: "1px solid " + MH.navy,
       display: "grid",
-      gridTemplateColumns: "1.5fr 0.72fr 0.95fr 0.85fr",
+      // With no accreditations the column collapses entirely rather than
+      // leaving a blank cell, which on a drawing reads as a mistake.
+      gridTemplateColumns: hasMarks ? "1.5fr 0.72fr 0.95fr 0.85fr" : "1.5fr 0.95fr 0.85fr",
+      padding: "7px 9px",
+      columnGap: 4,
+      boxSizing: "border-box",
     }}>
       <MastheadCompany tb={tb} />
-      <MastheadAccreditations logos={tb.logos} />
+      {hasMarks && <MastheadAccreditations logos={tb.logos} />}
 
       {/* Column 3 — project over sheet */}
-      <div style={{ borderRight: "1px solid " + MH.rule, padding: "11px 16px", display: "flex",
+      <div style={{ ...MH_RULE, padding: "9px 16px", display: "flex",
                     flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
           <MhLabel>Project</MhLabel>
@@ -1409,7 +1432,7 @@ function Masthead({ meta, editable = false, updateMeta, setSheet }) {
       </div>
 
       {/* Column 4 — scale and date over the drawing-number chip */}
-      <div style={{ padding: "11px 16px", display: "flex", flexDirection: "column",
+      <div style={{ padding: "9px 16px", display: "flex", flexDirection: "column",
                     justifyContent: "space-between", overflow: "hidden" }}>
         <div style={{ display: "flex", gap: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -1422,11 +1445,11 @@ function Masthead({ meta, editable = false, updateMeta, setSheet }) {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <div style={{ background: MH.teal, borderRadius: 4, padding: "4px 9px", minWidth: 0,
+          <div style={{ background: MH.teal, borderRadius: MH.chipRadius, padding: "4px 10px", minWidth: 0,
                         display: "flex", flexDirection: "column" }}>
-            <MhLabel size={6.5} colour={MH.chipLabel}>Drawing no.</MhLabel>
+            <MhLabel size={6.5} colour={MH.ink}>Drawing no.</MhLabel>
             {field(meta.drawingNumber, (v) => upSheet({ drawingNumber: v }),
-                   { fontSize: 13, weight: 700, colour: "#FFFFFF", family: MH_MONO,
+                   { fontSize: 13, weight: 700, colour: MH.ink, family: MH_MONO,
                      placeholder: "WOE-0000-GF-L" })}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
