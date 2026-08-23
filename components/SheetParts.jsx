@@ -449,14 +449,27 @@ export function Workspace({
   useEffect(() => {
     const el = sheetTransformRef && sheetTransformRef.current;
     if (!el) return;
-    // On iPad the layer stayed soft even with the hint released on settle, and
-    // CadSketch is soft too despite doing its zoom as an SVG <g> transform.
-    // The common factor is the promotion itself: iOS Safari appears to cap the
-    // backing store for a layer this size, so the contents rasterise at reduced
-    // resolution however the zoom is expressed. Not promoting at all puts the
-    // sheet back on the normal render path at full resolution. Panning may be
-    // less smooth on an iPad; sharpness matters more on a drawing.
-    if (isTouchDevice()) { el.style.willChange = "auto"; return; }
+    // DESKTOP: promote for the gesture, release on settle so the layer
+    // re-rasterises at the new scale.
+    //
+    // TOUCH: iOS keeps the sheet on a composited layer of its own regardless,
+    // because pinch mutates the transform continuously, and then stretches
+    // that layer's cached raster -- which is why removing the hint fixed
+    // desktop but not the iPad, and why CadSketch is soft too even though it
+    // zooms via an SVG <g> rather than CSS. So instead of promoting, nudge a
+    // paint-affecting property once the gesture settles: that dirties the
+    // layer and forces a re-rasterisation at the scale now on screen.
+    // Costs one frame, changes no coordinate, and cannot move a symbol.
+    if (isTouchDevice()) {
+      let raf = 0;
+      const id = setTimeout(() => {
+        el.style.opacity = "0.999";
+        raf = requestAnimationFrame(() => { el.style.opacity = ""; });
+      }, SETTLE_MS);
+      // Always clear the opacity on the way out: if a new gesture starts
+      // between setting it and the frame that resets it, it must not stick.
+      return () => { clearTimeout(id); if (raf) cancelAnimationFrame(raf); el.style.opacity = ""; };
+    }
     el.style.willChange = "transform";
     const id = setTimeout(() => { el.style.willChange = "auto"; }, SETTLE_MS);
     return () => clearTimeout(id);
