@@ -56,3 +56,43 @@ html.dark, html.dark body {
 .notes-tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder); color: #9ca3af; float: left; height: 0; pointer-events: none;
 }
+
+/* ============================================================================
+ * BUSINESS INFORMATION — logo sections and the live title-block preview
+ * ========================================================================== */
+.pw-biz .biz-sec { display: flex; flex-direction: column; gap: 8px; }
+.pw-biz .biz-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pw-biz .biz-sec-title { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.pw-biz .biz-count { font-size: 11.5px; color: var(--muted); }
+.pw-biz .biz-rule { height: 1px; background: var(--line); }
+
+.pw-biz .biz-tile { border: 1px solid var(--line); border-radius: 10px; background: #FFFFFF;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none; }
+.pw-biz .biz-tile img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.pw-biz .biz-tile-co { width: 120px; height: 64px; }
+.pw-biz .biz-tile-acc { width: 150px; height: 82px; }
+.pw-biz .biz-tile-empty { font-size: 11px; color: var(--muted); }
+.pw-biz .biz-tile-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.pw-biz .biz-acc-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.pw-biz .biz-acc { width: 150px; display: flex; flex-direction: column; gap: 7px; }
+.pw-biz .biz-btn-sm { height: 32px; padding: 0 12px; font-family: inherit; font-size: 12px;
+  font-weight: 600; border: 1px solid var(--line); border-radius: 8px; background: transparent;
+  color: var(--ink-2); cursor: pointer; }
+.pw-biz .biz-btn-sm:hover:not(:disabled) { background: var(--paper); }
+
+/* Dashed "add" tile, shown only while under the limit. */
+.pw-biz .biz-add { width: 150px; height: 82px; border: 1.5px dashed #C6D0DA; border-radius: 10px;
+  background: var(--paper); cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 7px; font-family: inherit; }
+.pw-biz .biz-add:hover:not(:disabled) { border-color: var(--teal-600); }
+.pw-biz .biz-add-ic { width: 30px; height: 30px; border-radius: 8px; background: var(--teal-600);
+  color: #1A2530; display: flex; align-items: center; justify-content: center; }
+.pw-biz .biz-add-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+
+/* The real masthead at 1551x110, scaled to fit the panel. */
+.pw-biz .biz-preview { border: 1px solid var(--line); border-radius: 10px; background: #FFFFFF;
+  padding: 10px; overflow: hidden; }
+.pw-biz .biz-preview-scale { width: 1551px; height: 110px; transform: scale(0.371);
+  transform-origin: top left; }
+.pw-biz .biz-preview { height: 61px; }

@@ -8,13 +8,18 @@
  * signed-in account by RLS at the database level.
  * ========================================================================= */
 
-import React, { useState, useEffect, useRef } from "react";
-import { Save, X, Upload, Building2 } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Save, X, Upload, Building2, Plus } from "lucide-react";
+import { Masthead } from "@/components/TitleBlockMasthead";
+import { companyProfileToTitleBlock } from "@/lib/titleBlock";
 import {
-  getCompanyProfile, saveCompanyProfile, uploadCompanyLogo, signCompanyLogo, EMPTY_PROFILE,
+  listCompanyLogos, saveCompanyLogo, deleteCompanyLogo,
+  KIND_COMPANY, KIND_ACCREDITATION, MAX_ACCREDITATIONS,
+} from "@/lib/companyLogos";
+import {
+  getCompanyProfile, saveCompanyProfile, EMPTY_PROFILE,
 } from "@/lib/companyProfile";
 import { resizeImageToDataUrl } from "@/lib/titleBlock";
-import { dataUrlToBlob } from "@/lib/planImages";
 
 const FIELDS = [
   { key: "company_name", label: "Company name", placeholder: "e.g. Your Company Ltd", type: "text" },
@@ -22,7 +27,16 @@ const FIELDS = [
   { key: "phone", label: "Phone", placeholder: "01234 567890", type: "tel" },
   { key: "email", label: "Email", placeholder: "office@example.co.uk", type: "email" },
   { key: "website", label: "Website", placeholder: "www.example.co.uk", type: "text" },
+  { key: "company_reg", label: "Company registration number", placeholder: "e.g. 09482716", type: "text" },
 ];
+
+// Sample values so the preview reads as a real title block rather than a row
+// of dashes. Only the company half of it comes from the user's own data.
+const PREVIEW_META = {
+  projectName: "Appletree Grange", plot: "Plot 14, Kettering",
+  sheetName: "Ground Floor — Lighting", scale: "1:50",
+  date: "—", drawingNumber: "WOE-0142-GF-L", revision: "C",
+};
 
 export default function BusinessInfo({ onClose, onSkip, onSaved, onboarding = false }) {
   // Same fields, same save path -- only the framing changes when this is the
@@ -35,7 +49,8 @@ export default function BusinessInfo({ onClose, onSkip, onSaved, onboarding = fa
     : "Your company details, saved to your account.";
   const leaveLabel = onboarding ? "Skip for now" : "Close";
   const [profile, setProfile] = useState(EMPTY_PROFILE);
-  const [logoUrl, setLogoUrl] = useState(null);   // signed URL, or a local preview
+  const [logos, setLogos] = useState([]);        // company_logos rows
+  const pendingKind = useRef({ kind: KIND_COMPANY, slot: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -49,13 +64,10 @@ export default function BusinessInfo({ onClose, onSkip, onSaved, onboarding = fa
     let live = true;
     (async () => {
       try {
-        const p = await getCompanyProfile();
+        const [p, rows] = await Promise.all([getCompanyProfile(), listCompanyLogos()]);
         if (!live) return;
         setProfile(p);
-        if (p.logo_path) {
-          const url = await signCompanyLogo(p.logo_path);
-          if (live) setLogoUrl(url);
-        }
+        setLogos(rows);
       } catch (err) {
         if (live) setError(err?.message || "Couldn't load your business information.");
       } finally {
@@ -71,26 +83,56 @@ export default function BusinessInfo({ onClose, onSkip, onSaved, onboarding = fa
     if (error) setError("");
   };
 
-  // Downscale before upload so the stored logo stays small, then keep a local
-  // preview so the user sees it immediately.
+  const companyLogo = logos.find((l) => l.kind === KIND_COMPANY) || null;
+  const accreditations = logos.filter((l) => l.kind === KIND_ACCREDITATION);
+  const nextSlot = [0, 1].find((n) => !accreditations.some((l) => l.sort_order === n)) ?? 0;
+
+  // Rendering always uses the cached data-URI, never a signed URL: the URL
+  // expires and taints the html2canvas canvas the PDF export depends on.
+  const logoSrc = (l) => l && l.data_url;
+
+  const pickFor = (target) => { pendingKind.current = target; fileRef.current?.click(); };
+
   const onPickLogo = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // let the same file be chosen again later
     if (!file) return;
+    const { kind, slot } = pendingKind.current;
     setBusy(true); setError(""); setSaved(false);
     try {
+      // Downscaled here so the bytes uploaded and the bytes rendered are the
+      // same image, and the stored copy stays small.
       const dataUrl = await resizeImageToDataUrl(file, 260);
-      const path = await uploadCompanyLogo(dataUrlToBlob(dataUrl));
-      // Keep the data-URI as well: title blocks render from this, never from
-      // the signed URL, which expires and taints the html2canvas canvas.
-      setProfile(p => ({ ...p, logo_path: path, logo_data_url: dataUrl }));
-      setLogoUrl(dataUrl);
+      await saveCompanyLogo({ kind, dataUrl, slot });
+      setLogos(await listCompanyLogos());
+      // Keep the legacy columns in step while they are still the fallback.
+      if (kind === KIND_COMPANY) setProfile((p) => ({ ...p, logo_data_url: dataUrl }));
     } catch (err) {
       setError(err?.message || "Couldn't upload that logo.");
     } finally {
       setBusy(false);
     }
   };
+
+  const removeLogo = async (logo) => {
+    setBusy(true); setError(""); setSaved(false);
+    try {
+      await deleteCompanyLogo(logo.id);
+      setLogos(await listCompanyLogos());
+      if (logo.kind === KIND_COMPANY) setProfile((p) => ({ ...p, logo_path: null, logo_data_url: null }));
+    } catch (err) {
+      setError(err?.message || "Couldn't remove that logo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The preview is the point of the screen: it answers "what does this logo do
+  // to my drawing?" without opening one.
+  const previewBlock = useMemo(
+    () => companyProfileToTitleBlock(profile, logos) || { details: [], logos: [] },
+    [profile, logos]
+  );
 
   const save = async (e) => {
     e?.preventDefault();
@@ -156,22 +198,78 @@ export default function BusinessInfo({ onClose, onSkip, onSaved, onboarding = fa
               </label>
             ))}
 
-            <div className="biz-field">
-              <span className="biz-label">Logo</span>
+            {/* ---- Your company logo: exactly one ---- */}
+            <div className="biz-sec">
+              <div className="biz-sec-head"><span className="biz-sec-title">Your company logo</span></div>
               <div className="biz-logo-row">
-                <div className="biz-logo-prev">
-                  {logoUrl
-                    ? <img src={logoUrl} alt="Company logo" />
-                    : <span className="biz-logo-empty">No logo yet</span>}
+                <div className="biz-tile biz-tile-co">
+                  {companyLogo
+                    ? <img src={logoSrc(companyLogo)} alt="Company logo" />
+                    : <span className="biz-tile-empty">No logo yet</span>}
                 </div>
-                <button type="button" className="pw-btn-teal" disabled={busy} onClick={() => fileRef.current?.click()}>
-                  <Upload size={17} strokeWidth={1.9}/>
-                  <span>{logoUrl ? "Replace logo" : "Upload logo"}</span>
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo}/>
+                <div className="biz-tile-actions">
+                  <button type="button" className="pw-btn-teal" disabled={busy}
+                          onClick={() => pickFor({ kind: KIND_COMPANY })}>
+                    <Upload size={17} strokeWidth={1.9}/>
+                    <span>{companyLogo ? "Replace logo" : "Upload logo"}</span>
+                  </button>
+                  {companyLogo && (
+                    <button type="button" className="pw-btn-plain" disabled={busy}
+                            onClick={() => removeLogo(companyLogo)}>Remove</button>
+                  )}
+                </div>
               </div>
-              <p className="biz-hint">Stored privately on your account. Not added to drawings yet.</p>
+              <p className="biz-hint">Sits in the teal panel at the bottom of every drawing.</p>
             </div>
+
+            <div className="biz-rule" />
+
+            {/* ---- Accreditations: up to two ---- */}
+            <div className="biz-sec">
+              <div className="biz-sec-head">
+                <span className="biz-sec-title">Accreditations</span>
+                <span className="biz-count">{accreditations.length} of {MAX_ACCREDITATIONS} added</span>
+              </div>
+              <div className="biz-acc-row">
+                {accreditations.map((l) => (
+                  <div key={l.id || l.sort_order} className="biz-acc">
+                    <div className="biz-tile biz-tile-acc"><img src={logoSrc(l)} alt="Accreditation logo" /></div>
+                    <button type="button" className="biz-btn-sm" disabled={busy}
+                            onClick={() => removeLogo(l)}>Remove</button>
+                  </div>
+                ))}
+                {accreditations.length < MAX_ACCREDITATIONS && (
+                  <button type="button" className="biz-add" disabled={busy}
+                          onClick={() => pickFor({ kind: KIND_ACCREDITATION, slot: nextSlot })}>
+                    <span className="biz-add-ic"><Plus size={17} strokeWidth={2.1}/></span>
+                    <span className="biz-add-label">Add a logo</span>
+                  </button>
+                )}
+              </div>
+              {/* Users upload their own scheme marks. Plotwire deliberately ships
+                  no built-in picker of NICEIC / NAPIT / ELECSA logos -- those are
+                  the schemes' trademarks, and bundling them would mean handing
+                  them to users who may not be accredited. */}
+              <p className="biz-hint">
+                Upload the scheme logos you&rsquo;re registered with &mdash; NICEIC, NAPIT, ELECSA and so on.
+                They appear on white beside your company panel.
+              </p>
+            </div>
+
+            <div className="biz-rule" />
+
+            {/* ---- Live preview: the real masthead, scaled down ---- */}
+            <div className="biz-sec">
+              <div className="biz-sec-head"><span className="biz-sec-title">On your drawings</span></div>
+              <div className="biz-preview">
+                <div className="biz-preview-scale">
+                  <Masthead tb={previewBlock} meta={PREVIEW_META} />
+                </div>
+              </div>
+              <p className="biz-hint">Updates as you add or remove logos. This is the same component the drawing uses.</p>
+            </div>
+
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo}/>
 
             {error && <div className="biz-error" role="alert">{error}</div>}
 

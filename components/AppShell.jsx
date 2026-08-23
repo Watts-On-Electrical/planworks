@@ -7,6 +7,7 @@ import ComingSoon from "@/components/ComingSoon";
 import Paywall from "@/components/Paywall";
 import BusinessInfo from "@/components/BusinessInfo";
 import { hasCompanyProfile, getCompanyProfile } from "@/lib/companyProfile";
+import { listCompanyLogos } from "@/lib/companyLogos";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { getSettings, saveSettings } from "@/lib/db";
 import { DEFAULT_TITLEBLOCK, normaliseTitleBlock, companyProfileToTitleBlock, mergeTitleBlocks } from "@/lib/titleBlock";
@@ -173,7 +174,8 @@ export default function AppShell({ children }) {
   // Read on sign-in, and again after the business information screen saves.
   const refreshCompany = useCallback(async () => {
     try {
-      setCompanyBlock(companyProfileToTitleBlock(await getCompanyProfile()));
+      const [profile, logos] = await Promise.all([getCompanyProfile(), listCompanyLogos()]);
+      setCompanyBlock(companyProfileToTitleBlock(profile, logos));
     } catch (err) {
       console.warn("company profile load failed:", err && err.message);
       setCompanyBlock(null);
