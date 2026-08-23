@@ -409,6 +409,11 @@ export function Palette({ onPalettePointerDown, onFurniturePointerDown, symbolSc
 /* ============================================================================
  * WORKSPACE — the dark surround + the sheet inside it
  * ========================================================================= */
+/* How long the sheet must hold still before the composited layer is released.
+   Long enough not to be dropped between two frames of a drag, short enough
+   that the re-raster is not noticeable. */
+const SETTLE_MS = 180;
+
 export function Workspace({
   viewportRef, drawingAreaRef, sheetTransformRef, pan, zoom,
   meta, notes, updateMeta, updateNotes, onSheetField,
@@ -425,6 +430,29 @@ export function Workspace({
   onWallMouseDown,
   startRotating,
 }) {
+  /* ------------------------------------------------------------------------
+   * Symbols went blurry on zoom and never recovered.
+   *
+   * will-change: transform promotes this whole 1587x1123 subtree to its own
+   * composited layer. That is what keeps panning smooth -- but a PERMANENT
+   * layer means the compositor scales a CACHED TEXTURE on zoom instead of
+   * re-rasterising the vectors, so every symbol softens and stays soft. The
+   * print preview renders byte-identical markup and is sharp precisely
+   * because nothing in its ancestor chain is promoted.
+   *
+   * So: promote for the gesture, release once the sheet holds still, and the
+   * layer re-rasterises at the new scale. Same settle idea PdfBackground uses
+   * for its windowed redraw. Written straight to the node rather than through
+   * state, so a gesture does not re-render the sheet on every frame.
+   * --------------------------------------------------------------------- */
+  useEffect(() => {
+    const el = sheetTransformRef && sheetTransformRef.current;
+    if (!el) return;
+    el.style.willChange = "transform";
+    const id = setTimeout(() => { el.style.willChange = "auto"; }, SETTLE_MS);
+    return () => clearTimeout(id);
+  }, [pan.x, pan.y, zoom, sheetTransformRef]);
+
   return (
     <div
       ref={viewportRef}
@@ -441,12 +469,12 @@ export function Workspace({
       onDoubleClick={onViewportDoubleClick}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Sheet, transformed by pan + zoom */}
+      {/* Sheet, transformed by pan + zoom. will-change is applied for the
+          duration of a gesture only -- see the effect above. */}
       <div ref={sheetTransformRef} style={{
         position: "absolute", top: 0, left: 0,
         transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         transformOrigin: "0 0",
-        willChange: "transform",
       }}>
         <Sheet
           drawingAreaRef={drawingAreaRef}
@@ -2527,6 +2555,11 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
   // exports.
   const downloadPDF = async () => {
     setPdfBusy(true);
+    // Declared out here, not inside the try: the finally restores them, and a
+    // const scoped to the try block is not in scope there -- every export threw
+    // a ReferenceError on the way out.
+    let scaleEl = null;
+    let savedScaleTransform = null;
     try {
       const [{ PDFDocument, degrees, rgb }, h2cMod] = await Promise.all([import("pdf-lib"), import("html2canvas")]);
       const html2canvas = h2cMod.default;
@@ -2535,8 +2568,8 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
       // page THROUGH that transform, so at any zoom other than 100% the captured
       // plan lands at a different scale/offset than the symbols (which use
       // zoom-independent transforms). Neutralise it for the export, restore after.
-      const scaleEl = document.querySelector("#print-root .pp-scale");
-      const savedScaleTransform = scaleEl ? scaleEl.style.transform : null;
+      scaleEl = document.querySelector("#print-root .pp-scale");
+      savedScaleTransform = scaleEl ? scaleEl.style.transform : null;
       if (scaleEl) scaleEl.style.transform = "none";
       if (!pageEls.length) { setPdfBusy(false); return; }
 
