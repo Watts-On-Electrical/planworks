@@ -22,7 +22,7 @@ import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 import { ensurePdfjs } from "@/lib/pdfjs";
 import { useEditor } from "@/store/editorStore";
 import { Masthead } from "@/components/TitleBlockMasthead";
-import { isTouchDevice } from "@/lib/touch";
+import { isTouchDevice, supersampleFactor } from "@/lib/touch";
 
 // Per-project title block. The editor publishes the *effective* title block
 // (the project's own, falling back to the account default) through this context
@@ -446,6 +446,10 @@ export function Workspace({
    * for its windowed redraw. Written straight to the node rather than through
    * state, so a gesture does not re-render the sheet on every frame.
    * --------------------------------------------------------------------- */
+  /* Supersample factor. 1 everywhere except a touch device with the flag on,
+     where it is 2. See lib/touch.js for why, and for the hard cap. */
+  const N = supersampleFactor();
+
   useEffect(() => {
     const el = sheetTransformRef && sheetTransformRef.current;
     if (!el) return;
@@ -495,9 +499,16 @@ export function Workspace({
           duration of a gesture only -- see the effect above. */}
       <div ref={sheetTransformRef} style={{
         position: "absolute", top: 0, left: 0,
-        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / N})`,
         transformOrigin: "0 0",
       }}>
+        {/* Supersample. CSS zoom scales LAYOUT -- boxes, padding and type
+            alike -- so the whole sheet lays out N times larger without a
+            single hardcoded size changing, and the wrapper above divides its
+            transform by the same N. The mapping from stored coordinates to
+            the screen is identical; only the density of the raster changes.
+            N is 1 for everyone except a touch device with the flag on. */}
+        <div style={N > 1 ? { zoom: N } : undefined}>
         <Sheet
           drawingAreaRef={drawingAreaRef}
           meta={meta} notes={notes}
@@ -526,6 +537,7 @@ export function Workspace({
           onAnnotationAnchorMouseDown={onAnnotationAnchorMouseDown}
           startRotating={startRotating}
         />
+        </div>
       </div>
     </div>
   );
