@@ -768,6 +768,8 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
   const canvasRef = useRef(null);
   const pageRef = useRef(null);
   const taskRef = useRef(null);
+  // Monotonic render id: only the newest completed render may be swapped in.
+  const seqRef = useRef(0);
   const [loaded, setLoaded] = useState(0);
 
   // Load the PDF page once per source.
@@ -813,8 +815,22 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         const ix0 = Math.max(pr.left, vr.left), iy0 = Math.max(pr.top, vr.top);
         const ix1 = Math.min(pr.right, vr.right), iy1 = Math.min(pr.bottom, vr.bottom);
         if (ix1 - ix0 < 2 || iy1 - iy0 < 2) return;        // page off-screen
-        const fx0 = (ix0 - pr.left) / pr.width, fy0 = (iy0 - pr.top) / pr.height;
-        const fx1 = (ix1 - pr.left) / pr.width, fy1 = (iy1 - pr.top) / pr.height;
+        // Overdraw a margin around the viewport so ordinary panning stays
+        // inside already-drawn content instead of reaching a hard edge. The
+        // padded region is what the pixel caps below are applied to, so the
+        // margin comes out of the same budget rather than adding to it.
+        //
+        // 25%, the conservative end of the useful range: area goes with the
+        // SQUARE of the padding, so 25% a side is 2.25x the pixels and 50%
+        // would be 4x. Since the caps are fixed, anything the padding pushes
+        // over them comes back as a lower render scale -- coverage bought with
+        // sharpness. Worth raising only if panning still reaches an edge.
+        const OVERDRAW = 0.25;                             // 25% beyond each edge
+        const mx = (ix1 - ix0) * OVERDRAW, my = (iy1 - iy0) * OVERDRAW;
+        const ox0 = Math.max(pr.left, ix0 - mx), oy0 = Math.max(pr.top, iy0 - my);
+        const ox1 = Math.min(pr.right, ix1 + mx), oy1 = Math.min(pr.bottom, iy1 + my);
+        const fx0 = (ox0 - pr.left) / pr.width, fy0 = (oy0 - pr.top) / pr.height;
+        const fx1 = (ox1 - pr.left) / pr.width, fy1 = (oy1 - pr.top) / pr.height;
         const base = page.getViewport({ scale: 1 });
         const rpx = fx0 * base.width, rpy = fy0 * base.height;
         const rpw = (fx1 - fx0) * base.width, rph = (fy1 - fy0) * base.height;
@@ -832,7 +848,7 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         // what the layer needs is downsampled and wasted anyway.
         const SS = 2 / supersampleFactor();                // supersample factor
         const dpr = Math.min(window.devicePixelRatio || 1, 2) * SS;
-        let bw = (ix1 - ix0) * dpr, bh = (iy1 - iy0) * dpr;
+        let bw = (ox1 - ox0) * dpr, bh = (oy1 - oy0) * dpr;
         const MAX_AREA = 12_000_000;                       // ~12MP visible-window budget
         const MAX_DIM = 4096;                              // iOS-safe per-side limit
         if (bw * bh > MAX_AREA) { const k = Math.sqrt(MAX_AREA / (bw * bh)); bw *= k; bh *= k; }
@@ -847,23 +863,39 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         // part of a drawing is a far worse failure than softness.
         const renderScale = Math.min(bw / rpw, bh / rph); // page points -> bitmap px
         const vpr = page.getViewport({ scale: renderScale });
-        cv.width = Math.max(1, Math.round(rpw * renderScale));
-        cv.height = Math.max(1, Math.round(rph * renderScale));
-        cv.style.left = (fx0 * imageDisplay.w) + "px";
-        cv.style.top = (fy0 * imageDisplay.h) + "px";
-        cv.style.width = ((fx1 - fx0) * imageDisplay.w) + "px";
-        cv.style.height = ((fy1 - fy0) * imageDisplay.h) + "px";
-        const ctx = cv.getContext("2d", { alpha: false });
-        // Fill the canvas that actually exists, not the pre-clamp figures.
-        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cv.width, cv.height);
+        const cw = Math.max(1, Math.round(rpw * renderScale));
+        const ch = Math.max(1, Math.round(rph * renderScale));
+        // Draw into an OFFSCREEN canvas and swap it in only when it is
+        // complete. Sizing the visible canvas clears it, so the old code went
+        // blank the moment a redraw started and stayed blank until the render
+        // finished -- which is what showed as empty bands when panning into
+        // fresh area. Briefly stale and soft beats briefly missing.
+        const off = document.createElement("canvas");
+        off.width = cw; off.height = ch;
+        const octx = off.getContext("2d", { alpha: false });
+        octx.fillStyle = "#ffffff"; octx.fillRect(0, 0, cw, ch);
         if (taskRef.current) { try { taskRef.current.cancel(); } catch {} }
+        const seq = ++seqRef.current;
         const task = page.render({
-          canvasContext: ctx,
+          canvasContext: octx,
           viewport: vpr,
           transform: [1, 0, 0, 1, -rpx * renderScale, -rpy * renderScale],
         });
         taskRef.current = task;
-        task.promise.catch(() => {});
+        task.promise.then(() => {
+          // A newer render started while this one was in flight: its result is
+          // the current one, so drop this quietly rather than flashing an
+          // older view over it.
+          if (seq !== seqRef.current) return;
+          const live = canvasRef.current;
+          if (!live) return;
+          live.width = cw; live.height = ch;
+          live.style.left = (fx0 * imageDisplay.w) + "px";
+          live.style.top = (fy0 * imageDisplay.h) + "px";
+          live.style.width = ((fx1 - fx0) * imageDisplay.w) + "px";
+          live.style.height = ((fy1 - fy0) * imageDisplay.h) + "px";
+          live.getContext("2d", { alpha: false }).drawImage(off, 0, 0);
+        }).catch(() => { /* cancelled or failed: leave what is on screen */ });
       } catch (e) { /* transient during fast moves — next settle re-renders */ }
     };
 
