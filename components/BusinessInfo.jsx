@@ -24,7 +24,7 @@ const FIELDS = [
   { key: "website", label: "Website", placeholder: "www.example.co.uk", type: "text" },
 ];
 
-export default function BusinessInfo({ onClose, onSkip, onboarding = false }) {
+export default function BusinessInfo({ onClose, onSkip, onSaved, onboarding = false }) {
   // Same fields, same save path -- only the framing changes when this is the
   // first-login step. leave() is what the X and the left-hand button do:
   // skipping in onboarding, closing everywhere else.
@@ -81,7 +81,9 @@ export default function BusinessInfo({ onClose, onSkip, onboarding = false }) {
     try {
       const dataUrl = await resizeImageToDataUrl(file, 260);
       const path = await uploadCompanyLogo(dataUrlToBlob(dataUrl));
-      setProfile(p => ({ ...p, logo_path: path }));
+      // Keep the data-URI as well: title blocks render from this, never from
+      // the signed URL, which expires and taints the html2canvas canvas.
+      setProfile(p => ({ ...p, logo_path: path, logo_data_url: dataUrl }));
       setLogoUrl(dataUrl);
     } catch (err) {
       setError(err?.message || "Couldn't upload that logo.");
@@ -96,6 +98,9 @@ export default function BusinessInfo({ onClose, onSkip, onboarding = false }) {
     setBusy(true); setError("");
     try {
       await saveCompanyProfile(profile);
+      // Let the app re-derive the title block so a drawing opened next shows
+      // the new details without a reload.
+      await onSaved?.();
       // Saved: confirm briefly, then hand the user back to the dashboard. Stays
       // busy meanwhile so the form can't be submitted twice on the way out.
       setSaved(true);

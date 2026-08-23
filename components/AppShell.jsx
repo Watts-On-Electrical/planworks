@@ -6,10 +6,10 @@ import LoginScreen from "@/components/LoginScreen";
 import ComingSoon from "@/components/ComingSoon";
 import Paywall from "@/components/Paywall";
 import BusinessInfo from "@/components/BusinessInfo";
-import { hasCompanyProfile } from "@/lib/companyProfile";
+import { hasCompanyProfile, getCompanyProfile } from "@/lib/companyProfile";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { getSettings, saveSettings } from "@/lib/db";
-import { DEFAULT_TITLEBLOCK, normaliseTitleBlock } from "@/lib/titleBlock";
+import { DEFAULT_TITLEBLOCK, normaliseTitleBlock, companyProfileToTitleBlock, mergeTitleBlocks } from "@/lib/titleBlock";
 import { useSubscription } from "@/lib/useSubscription";
 import { openBillingPortal } from "@/lib/billingClient";
 
@@ -42,6 +42,10 @@ export default function AppShell({ children }) {
   const [recovery, setRecovery] = useState(false);
   const [checking, setChecking] = useState(true);
   const [titleBlock, setTitleBlock] = useState(null); // null until loaded → default in the meantime
+  // Title block derived from company_profile, the authoritative source of
+  // company identity. null when the account hasn't filled one in, which is what
+  // makes the legacy user_settings block a safe fallback below.
+  const [companyBlock, setCompanyBlock] = useState(null);
   const [boqTemplate, setBoqTemplate] = useState(null); // null = use built-in default
   const settingsRef = useRef({}); // latest full settings blob, so saves merge
 
@@ -166,6 +170,21 @@ export default function AppShell({ children }) {
     setProfileStep("ok");
   }, [session]);
 
+  // Read on sign-in, and again after the business information screen saves.
+  const refreshCompany = useCallback(async () => {
+    try {
+      setCompanyBlock(companyProfileToTitleBlock(await getCompanyProfile()));
+    } catch (err) {
+      console.warn("company profile load failed:", err && err.message);
+      setCompanyBlock(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session) { setCompanyBlock(null); return; }
+    refreshCompany();
+  }, [session, refreshCompany]);
+
   const saveTitleBlock = useCallback(async (tb) => {
     const next = normaliseTitleBlock(tb);
     settingsRef.current = { ...settingsRef.current, titleBlock: next };
@@ -219,7 +238,9 @@ export default function AppShell({ children }) {
   return (
     <AppCtx.Provider value={{
       theme, toggleTheme, user: session?.user || null, signOut,
-      titleBlock: titleBlock || DEFAULT_TITLEBLOCK, saveTitleBlock,
+      // Merged, not replaced: the profile wins per field, and any legacy line
+      // or scheme logo it does not cover is carried through.
+      titleBlock: mergeTitleBlocks(companyBlock, titleBlock) || DEFAULT_TITLEBLOCK, saveTitleBlock, refreshCompany,
       boqTemplate, saveBoqTemplate,
       subscription, manageBilling,
     }}>
@@ -227,6 +248,7 @@ export default function AppShell({ children }) {
         <BusinessInfo
           onboarding
           onSkip={skipOnboarding}
+          onSaved={refreshCompany}
           onClose={() => setProfileStep("ok")}
         />
       ) : children}

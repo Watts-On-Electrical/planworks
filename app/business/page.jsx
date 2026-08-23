@@ -3,6 +3,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useApp } from "@/components/AppShell";
 
 const BusinessInfo = dynamic(() => import("@/components/BusinessInfo"), {
   ssr: false,
@@ -15,5 +16,6 @@ const BusinessInfo = dynamic(() => import("@/components/BusinessInfo"), {
 
 export default function BusinessPage() {
   const router = useRouter();
-  return <BusinessInfo onClose={() => router.push("/")} />;
+  const { refreshCompany } = useApp();
+  return <BusinessInfo onSaved={refreshCompany} onClose={() => router.push("/")} />;
 }
