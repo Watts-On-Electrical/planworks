@@ -12,8 +12,8 @@
 -- overflows (MAX_TITLE_LOGOS in lib/titleBlock.js).
 --
 -- Both limits are enforced HERE, in the database, not just in the UI:
---   * one company row per user -- a partial unique index on user_id
---   * two accreditations per user -- slots 0 and 1 only, one row per slot
+--   * one composite unique index on (user_id, kind, sort_order)
+--   * check constraints pinning company to slot 0 and accreditations to 0/1
 --
 -- The existing private company-logos BUCKET and its per-user folder policies
 -- are reused unchanged; this file adds no storage policies.
@@ -43,16 +43,40 @@ create table if not exists public.company_logos (
   created_at   timestamptz not null default now()
 );
 
--- At most ONE company logo per account.
-create unique index if not exists company_logos_one_company_per_user
-  on public.company_logos (user_id)
-  where kind = 'company';
+-- ONE FULL unique index, not two partial ones.
+--
+-- The caps were first written as partial indexes -- unique (user_id) where
+-- kind = 'company', unique (user_id, sort_order) where kind = 'accreditation'.
+-- Those express the rule precisely but the app cannot use them: PostgREST's
+-- upsert onConflict takes COLUMN NAMES only and has no way to supply the
+-- WHERE predicate a partial index requires, so every upsert failed with
+-- "no unique or exclusion constraint matching the ON CONFLICT specification".
+--
+-- A composite index over (user_id, kind, sort_order) is nameable by
+-- onConflict, and the two check constraints below pin the slots so the caps
+-- come out identical:
+--
+--   company    sort_order is forced to 0, so (user, 'company', 0) is unique
+--              -- exactly one company row per account.
+--   accred.    sort_order is 0 or 1, so at most two rows per account.
+create unique index if not exists company_logos_user_kind_slot
+  on public.company_logos (user_id, kind, sort_order);
 
--- At most TWO accreditations per account: slots 0 and 1, one row per slot.
--- Expressed as a check plus a partial unique index so the cap is structural
--- rather than something the app has to remember to enforce.
+-- Superseded by the composite index above. Dropped so a database upgraded
+-- from the first version of this file ends up in the same shape as a fresh
+-- install.
+drop index if exists public.company_logos_one_company_per_user;
+drop index if exists public.company_logos_accreditation_slot_unique;
+
 do $$
 begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'company_logos_company_slot'
+  ) then
+    alter table public.company_logos
+      add constraint company_logos_company_slot
+      check (kind <> 'company' or sort_order = 0);
+  end if;
   if not exists (
     select 1 from pg_constraint where conname = 'company_logos_accreditation_slot'
   ) then
@@ -61,10 +85,6 @@ begin
       check (kind <> 'accreditation' or sort_order in (0, 1));
   end if;
 end $$;
-
-create unique index if not exists company_logos_accreditation_slot_unique
-  on public.company_logos (user_id, sort_order)
-  where kind = 'accreditation';
 
 -- ---------------------------------------------------------------------------
 -- 3. Row-level security -- same pattern as company_profile
@@ -112,15 +132,15 @@ select policyname, cmd, roles, qual, with_check
   from pg_policies
  where schemaname = 'public' and tablename = 'company_logos';
 
--- (c) The two caps. Expect three rows: the company partial unique index, the
---     accreditation slot unique index, and the slot check constraint.
+-- (c) The caps. Expect three rows: the composite unique index
+--     company_logos_user_kind_slot, and the two slot check constraints.
 select indexname as name, 'index' as kind from pg_indexes
  where schemaname = 'public' and tablename = 'company_logos'
    and indexname like 'company_logos_%'
 union all
 select conname, 'constraint' from pg_constraint
  where conrelid = 'public.company_logos'::regclass and contype = 'c'
-   and conname = 'company_logos_accreditation_slot'
+   and conname in ('company_logos_company_slot', 'company_logos_accreditation_slot')
  order by name;
 
 -- (d) The registration column. Expect one row: company_reg | text.
