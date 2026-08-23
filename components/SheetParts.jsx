@@ -823,7 +823,14 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         // text stays crisp at maximum zoom, then let the device downsample it.
         // Bounded by both total area and per-side length to stay well under iOS
         // Safari's canvas ceiling — memory stays flat and the iPad never crashes.
-        const SS = 2;                                      // supersample factor
+        // SS is divided by the sheet's supersample factor. With that flag on the
+        // sheet lays out N times larger, so this canvas's box grows by N too --
+        // stacking the old SS on top multiplied the backing store by N squared,
+        // which blew the caps below and cropped a third of the plan off on an
+        // iPad. Dividing keeps the total pixel count exactly what it was before
+        // the flag: the layout-size gain is what sharpens, and density beyond
+        // what the layer needs is downsampled and wasted anyway.
+        const SS = 2 / supersampleFactor();                // supersample factor
         const dpr = Math.min(window.devicePixelRatio || 1, 2) * SS;
         let bw = (ix1 - ix0) * dpr, bh = (iy1 - iy0) * dpr;
         const MAX_AREA = 12_000_000;                       // ~12MP visible-window budget
@@ -831,16 +838,24 @@ function PdfBackground({ bgImage, imageDisplay, zoom, pan, viewportRef }) {
         if (bw * bh > MAX_AREA) { const k = Math.sqrt(MAX_AREA / (bw * bh)); bw *= k; bh *= k; }
         const big = Math.max(bw, bh);
         if (big > MAX_DIM) { const k = MAX_DIM / big; bw *= k; bh *= k; }
-        bw = Math.max(1, Math.round(bw)); bh = Math.max(1, Math.round(bh));
-        const renderScale = bw / rpw;                      // page points -> bitmap px
+        // Derive ONE scale, from whichever axis the caps bit hardest on, and
+        // size the canvas FROM that scale. The scale used to come from the width
+        // alone while the height was set from its own clamped value, so whatever
+        // a cap trimmed got drawn past the edge of the buffer and was silently
+        // cropped. Taking the minimum and sizing from it renders the whole plan
+        // smaller instead: a crop is now impossible by construction, and losing
+        // part of a drawing is a far worse failure than softness.
+        const renderScale = Math.min(bw / rpw, bh / rph); // page points -> bitmap px
         const vpr = page.getViewport({ scale: renderScale });
-        cv.width = bw; cv.height = bh;
+        cv.width = Math.max(1, Math.round(rpw * renderScale));
+        cv.height = Math.max(1, Math.round(rph * renderScale));
         cv.style.left = (fx0 * imageDisplay.w) + "px";
         cv.style.top = (fy0 * imageDisplay.h) + "px";
         cv.style.width = ((fx1 - fx0) * imageDisplay.w) + "px";
         cv.style.height = ((fy1 - fy0) * imageDisplay.h) + "px";
         const ctx = cv.getContext("2d", { alpha: false });
-        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, bw, bh);
+        // Fill the canvas that actually exists, not the pre-clamp figures.
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cv.width, cv.height);
         if (taskRef.current) { try { taskRef.current.cancel(); } catch {} }
         const task = page.render({
           canvasContext: ctx,
