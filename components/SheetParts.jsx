@@ -585,25 +585,6 @@ function SheetColumnHeader({ children, padL = 14, padR = 12, padT = 12 }) {
     }}>{children}</div>
   );
 }
-
-// Colours offered in the notes formatting toolbar.
-const NOTE_COLOURS = [
-  { label: "Black", value: "#262626" },
-  { label: "Red",   value: "#dc2626" },
-  { label: "Teal",  value: "#22808F" },
-  { label: "Navy",  value: "#2C3E50" },
-  { label: "Amber", value: "#b45309" },
-];
-
-const NOTE_FMT_BTN = {
-  minWidth: 22, height: 20, padding: "0 5px",
-  fontWeight: 700, color: "#334155",
-  background: "#fff", border: "1px solid #cbd5e1", borderRadius: 4,
-  cursor: "pointer", lineHeight: 1,
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
-
-// Notes are stored as light HTML. Older plain-text notes are converted on the
 // fly (escaped, newlines → <br>).
 function notesToHtml(n) {
   if (!n) return "";
@@ -616,24 +597,6 @@ function notesToHtml(n) {
 }
 
 // Wrap the current selection (inside rootEl) in a span carrying inline style.
-function styleNotesSelection(rootEl, style) {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
-  const range = sel.getRangeAt(0);
-  if (!rootEl || !rootEl.contains(range.commonAncestorContainer)) return false;
-  const span = document.createElement("span");
-  Object.entries(style).forEach(([k, v]) => { span.style[k] = v; });
-  try {
-    range.surroundContents(span);
-  } catch {
-    const frag = range.extractContents();
-    span.appendChild(frag);
-    range.insertNode(span);
-  }
-  sel.removeAllRanges();
-  return true;
-}
-
 /* ----------------------------------------------------------------------------
  * LEGEND COLUMN — auto-generated from placed symbols
  * ------------------------------------------------------------------------- */
@@ -711,102 +674,17 @@ function NotesColumn({ notes }) {
       pointerEvents: "none",   // display only — drags pass through to the sheet
     }}>
       <SheetColumnHeader padL={14} padR={14} padT={12}>Installation Notes</SheetColumnHeader>
-      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
+      <div className="pw-notes" style={{ fontSize: 9, color: "#262626", lineHeight: 1.5 }}
            dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
   );
 }
 
 /* ----------------------------------------------------------------------------
- * NOTES EDITOR — modal launched from the toolbar. Editing happens here (not on
- * the canvas) so the drawing stays fully draggable. Supports size/bold/colour.
+ * NOTES EDITOR — now a TipTap rich-text editor in its own module. Re-exported
+ * here so existing imports from SheetParts keep working unchanged.
  * ------------------------------------------------------------------------- */
-export function NotesEditor({ notes, updateNotes, onClose }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = notesToHtml(notes);
-    ref.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const push = () => { if (ref.current) updateNotes(ref.current.innerHTML); };
-  // Format the current selection with the browser's rich-text engine. The toolbar
-  // buttons preventDefault on mousedown, so the highlight survives — you can chain
-  // Bold → Colour on the same selection without re-highlighting.
-  const exec = (fn) => {
-    if (!ref.current) return;
-    ref.current.focus();
-    document.execCommand("styleWithCSS", false, true);
-    fn();
-    push();
-  };
-  const setBold   = () => exec(() => document.execCommand("bold"));
-  const setItalic = () => exec(() => document.execCommand("italic"));
-  const setColour = (v) => exec(() => document.execCommand("foreColor", false, v));
-  const setSize   = (n) => exec(() => document.execCommand("fontSize", false, n));
-  // Start each new line fresh — normal weight, default black — so a colour or bold
-  // used above doesn't carry onto everything you type next.
-  const onEditorKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      setTimeout(() => {
-        if (!ref.current) return;
-        document.execCommand("styleWithCSS", false, true);
-        document.execCommand("removeFormat");
-        document.execCommand("foreColor", false, "#262626");
-      }, 0);
-    }
-  };
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onMouseDown={onClose}>
-      <div className="bg-white dark:bg-[#16202B] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
-        onMouseDown={(e) => e.stopPropagation()}>
-
-        <div className="flex items-center justify-between px-5 h-12 bg-[#2C3E50] shrink-0">
-          <div className="text-white font-semibold tracking-wide" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Installation Notes</div>
-          <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors"><X size={18}/></button>
-        </div>
-
-        {/* Formatting toolbar — preventDefault keeps the text selection */}
-        <div className="px-5 py-3 border-b border-slate-200 dark:border-[#263441] flex items-center gap-2 flex-wrap shrink-0"
-          onMouseDown={(e) => e.preventDefault()}>
-          <button onClick={setBold} title="Bold selected text" style={{ ...NOTE_FMT_BTN, fontWeight: 800 }}>B</button>
-          <button onClick={setItalic} title="Italic selected text" style={{ ...NOTE_FMT_BTN, fontStyle: "italic", fontWeight: 600 }}>I</button>
-          <button onClick={() => setSize(2)} title="Small text" style={{ ...NOTE_FMT_BTN, fontSize: 11 }}>A</button>
-          <button onClick={() => setSize(3)} title="Normal text" style={{ ...NOTE_FMT_BTN, fontSize: 13 }}>A</button>
-          <button onClick={() => setSize(5)} title="Large text" style={{ ...NOTE_FMT_BTN, fontSize: 16 }}>A</button>
-          <span style={{ width: 1, height: 18, background: "#d4d4d4", margin: "0 3px" }}/>
-          <span className="text-[10px] uppercase tracking-wider text-slate-400 mr-0.5">Colour</span>
-          {NOTE_COLOURS.map(c => (
-            <button key={c.value} onClick={() => setColour(c.value)} title={`${c.label} text`}
-              style={{ width: 18, height: 18, borderRadius: "50%", background: c.value, border: "1px solid rgba(0,0,0,0.18)", cursor: "pointer", padding: 0 }}/>
-          ))}
-        </div>
-
-        <div
-          ref={ref}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={push}
-          onKeyDown={onEditorKeyDown}
-          data-placeholder="Type notes here… select text to format it"
-          className="notes-editable flex-1 overflow-auto px-5 py-4"
-          style={{ background: "#fff", color: "#262626", fontSize: 14, lineHeight: 1.6, outline: "none", minHeight: 260, whiteSpace: "pre-wrap" }}
-        />
-
-        <div className="px-5 py-3 border-t border-slate-200 dark:border-[#263441] flex items-center justify-between shrink-0">
-          <span className="text-[11px] text-slate-400">Notes apply to the current drawing.</span>
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#3FB7C9] text-[#08313a] font-semibold text-sm hover:bg-[#52C4D5] transition-colors">Done</button>
-        </div>
-
-        <style>{`.notes-editable:empty:before{content:attr(data-placeholder);color:#9ca3af}`}</style>
-      </div>
-    </div>,
-    document.body
-  );
-}
+export { default as NotesEditor } from "@/components/NotesEditor";
 
 /* ----------------------------------------------------------------------------
  * DRAWING AREA — the main canvas where the plan + symbols + annotations live
@@ -3120,7 +2998,7 @@ function NotesColumnStatic({ notes }) {
       overflow: "hidden",
     }}>
       <SheetColumnHeader padL={14} padR={14} padT={12}>Installation Notes</SheetColumnHeader>
-      <div style={{ fontSize: 9, color: "#262626", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
+      <div className="pw-notes" style={{ fontSize: 9, color: "#262626", lineHeight: 1.5 }}
            dangerouslySetInnerHTML={{ __html: notesToHtml(notes) }} />
     </div>
   );

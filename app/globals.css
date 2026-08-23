@@ -15,3 +15,44 @@ html.dark, html.dark body {
 #__next, body > div {
   height: 100%;
 }
+
+/* ============================================================================
+ * INSTALLATION NOTES — rich text
+ * ----------------------------------------------------------------------------
+ * One source of truth for how notes render, applied in all three places they
+ * appear: the TipTap editor, the on-screen sheet (NotesColumn) and the print
+ * sheet (NotesColumnStatic). The print sheet matters most -- the PDF export
+ * photographs that DOM with html2canvas, so anything not styled here comes out
+ * unstyled in the exported PDF too.
+ *
+ * Sizes are in em so headings and lists scale with whichever context they are
+ * in: ~9px on the sheet, 14px in the editor.
+ * ========================================================================== */
+.pw-notes h1,
+.pw-notes h2,
+.pw-notes h3 { font-weight: 700; line-height: 1.25; margin: 0.7em 0 0.25em; }
+.pw-notes h1 { font-size: 1.45em; }
+.pw-notes h2 { font-size: 1.25em; }
+.pw-notes h3 { font-size: 1.1em; text-transform: uppercase; letter-spacing: 0.04em; }
+.pw-notes > :first-child { margin-top: 0; }
+
+.pw-notes p { margin: 0 0 0.45em; }
+.pw-notes p:last-child { margin-bottom: 0; }
+
+/* The app-wide reset strips list padding and markers, which would silently
+   flatten bullets on the sheet and in the PDF. Put them back explicitly. */
+.pw-notes ul,
+.pw-notes ol { margin: 0 0 0.5em; padding-left: 1.4em; }
+.pw-notes ul { list-style: disc outside; }
+.pw-notes ol { list-style: decimal outside; }
+.pw-notes li { margin: 0 0 0.15em; display: list-item; }
+.pw-notes li p { margin: 0; }
+
+.pw-notes strong, .pw-notes b { font-weight: 700; }
+.pw-notes em, .pw-notes i { font-style: italic; }
+
+/* Editor surface only. */
+.notes-tiptap { outline: none; min-height: 240px; color: #262626; font-size: 14px; line-height: 1.6; }
+.notes-tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); color: #9ca3af; float: left; height: 0; pointer-events: none;
+}
