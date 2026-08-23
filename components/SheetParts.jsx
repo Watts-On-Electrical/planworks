@@ -1240,131 +1240,211 @@ function estimateWidth(s, fontSize) {
 /* ----------------------------------------------------------------------------
  * TITLE BLOCK — bottom strip, editable fields
  * ------------------------------------------------------------------------- */
-function TitleLogos({ logos, maxWidth = 380 }) {
-  const list = (logos || []).filter(Boolean);
-  if (!list.length) return <div style={{ width: 6 }} />;
-  // The title block is a fixed 110px tall, so the logo height depends on how
-  // many there are: a single logo takes nearly the whole panel, while two or
-  // three step down and stay on ONE row instead of wrapping onto a second line
-  // the panel would clip.
-  const h    = list.length >= 3 ? 48  : list.length === 2 ? 68  : 94;
-  const wMax = list.length >= 3 ? 110 : list.length === 2 ? 165 : 320;
+/* ----------------------------------------------------------------------------
+ * TITLE BLOCK — masthead
+ * ----------------------------------------------------------------------------
+ * Built from the canvas artboard "Masthead - chosen" (page 1). Company identity
+ * sits in a solid navy block reversed out in white, so the drawing reads as
+ * company stationery before it reads as a drawing.
+ *
+ * Columns      1.5fr / 0.72fr / 0.95fr / 0.85fr
+ * Type ramp    17 / 13 / 11 / 9 / 8 / 7.5px, plus the 6.5px the artboard uses
+ *              for the two chip labels.
+ * Body text    navy #2C3E50 -- never near-black.
+ *
+ * ONE component renders both the working sheet and the print sheet. The PDF
+ * export photographs the print DOM with html2canvas, so anything allowed to
+ * differ between them is a difference the customer sees; `editable` is the
+ * only switch.
+ * ------------------------------------------------------------------------- */
+const MH = {
+  navy: "#2C3E50",
+  teal: "#2C97A8",
+  rule: "#DCE2E8",
+  onNavySoft: "#C4CFD8",   // address
+  onNavyFaint: "#8FA1B1",  // email / registration
+  chipLabel: "#CDEBF1",
+  bodySoft: "#55636F",
+  revLabel: "#8A94A0",
+};
+const MH_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+const MH_MONO = "'JetBrains Mono', ui-monospace, monospace";
+
+/** Section label: teal, 600, 0.12em tracking. */
+function MhLabel({ children, size = 7.5, colour = MH.teal }) {
   return (
-    <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", justifyContent: "center",
-                  gap: 12, padding: "3px 12px", maxWidth }}>
-      {list.map((src, i) => (
-        <img key={i} src={src} alt="" style={{ height: h, width: "auto", maxWidth: wMax, objectFit: "contain", display: "block" }} />
+    <div style={{ fontSize: size, fontWeight: 600, letterSpacing: "0.12em",
+                  textTransform: "uppercase", color: colour }}>{children}</div>
+  );
+}
+
+const mhText = (d) => (d && d.value != null ? String(d.value).trim() : "");
+const mhFind = (details, re) =>
+  mhText((details || []).find((d) => d && re.test(String((d && d.label) || ""))));
+
+/* Column 1 — the navy company block.
+ * Fields are picked by the labels companyProfileToTitleBlock emits (Company,
+ * Address, Tel, Email, Web). Anything else the merge carried through -- legacy
+ * lines the profile doesn't model, a scheme registration -- is shown beneath
+ * rather than dropped. */
+function MastheadCompany({ tb }) {
+  const details = Array.isArray(tb.details) ? tb.details : [];
+  const known = /^(company|address|tel|phone|email|web|website)$/i;
+
+  const name = mhFind(details, /^company$/i) || mhText(details[0]);
+  const address = mhFind(details, /^address$/i);
+  const phone = mhFind(details, /^(tel|phone)$/i);
+  const web = mhFind(details, /^(web|website)$/i);
+  const email = mhFind(details, /^email$/i);
+  const reg = mhFind(details, /reg/i);
+
+  const extras = details
+    .filter((d) => d && !known.test(String(d.label || "")) &&
+                   !/reg/i.test(String(d.label || "")) && mhText(d))
+    .map((d) => [String(d.label || "").trim(), mhText(d)].filter(Boolean).join(" "));
+
+  // The mark sits on a white tile rather than bare on the navy. The artboard's
+  // mark is a flat two-colour glyph drawn for that background; a real uploaded
+  // logo is usually full-colour with dark lettering and would disappear on
+  // navy -- the same reason the accreditation column is white.
+  const mark = (tb.logos || []).filter(Boolean)[0] || null;
+
+  const line = (size, weight, colour) =>
+    ({ fontSize: size, fontWeight: weight, color: colour, lineHeight: size <= 8 ? 1.3 : 1.35 });
+
+  return (
+    <div style={{ background: MH.navy, padding: "11px 18px", display: "flex",
+                  flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+        {mark && (
+          <div style={{ background: "#FFFFFF", borderRadius: 5, padding: 3, flex: "none",
+                        display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src={mark} alt="" style={{ height: 28, width: "auto", maxWidth: 68,
+                                            objectFit: "contain", display: "block" }} />
+          </div>
+        )}
+        <div style={{ fontFamily: MH_GROTESK, fontSize: 17, fontWeight: 700, color: "#FFFFFF",
+                      letterSpacing: "-0.01em", lineHeight: 1.05, minWidth: 0,
+                      overflowWrap: "anywhere" }}>{name}</div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        {address && <div style={line(9, 400, MH.onNavySoft)}>{address}</div>}
+        {(phone || web) && (
+          <div style={line(9, 500, "#FFFFFF")}>{[phone, web].filter(Boolean).join("  ·  ")}</div>
+        )}
+        {(email || reg) && (
+          <div style={line(8, 400, MH.onNavyFaint)}>
+            {[email, reg && (/^reg/i.test(reg) ? reg : "Reg. " + reg)].filter(Boolean).join("  ·  ")}
+          </div>
+        )}
+        {extras.map((t, i) => <div key={i} style={line(8, 400, MH.onNavyFaint)}>{t}</div>)}
+      </div>
+    </div>
+  );
+}
+
+/* Column 2 — accreditation marks, always on white so full-colour scheme logos
+ * stay legible. The company mark is index 0 and lives on the navy, so this is
+ * everything after it. */
+function MastheadAccreditations({ logos }) {
+  const marks = (logos || []).filter(Boolean).slice(1);
+  return (
+    <div style={{ borderRight: "1px solid " + MH.rule, background: "#FFFFFF", display: "flex",
+                  alignItems: "center", justifyContent: "center", gap: 10, padding: "0 12px" }}>
+      {marks.map((src, i) => (
+        <img key={i} src={src} alt="" style={{ height: 42, width: "auto", maxWidth: 60,
+                                               objectFit: "contain", display: "block" }} />
       ))}
     </div>
   );
 }
 
-function TitleDetails({ details }) {
-  const list = (details || []).filter(d => d && (d.label || d.value));
+/**
+ * The masthead. `editable` swaps plain text for the inline fields used on the
+ * working sheet; everything else is identical, by construction.
+ */
+function Masthead({ meta, editable = false, updateMeta, setSheet }) {
+  const tb = useProjectTitleBlock() || DEFAULT_TITLEBLOCK;
+  const upMeta = updateMeta || (() => {});
+  const upSheet = setSheet || (() => {});
+
+  const field = (text, onChange, { fontSize, weight, colour = MH.navy, family, placeholder }) =>
+    editable
+      ? <EditableField value={text} onChange={onChange} fontSize={fontSize} weight={weight}
+                       placeholder={placeholder} colour={colour} family={family} />
+      : <div style={{ fontFamily: family, fontSize, fontWeight: weight, color: colour,
+                      lineHeight: 1.2, overflowWrap: "anywhere" }}>{text || "—"}</div>;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {list.map((d, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 5, lineHeight: 1.15, minWidth: 0 }}>
-          {d.label ? (
-            <span style={{ fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#737373", whiteSpace: "nowrap", flexShrink: 0 }}>{d.label}</span>
-          ) : null}
-          {/* minWidth:0 lets the value shrink to the cell; wrapping (incl. long
-              emails with no spaces) keeps the full value visible instead of the
-              end being clipped off the page. */}
-          <span style={{ fontSize: i === 0 ? 18 : 10.5, fontWeight: i === 0 ? 800 : 500, color: "#0a0a0a", minWidth: 0, flex: "1 1 auto", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word" }}>{d.value}</span>
+    <div style={{
+      position: "absolute",
+      left: SHEET.margin,
+      top: SHEET.height - SHEET.margin - SHEET.titleHeight,
+      width: SHEET.width - SHEET.margin * 2,
+      height: SHEET.titleHeight,
+      background: "#FFFFFF",
+      borderTop: "1px solid " + MH.navy,
+      display: "grid",
+      gridTemplateColumns: "1.5fr 0.72fr 0.95fr 0.85fr",
+    }}>
+      <MastheadCompany tb={tb} />
+      <MastheadAccreditations logos={tb.logos} />
+
+      {/* Column 3 — project over sheet */}
+      <div style={{ borderRight: "1px solid " + MH.rule, padding: "11px 16px", display: "flex",
+                    flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+          <MhLabel>Project</MhLabel>
+          {field(meta.projectName, (v) => upMeta({ projectName: v }),
+                 { fontSize: 13, weight: 600, family: MH_GROTESK, placeholder: "Project name" })}
+          {field(meta.plot, (v) => upMeta({ plot: v }),
+                 { fontSize: 9, weight: 500, colour: MH.bodySoft, placeholder: "Plot / address" })}
         </div>
-      ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+          <MhLabel>Sheet</MhLabel>
+          {field(meta.sheetName, (v) => upSheet({ name: v }),
+                 { fontSize: 11, weight: 600, family: MH_GROTESK })}
+        </div>
+      </div>
+
+      {/* Column 4 — scale and date over the drawing-number chip */}
+      <div style={{ padding: "11px 16px", display: "flex", flexDirection: "column",
+                    justifyContent: "space-between", overflow: "hidden" }}>
+        <div style={{ display: "flex", gap: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <MhLabel>Scale</MhLabel>
+            {field(meta.scale, (v) => upMeta({ scale: v }), { fontSize: 11, weight: 500, family: MH_MONO })}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <MhLabel>Date</MhLabel>
+            {field(meta.date, (v) => upMeta({ date: v }), { fontSize: 11, weight: 500, family: MH_MONO })}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <div style={{ background: MH.teal, borderRadius: 4, padding: "4px 9px", minWidth: 0,
+                        display: "flex", flexDirection: "column" }}>
+            <MhLabel size={6.5} colour={MH.chipLabel}>Drawing no.</MhLabel>
+            {field(meta.drawingNumber, (v) => upSheet({ drawingNumber: v }),
+                   { fontSize: 13, weight: 700, colour: "#FFFFFF", family: MH_MONO,
+                     placeholder: "WOE-0000-GF-L" })}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+            <MhLabel size={6.5} colour={MH.revLabel}>Rev</MhLabel>
+            {field(meta.revision, (v) => upMeta({ revision: v }),
+                   { fontSize: 15, weight: 700, family: MH_MONO })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 function TitleBlock({ meta, updateMeta, onSheetField }) {
-  const setSheet = onSheetField || (() => {});
-  const titleBlock = useProjectTitleBlock();
-  const tb = titleBlock || DEFAULT_TITLEBLOCK;
-  const left = SHEET.margin;
-  const width = SHEET.width - SHEET.margin * 2;
-  const top = SHEET.height - SHEET.margin - SHEET.titleHeight;
-  return (
-    <div style={{
-      position: "absolute",
-      left, top, width,
-      height: SHEET.titleHeight,
-      borderTop: "1px solid #0a0a0a",
-      display: "grid",
-      gridTemplateColumns: "minmax(200px, auto) 1.55fr 0.8fr 1fr",
-      fontSize: 10,
-    }}>
-      {/* Logos (account template) */}
-      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <TitleLogos logos={tb.logos} />
-      </div>
-
-      {/* Company details (account template) + project (per drawing) */}
-      <div style={{ padding: "9px 15px", borderRight: "1px solid #0a0a0a",
-                    display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
-        <TitleDetails details={tb.details} />
-        <div>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
-          <EditableField value={meta.projectName} onChange={(v) => updateMeta({ projectName: v })}
-                         fontSize={16} weight={700} placeholder="Project name"/>
-          <EditableField value={meta.plot} onChange={(v) => updateMeta({ plot: v })}
-                         fontSize={10.5} weight={500} placeholder="Plot / address"/>
-        </div>
-      </div>
-
-      {/* Middle: sheet info */}
-      <div style={{
-        padding: "9px 15px",
-        borderRight: "1px solid #0a0a0a",
-        display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6,
-      }}>
-        <div>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
-          <EditableField value={meta.sheetName} onChange={(v) => setSheet({ name: v })}
-                         fontSize={15} weight={700} />
-        </div>
-        <div style={{ display: "flex", gap: 14 }}>
-          <div>
-            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
-            <EditableField value={meta.scale} onChange={(v) => updateMeta({ scale: v })}
-                           fontSize={11.5} weight={600} />
-          </div>
-          <div>
-            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
-            <EditableField value={meta.date} onChange={(v) => updateMeta({ date: v })}
-                           fontSize={11.5} weight={600} />
-          </div>
-        </div>
-      </div>
-
-      {/* Right: drawing number & revision */}
-      <div style={{
-        padding: "9px 15px",
-        display: "grid", gridTemplateColumns: "1fr auto",
-        columnGap: 14, rowGap: 6,
-      }}>
-        <div>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
-          <EditableField value={meta.drawingNumber} onChange={(v) => setSheet({ drawingNumber: v })}
-                         fontSize={13.5} weight={700} placeholder="e.g. WOE-PB-XX-00-D-A-010401"/>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
-          <EditableField value={meta.revision} onChange={(v) => updateMeta({ revision: v })}
-                         fontSize={18} weight={800} align="right"/>
-        </div>
-        <div style={{ gridColumn: "1 / span 2" }}>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
-          <EditableField value={meta.revNote} onChange={(v) => updateMeta({ revNote: v })}
-                         fontSize={9} weight={500} placeholder="First issue"/>
-        </div>
-      </div>
-    </div>
-  );
+  return <Masthead meta={meta} editable updateMeta={updateMeta} setSheet={onSheetField} />;
 }
 
-function EditableField({ value, onChange, fontSize = 10, weight = 500, placeholder, align = "left" }) {
+function EditableField({ value, onChange, fontSize = 10, weight = 500, placeholder, align = "left", colour = "#2C3E50", family }) {
   return (
     <input
       type="text"
@@ -1372,10 +1452,10 @@ function EditableField({ value, onChange, fontSize = 10, weight = 500, placehold
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       style={{
-        fontSize, fontWeight: weight, color: "#0a0a0a",
+        fontSize, fontWeight: weight, color: colour,
         width: "100%", border: "none", background: "transparent",
         padding: 0, outline: "none", textAlign: align,
-        fontFamily: "inherit",
+        fontFamily: family || "inherit",
       }}
       className="hover:bg-[#ECF8FA]/40 focus:bg-[#ECF8FA] transition-colors duration-150"
     />
@@ -3127,64 +3207,10 @@ function DrawingAreaStatic({ DRAW, bgImage, placed, wires, annotations, colourMo
   );
 }
 
+/* The print sheet. Deliberately the SAME component as the working sheet --
+ * html2canvas photographs this DOM for the PDF, so the two must not drift. */
 function TitleBlockStatic({ meta }) {
-  const titleBlock = useProjectTitleBlock();
-  const tb = titleBlock || DEFAULT_TITLEBLOCK;
-  return (
-    <div style={{
-      position: "absolute",
-      left: SHEET.margin,
-      top: SHEET.height - SHEET.margin - SHEET.titleHeight,
-      width: SHEET.width - SHEET.margin * 2,
-      height: SHEET.titleHeight,
-      borderTop: "1px solid #0a0a0a",
-      display: "grid",
-      gridTemplateColumns: "minmax(200px, auto) 1.55fr 0.8fr 1fr",
-      fontSize: 10,
-    }}>
-      <div style={{ borderRight: "1px solid #0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <TitleLogos logos={tb.logos} />
-      </div>
-      <div style={{ padding: "9px 15px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6, overflow: "hidden" }}>
-        <TitleDetails details={tb.details} />
-        <div>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>PROJECT</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0a0a0a" }}>{meta.projectName || "—"}</div>
-          <div style={{ fontSize: 10.5, color: "#0a0a0a" }}>{meta.plot}</div>
-        </div>
-      </div>
-      <div style={{ padding: "9px 15px", borderRight: "1px solid #0a0a0a", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6 }}>
-        <div>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SHEET</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0a0a0a" }}>{meta.sheetName}</div>
-        </div>
-        <div style={{ display: "flex", gap: 14 }}>
-          <div>
-            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>SCALE</div>
-            <div style={{ fontSize: 11.5, fontWeight: 600 }}>{meta.scale}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DATE</div>
-            <div style={{ fontSize: 11.5, fontWeight: 600 }}>{meta.date}</div>
-          </div>
-        </div>
-      </div>
-      <div style={{ padding: "9px 15px", display: "grid", gridTemplateColumns: "1fr auto", columnGap: 14, rowGap: 6 }}>
-        <div>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>DRAWING NO.</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700 }}>{meta.drawingNumber || "—"}</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REV</div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>{meta.revision}</div>
-        </div>
-        <div style={{ gridColumn: "1 / span 2" }}>
-          <div style={{ fontSize: 8.5, letterSpacing: "0.15em", color: "#737373" }}>REVISION NOTE</div>
-          <div style={{ fontSize: 10 }}>{meta.revNote}</div>
-        </div>
-      </div>
-    </div>
-  );
+  return <Masthead meta={meta} />;
 }
 
 
