@@ -19,6 +19,13 @@ import { listSketches, getSketchData, insertSketch, updateSketch, deleteSketch }
 import { insertProject, getProjectData, updateProjectRow } from "@/lib/db";
 import { uploadPlanImage, dataUrlToBlob } from "@/lib/planImages";
 import { computeFrame, renderModelToPng } from "@/lib/cad/sketchToImage";
+import { isTouchDevice } from "@/lib/touch";
+
+// A composited layer for a canvas this size rasterises at reduced resolution on
+// iOS Safari, which is why doing the zoom as an SVG <g> transform here was no
+// sharper than the sheet's CSS transform. Off on touch: full resolution beats
+// smooth panning on a drawing.
+const PROMOTE = isTouchDevice() ? "auto" : "transform";
 
 const SHEET = { x: -6000, y: -6000, w: 28000, h: 28000 };
 const SCALE_MIN = 0.02, SCALE_MAX = 0.6;
@@ -799,8 +806,8 @@ export default function CadSketch({ title = "Maple House \u2014 First floor", re
         </div>
 
         <div className="cadv__workspace" ref={wrapRef}>
-          <div ref={gridRef} className="cadv__grid" style={{ position: "absolute", inset: 0, pointerEvents: "none", transformOrigin: "0 0", willChange: "transform", ...gridStyle }} />
-          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0", willChange: "transform" }}
+          <div ref={gridRef} className="cadv__grid" style={{ position: "absolute", inset: 0, pointerEvents: "none", transformOrigin: "0 0", willChange: PROMOTE, ...gridStyle }} />
+          <svg ref={svgRef} className="cadv__svg" width="100%" height="100%" style={{ cursor: svgCursor, transformOrigin: "0 0", willChange: PROMOTE }}
             onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp}
             onClick={handleClick} onDoubleClick={handleDouble}
             onPointerLeave={() => setCur((c) => ({ ...c, on: false }))}>

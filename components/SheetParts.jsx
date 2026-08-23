@@ -22,6 +22,7 @@ import { DEFAULT_TITLEBLOCK, resizeImageToDataUrl } from "@/lib/titleBlock";
 import { ensurePdfjs } from "@/lib/pdfjs";
 import { useEditor } from "@/store/editorStore";
 import { Masthead } from "@/components/TitleBlockMasthead";
+import { isTouchDevice } from "@/lib/touch";
 
 // Per-project title block. The editor publishes the *effective* title block
 // (the project's own, falling back to the account default) through this context
@@ -448,6 +449,14 @@ export function Workspace({
   useEffect(() => {
     const el = sheetTransformRef && sheetTransformRef.current;
     if (!el) return;
+    // On iPad the layer stayed soft even with the hint released on settle, and
+    // CadSketch is soft too despite doing its zoom as an SVG <g> transform.
+    // The common factor is the promotion itself: iOS Safari appears to cap the
+    // backing store for a layer this size, so the contents rasterise at reduced
+    // resolution however the zoom is expressed. Not promoting at all puts the
+    // sheet back on the normal render path at full resolution. Panning may be
+    // less smooth on an iPad; sharpness matters more on a drawing.
+    if (isTouchDevice()) { el.style.willChange = "auto"; return; }
     el.style.willChange = "transform";
     const id = setTimeout(() => { el.style.willChange = "auto"; }, SETTLE_MS);
     return () => clearTimeout(id);
@@ -2582,10 +2591,7 @@ export function PrintPreview({ project, legendItems, colourMode, symbolScale = 1
 
       // The overlay now only carries symbols + app text (the plan is vector), so
       // a modest scale is sharp enough AND stays under the iOS canvas cap.
-      const isTouch = typeof navigator !== "undefined" &&
-        (navigator.maxTouchPoints > 1 ||
-         (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
-      const shotScale = isTouch ? 2 : 3;
+      const shotScale = isTouchDevice() ? 2 : 3;
 
       const out = await PDFDocument.create();
 
