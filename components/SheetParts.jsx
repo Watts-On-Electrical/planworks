@@ -7,7 +7,7 @@ import {
   MousePointer2, Cable, BrickWall, RotateCw, ZoomIn, ZoomOut, Maximize2,
   Palette as PaletteIcon, Ruler, Hand, Type, Printer, Settings, Search, Sun, Moon, Mail,
   ChevronRight, ChevronLeft, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Grid3x3, ClipboardList, Plus, Clock, LayoutPanelTop, ImagePlus, SlidersHorizontal,
+  Grid3x3, ClipboardList, Plus, Clock, LayoutPanelTop, ImagePlus, SlidersHorizontal, Building2,
 } from "lucide-react";
 import {
   SYMBOLS, SYMBOL_META, CATEGORY_COLOURS, VIEWBOX,
@@ -2390,7 +2390,12 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
     }
   };
 
-  const resetToDefault = () => {
+  // The account default IS the company profile now, so what used to read as
+  // "reset" is really "adopt my company details here". Drawings carrying their
+  // own override predate the profile and cannot otherwise pick it up.
+  // Confirmed, because that override may hold details typed for this job alone.
+  const useCompanyDetails = () => {
+    if (!window.confirm("Use your company details on this drawing? The title block details saved for this job will be replaced.")) return;
     onResetToDefault?.();
     onClose();
   };
@@ -2409,6 +2414,19 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           <p className="text-[12px] text-slate-500 -mt-1">These details and logos appear on this drawing and its PDF. They apply to <span className="font-semibold text-slate-700">this job only</span> — other projects keep their own. Project, sheet, scale, date, drawing number and revision stay editable per drawing.</p>
+
+          {/* Only for drawings that carry their own override -- on anything
+            * else there is nothing to replace, so it is not shown. */}
+          {isCustomised && onResetToDefault && (
+            <div className="rounded-xl ring-1 ring-[#2C97A8]/35 bg-[#2C97A8]/10 px-4 py-3.5">
+              <div className="text-[12px] font-semibold text-slate-800">This drawing has its own title block</div>
+              <div className="text-[11.5px] text-slate-500 mt-0.5 mb-3">It was set for this job, so it ignores the company details on your account.</div>
+              <button onClick={useCompanyDetails}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-md bg-[#2C97A8] hover:bg-[#35A9BC] text-[#1A2530] text-[10px] uppercase tracking-wider font-semibold transition-colors">
+                <Building2 size={14} className="text-[#1A2530] shrink-0"/> Use my company details on this drawing
+              </button>
+            </div>
+          )}
 
           {/* Logos */}
           <div>
@@ -2473,12 +2491,6 @@ export function TitleBlockEditor({ start, isCustomised, onSaveProject, onSaveDef
               className="w-4 h-4 rounded accent-[#3FB7C9]"/>
             Also save as my default for new jobs
           </label>
-          {isCustomised && onResetToDefault && (
-            <button onClick={resetToDefault}
-              className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">
-              Reset to default
-            </button>
-          )}
           <button onClick={onClose} className="px-4 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200">Cancel</button>
           <button onClick={save} disabled={saving}
             className="px-4 py-2 bg-[#3FB7C9] text-[#08313a] rounded-md text-[10px] uppercase tracking-wider font-semibold hover:bg-[#52C4D5] transition disabled:opacity-60">
